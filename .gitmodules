@@ -1,0 +1,3 @@
+[submodule "source/javascripts/data_tables"]
+	path = source/javascripts/data_tables
+	url = https://github.com/DataTables/DataTables.git
