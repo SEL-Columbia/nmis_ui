@@ -1,0 +1,37 @@
+<form class="jr" id="tip_calculator">
+  <!--This form was created by transforming a javaRosa-style (X)Form using an XSLT sheet created by Aid Web Solutions.-->
+  <section class="form-logo"></section>
+  <h2 id="form-title">tip_calculator</h2>
+  <div id="stats" style="display: none;">
+    <span id="jrSelect">0</span>
+    <span id="jrSelect1">0</span>
+    <span id="jrItem">0</span>
+    <span id="jrInput">2</span>
+    <span id="jrUpload">0</span>
+    <span id="jrTrigger">0</span>
+    <span id="jrRepeat">0</span>
+    <span id="jrRelevant">0</span>
+    <span id="jrConstraint">0</span>
+    <span id="jrCalculate">2</span>
+    <span id="jrPreload">0</span>
+  </div>
+  <label>
+    <span lang="" class="">What was the price of the meal?</span>
+    <input name="/tip_calculator/amount" type="number" data-type-xml="decimal"/>
+  </label>
+  <label>
+    <span lang="" class="">
+      18% tip for your meal is:
+      <span class="jr-output" data-value="/tip_calculator/tip"></span>
+    </span>
+    <input name="/tip_calculator/display" readonly="readonly" type="text" data-type-xml="string"/>
+  </label>
+  <fieldset id="jr-calculated-items" style="display:none;">
+    <label>
+      <input name="/tip_calculator/formhub/uuid" type="hidden" data-calculate="'c7bb0a2c827c47ee985fe18b5641af5c'" data-type-xml="string"/>
+    </label>
+    <label>
+      <input name="/tip_calculator/tip" type="hidden" data-calculate="/tip_calculator/amount * 0.18" data-type-xml="string"/>
+    </label>
+  </fieldset>
+</form>

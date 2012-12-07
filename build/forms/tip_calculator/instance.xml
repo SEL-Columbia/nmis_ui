@@ -1,0 +1,10 @@
+<instance xmlns="http://www.w3.org/2002/xforms">
+  <tip_calculator id="tip_calculator">
+    <formhub>
+      <uuid/>
+    </formhub>
+    <amount/>
+    <tip/>
+    <display/>
+  </tip_calculator>
+</instance>
