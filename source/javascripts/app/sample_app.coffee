@@ -12,8 +12,3 @@ env =
 
 NMIS.Breadcrumb.init "p.bc",
   levels: [[state.name, env.root], [lga.name, "#{NMIS.url_root}#/" + state.slug + "/" + lga.slug + "/"]]
-
-###
-Run the app.
-###
-dashboard.run()
