@@ -10,7 +10,7 @@ launch_facilities = ->
 
   params.sector = `undefined`  if params.sector is "overview"
   prepFacilities params
-  $.when(lgaDataReq, variableDataReq).done (req1, req2) ->
+  $.when(get_lgaDataReq(), get_variableDataReq()).done (req1, req2) ->
     lgaData = req1[0]
     variableData = req2[0]
     launchFacilities lgaData, variableData, params
@@ -338,8 +338,12 @@ facilitiesMap = undefined
 ###
 TODO: something about these NMIS.DataLoader
 ###
-lgaDataReq = NMIS.DataLoader.fetch("#{NMIS.url_root}pvt_data/facility_data.json")
-variableDataReq = NMIS.DataLoader.fetch("#{NMIS.url_root}pvt_data/facility_variables.json")
+get_lgaDataReq = ()->
+  _lgaDataReq = NMIS.DataLoader.fetch NMIS._lgaFacilitiesDataUrl_
+  _lgaDataReq
+get_variableDataReq = ()->
+  _variableDataReq = NMIS.DataLoader.fetch NMIS._defaultVariableUrl_
+  _variableDataReq
 
 dashboard.get "#{NMIS.url_root}#/:state/:lga/facilities/?(#.*)?", NMIS.launch_facilities
 dashboard.get "#{NMIS.url_root}#/:state/:lga/facilities/:sector/?(#.*)?", NMIS.launch_facilities
