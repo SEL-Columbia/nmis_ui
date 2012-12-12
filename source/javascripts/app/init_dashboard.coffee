@@ -11,6 +11,10 @@ NMIS.url_root = url_root
     dashboard.setLocation "#{url_root}#/#{@params.state}/#{@params.lga}/summary/"
 )
 
+@dashboard.get "#{url_root}#data=(.*)", ()->
+  data_src = @params.splat[0]
+  $.cookie "data-source", data_src
+  @redirect "#{url_root}"
 
 $(".page-header").remove()
 
