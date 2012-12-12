@@ -47,16 +47,18 @@ class District
   constructor: (d)->
     _.extend @, d
     [@group_slug, @slug] = d.url_code.split("/")
+    @lat_lng = d.lat_lng
     @html_params =
       text: @label
       value: @id
   module_url: (module_name)->
     "#{NMIS._data_src_root_url}#{@data_root}/#{module_name}.json"
   set_group: (@group)-> @group.add_district @
-  latLng: "0,0"
 
 class Group
-  constructor: (@name)-> @districts = []
+  constructor: (@name)->
+    @districts = []
+    @label = @name
   add_district: (d)->
     @districts.push d
     @slug = d.group_slug unless @slug?

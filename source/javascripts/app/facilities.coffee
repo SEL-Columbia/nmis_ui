@@ -10,7 +10,6 @@ launch_facilities = ->
 
   district = NMIS.getDistrictByUrlCode("#{params.state}/#{params.lga}")
   NMIS._currentDistrict = district
-  log NMIS._currentDistrict
   params.sector = `undefined`  if params.sector is "overview"
   get_sectorsReq().done ->
     prepFacilities params
@@ -23,10 +22,11 @@ launch_facilities = ->
       variables_req = NMIS.DataLoader.fetch NMIS._defaultVariableUrl_
     if "profile_data" in district.data_modules
       profile_data_req = NMIS.DataLoader.fetch district.module_url("profile_data")
-    $.when(facilities_req, variables_req, profile_data_req).done (req1, req2) ->
+    $.when(facilities_req, variables_req, profile_data_req).done (req1, req2, req3) ->
       lgaData = req1[0]
       variableData = req2[0]
-      launchFacilities lgaData, variableData, params
+      profileData = req3[0].profile_data
+      launchFacilities lgaData, variableData, profileData , params
 
 NMIS.launch_facilities = launch_facilities
 
@@ -75,7 +75,7 @@ resizeDisplayWindowAndFacilityTable = ->
 ###
 The beast: launchFacilities--
 ###
-launchFacilities = (lgaData, variableData, params) ->
+launchFacilities = (lgaData, variableData, profileData, params) ->
   lga = NMIS._currentDistrict
   state = NMIS._currentDistrict.group
   createFacilitiesMap = ->
@@ -112,7 +112,7 @@ launchFacilities = (lgaData, variableData, params) ->
         dashboard.setLocation NMIS.urlFor(_.extend(NMIS.Env(),
           facilityId: false
         ))
-    ll = _.map(lga.latLng.split(","), (x) ->
+    ll = _.map(lga.lat_lng.split(","), (x) ->
       +x
     )
     unless not facilitiesMap
@@ -141,7 +141,7 @@ launchFacilities = (lgaData, variableData, params) ->
       )
     facilitiesMap.mapTypes.set "OSM", new google.maps.ImageMapType(
       getTileUrl: (coord, zoom) ->
-        "http://tile.openstreetmap.org/" + zoom + "/" + coord.x + "/" + coord.y + ".png"
+        "http://tile.openstreetmap.org/#{zoom}/#{coord.x}/#{coord.y}.png"
 
       tileSize: new google.maps.Size(256, 256)
       name: "OSM"
@@ -239,7 +239,7 @@ launchFacilities = (lgaData, variableData, params) ->
 
     obj =
       facCount: "15"
-      lgaName: "" + lga.name + ", " + state.name
+      lgaName: "" + lga.label + ", " + lga.group.label
       overviewSectors: []
       profileData: _.map(profileData, (d) ->
         val = ""
@@ -266,7 +266,6 @@ launchFacilities = (lgaData, variableData, params) ->
           subsector: false
         ))
         counts: c
-
 
     NMIS._wElems.elem1content.html mustachify("facilities-overview", obj)
   else
