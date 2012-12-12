@@ -44,13 +44,6 @@
     slug: "overview"
   };
 
-  NMIS.loadSectors(sectorData, {
-    "default": {
-      name: "Overview",
-      slug: "overview"
-    }
-  });
-
   NMIS.init();
 
   wElems = NMIS.DisplayWindow.getElems();
@@ -126,6 +119,247 @@
   };
 
 }).call(this);
+(function() {
+  var District, Group, clear_data_source, data_src, default_data_source, display_in_header, header, load_data_source, load_districts, load_sectors, load_variables, nav, select_data_source, select_district, set_default_data_source,
+    __indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; };
+
+  header = $('.data-src');
+
+  nav = $('.lga-nav');
+
+  if (header.get(0) == null) {
+    throw new Error("Cannot initialize data-source-selector");
+  }
+
+  default_data_source = {
+    name: "Sample data",
+    url: "./sample_data"
+  };
+
+  header.on('click', 'a', function(evt) {
+    return false;
+  });
+
+  select_data_source = function() {};
+
+  set_default_data_source = function() {
+    return header.find("span").text(default_data_source.name);
+  };
+
+  display_in_header = function(s) {
+    var brand, logo, title;
+    title = s.title;
+    $('title').html(title);
+    brand = $('.brand');
+    logo = brand.find('.logo').detach();
+    brand.empty().append(logo).append(title);
+    return header.find("span").text(s.id);
+  };
+
+  load_data_source = function(root_url, cb) {
+    return $.getJSON("" + root_url + "schema.json", function(schema) {
+      display_in_header(schema);
+      load_districts(schema.districts);
+      if (schema.default_sectors != null) {
+        NMIS._defaultSectorUrl_ = root_url + schema.default_sectors;
+      }
+      if (schema.default_variables != null) {
+        NMIS._defaultVariableUrl_ = root_url + schema.default_variables;
+      }
+      return cb();
+    });
+  };
+
+  clear_data_source = function() {
+    return header.find("span").html("&hellip;");
+  };
+
+  data_src = $.cookie("data-source");
+
+  if (data_src == null) {
+    data_src = default_data_source.url;
+  }
+
+  load_data_source(data_src, function() {
+    /*
+      At this point the districts will have loaded.
+    */
+    return dashboard.run();
+  });
+
+  NMIS._data_src_root_url = data_src;
+
+  District = (function() {
+
+    function District(d) {
+      var _ref;
+      _.extend(this, d);
+      _ref = d.url_code.split("/"), this.group_slug = _ref[0], this.slug = _ref[1];
+      this.html_params = {
+        text: this.label,
+        value: this.id
+      };
+    }
+
+    District.prototype.module_url = function(module_name) {
+      return "" + NMIS._data_src_root_url + this.data_root + "/" + module_name + ".json";
+    };
+
+    District.prototype.set_group = function(group) {
+      this.group = group;
+      return this.group.add_district(this);
+    };
+
+    District.prototype.latLng = "0,0";
+
+    return District;
+
+  })();
+
+  Group = (function() {
+
+    function Group(name) {
+      this.name = name;
+      this.districts = [];
+    }
+
+    Group.prototype.add_district = function(d) {
+      this.districts.push(d);
+      if (this.slug == null) {
+        this.slug = d.group_slug;
+      }
+      this.districts = this.districts.sort(function(a, b) {
+        if (b != null) {
+          return a.label > b.label;
+        }
+      });
+      return true;
+    };
+
+    return Group;
+
+  })();
+
+  select_district = function() {};
+
+  nav.on('submit', 'form', function(evt) {
+    select_district(nav.find('select').val());
+    return false;
+  });
+
+  load_districts = function(district_list) {
+    var already_selected, d, district, districts, get_or_create_group, group, group_names, groups, new_select, optgroup, submit_button, _i, _j, _k, _len, _len1, _len2, _ref;
+    group_names = [];
+    groups = [];
+    districts = [];
+    get_or_create_group = function(name) {
+      var g, group, _i, _len;
+      if (__indexOf.call(group_names, name) < 0) {
+        g = new Group(name);
+        groups.push(g);
+      } else {
+        for (_i = 0, _len = groups.length; _i < _len; _i++) {
+          group = groups[_i];
+          if (group.name === name) {
+            g = group;
+          }
+        }
+      }
+      return g;
+    };
+    for (_i = 0, _len = district_list.length; _i < _len; _i++) {
+      district = district_list[_i];
+      d = new District(district);
+      d.set_group(get_or_create_group(d.group));
+      districts.push(d);
+    }
+    new_select = $('<select>', {
+      id: 'lga-select',
+      title: 'Select a district'
+    });
+    for (_j = 0, _len1 = groups.length; _j < _len1; _j++) {
+      group = groups[_j];
+      optgroup = $('<optgroup>', {
+        label: group.name
+      });
+      _ref = group.districts;
+      for (_k = 0, _len2 = _ref.length; _k < _len2; _k++) {
+        d = _ref[_k];
+        $('<option>', d.html_params).appendTo(optgroup);
+      }
+      optgroup.appendTo(new_select);
+    }
+    /*
+      We will want to hang on to these districts for later, and give them
+      a nice name when we find a good home for them.
+    */
+
+    NMIS._districts_ = districts;
+    NMIS._groups_ = groups;
+    select_district = function(district_id) {
+      /*
+          this is called on form submit, for example
+      */
+
+      var existing, _l, _len3;
+      existing = false;
+      for (_l = 0, _len3 = districts.length; _l < _len3; _l++) {
+        d = districts[_l];
+        if (d.id === district_id) {
+          existing = d;
+        }
+      }
+      $.cookie("selected-district", existing ? district_id : false);
+      if (existing == null) {
+        return NMIS._lgaFacilitiesDataUrl_ = "" + existing.data_root + "/facilities.json";
+      }
+    };
+    already_selected = $.cookie("selected-district");
+    if (already_selected != null) {
+      new_select.val(already_selected);
+      select_district(already_selected);
+    }
+    submit_button = nav.find("input[type='submit']").detach();
+    nav.find('form div').eq(0).empty().html(new_select).append(submit_button);
+    return new_select.chosen();
+  };
+
+  load_sectors = function(url) {
+    var q;
+    q = NMIS.DataLoader.fetch(url);
+    q.done(function(s) {
+      return NMIS.loadSectors(s.sectors, {
+        "default": {
+          name: "Overview",
+          slug: "overview"
+        }
+      });
+    });
+    return q;
+  };
+
+  load_variables = function(url) {
+    NMIS._defaultVariableUrl_ = url;
+    return NMIS.DataLoader.fetch(url);
+  };
+
+  NMIS.getDistrictByUrlCode = function(url_code) {
+    var district, matching_district, _i, _len, _ref;
+    matching_district = false;
+    _ref = NMIS._districts_;
+    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+      district = _ref[_i];
+      if (district.url_code === url_code) {
+        matching_district = district;
+      }
+    }
+    if (!matching_district) {
+      throw "District: " + url_code + " not found";
+    }
+    return matching_district;
+  };
+
+}).call(this);
 
 /*
 Facilities:
@@ -133,10 +367,11 @@ Facilities:
 
 
 (function() {
-  var facilitiesMap, facilitiesMapCreated, launchFacilities, launch_facilities, lgaDataReq, mustachify, prepFacilities, resizeDisplayWindowAndFacilityTable, variableDataReq;
+  var facilitiesMap, facilitiesMapCreated, get_lgaDataReq, get_sectorsReq, get_variableDataReq, launchFacilities, launch_facilities, mustachify, prepFacilities, resizeDisplayWindowAndFacilityTable,
+    __indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; };
 
   launch_facilities = function() {
-    var params;
+    var district, params;
     params = {};
     if (("" + window.location.search).match(/facility=(\d+)/)) {
       params.facilityId = ("" + window.location.search).match(/facility=(\d+)/)[1];
@@ -147,27 +382,47 @@ Facilities:
         return params[pname] = param.replace("/", "");
       }
     });
+    district = NMIS.getDistrictByUrlCode("" + params.state + "/" + params.lga);
+    NMIS._currentDistrict = district;
+    log(NMIS._currentDistrict);
     if (params.sector === "overview") {
       params.sector = undefined;
     }
-    prepFacilities(params);
-    return $.when(lgaDataReq, variableDataReq).done(function(req1, req2) {
-      var lgaData, variableData;
-      lgaData = req1[0];
-      variableData = req2[0];
-      return launchFacilities(lgaData, variableData, params);
+    return get_sectorsReq().done(function() {
+      var facilities_req, profile_data_req, variables_req;
+      prepFacilities(params);
+      if (__indexOf.call(district.data_modules, "facilities") < 0) {
+        throw "'facilities' is not a listed data_module for " + district.url_code;
+      }
+      facilities_req = NMIS.DataLoader.fetch(district.module_url("facilities"));
+      if (__indexOf.call(district.data_modules, "variables") >= 0) {
+        variables_req = NMIS.DataLoader.fetch(district.module_url("variables"));
+      } else {
+        variables_req = NMIS.DataLoader.fetch(NMIS._defaultVariableUrl_);
+      }
+      if (__indexOf.call(district.data_modules, "profile_data") >= 0) {
+        profile_data_req = NMIS.DataLoader.fetch(district.module_url("profile_data"));
+      }
+      return $.when(facilities_req, variables_req, profile_data_req).done(function(req1, req2) {
+        var lgaData, variableData;
+        lgaData = req1[0];
+        variableData = req2[0];
+        return launchFacilities(lgaData, variableData, params);
+      });
     });
   };
 
   NMIS.launch_facilities = launch_facilities;
 
   prepFacilities = function(params) {
-    var bcValues, e, facilitiesMode;
+    var bcValues, e, facilitiesMode, lga, state;
     NMIS.DisplayWindow.setVisibility(true);
     facilitiesMode = {
       name: "Facility Detail",
       slug: "facilities"
     };
+    lga = NMIS.getDistrictByUrlCode("" + params.state + "/" + params.lga);
+    state = lga.group;
     e = {
       state: state,
       lga: lga,
@@ -211,21 +466,22 @@ Facilities:
 
 
   launchFacilities = function(lgaData, variableData, params) {
-    var MapMgr_opts, createFacilitiesMap, dTableHeight, displayTitle, e, facilities, mapZoom, obj, sector, sectors, tableElem, twrap;
+    var MapMgr_opts, createFacilitiesMap, dTableHeight, displayTitle, e, facilities, lga, mapZoom, obj, sector, sectors, state, tableElem, twrap;
+    lga = NMIS._currentDistrict;
+    state = NMIS._currentDistrict.group;
     createFacilitiesMap = function() {
       var bounds, facilitiesMap, iconURLData, ll, mapClick, markerClick, markerMouseout, markerMouseover;
       iconURLData = function(item) {
         var sectorIconURL, slug, status;
         sectorIconURL = function(slug, status) {
-          var iconFiles, url;
+          var iconFiles;
           iconFiles = {
             education: "education.png",
             health: "health.png",
             water: "water.png",
             "default": "book_green_wb.png"
           };
-          url = "./images/icons_f/" + status + "_" + (iconFiles[slug] || iconFiles["default"]);
-          return url;
+          return "./images/icons_f/" + status + "_" + (iconFiles[slug] || iconFiles["default"]);
         };
         slug = void 0;
         status = item.status;
@@ -363,8 +619,8 @@ Facilities:
     sectors = variableData.sectors;
     sector = NMIS.Sectors.pluck(params.sector);
     e = {
-      state: state.slug,
-      lga: lga.slug,
+      state: state,
+      lga: lga,
       mode: "facilities",
       sector: sector,
       subsector: sector.getSubsector(params.subsector),
@@ -559,9 +815,31 @@ Facilities:
   */
 
 
-  lgaDataReq = NMIS.DataLoader.fetch("" + NMIS.url_root + "pvt_data/facility_data.json");
+  get_lgaDataReq = function() {
+    var _lgaDataReq;
+    _lgaDataReq = NMIS.DataLoader.fetch(NMIS._lgaFacilitiesDataUrl_);
+    return _lgaDataReq;
+  };
 
-  variableDataReq = NMIS.DataLoader.fetch("" + NMIS.url_root + "pvt_data/facility_variables.json");
+  get_variableDataReq = function() {
+    var _variableDataReq;
+    _variableDataReq = NMIS.DataLoader.fetch(NMIS._defaultVariableUrl_);
+    return _variableDataReq;
+  };
+
+  get_sectorsReq = function() {
+    var _sectorReq;
+    _sectorReq = NMIS.DataLoader.fetch(NMIS._defaultSectorUrl_);
+    _sectorReq.done(function(s) {
+      return NMIS.loadSectors(s.sectors, {
+        "default": {
+          name: "Overview",
+          slug: "overview"
+        }
+      });
+    });
+    return _sectorReq;
+  };
 
   dashboard.get("" + NMIS.url_root + "#/:state/:lga/facilities/?(#.*)?", NMIS.launch_facilities);
 
@@ -576,7 +854,10 @@ Facilities:
   var loadSummary, summaryMap;
 
   loadSummary = function(s) {
-    var bcValues, displayConditionalContent, initSummaryMap, params, _env;
+    var bcValues, displayConditionalContent, initSummaryMap, lga, lga_code, overviewObj, params, state, _env;
+    lga_code = "" + s.params.state + "/" + s.params.lga;
+    lga = NMIS.getDistrictByUrlCode(lga_code);
+    state = lga.group;
     initSummaryMap = function() {
       var $mapDiv, ll, mapDiv, mapZoom, summaryMap;
       $mapDiv = $(".profile-box .map").eq(0);
@@ -616,6 +897,10 @@ Facilities:
     NMIS.DisplayWindow.setVisibility(false);
     NMIS.DisplayWindow.setDWHeight();
     params = s.params;
+    overviewObj = {
+      name: "Overview",
+      slug: "overview"
+    };
     _env = {
       mode: {
         name: "Summary",
@@ -659,7 +944,6 @@ Facilities:
 
 }).call(this);
 (function() {
-  var env;
 
   $(".url-for").each(function() {
     var d;
@@ -670,24 +954,16 @@ Facilities:
     }, d)));
   });
 
-  env = {
-    root: "" + NMIS.url_root + "#",
-    state: state,
-    lga: lga
-  };
-
   NMIS.Breadcrumb.init("p.bc", {
-    levels: [[state.name, env.root], [lga.name, ("" + NMIS.url_root + "#/") + state.slug + "/" + lga.slug + "/"]]
+    levels: []
   });
 
-  /*
-  Run the app.
-  */
-
-
-  dashboard.run();
+  this.dashboard.get("/", function() {
+    return this.redirect("" + NMIS.url_root + "#/" + NMIS._districts_[0].url_code);
+  });
 
 }).call(this);
+
 
 
 

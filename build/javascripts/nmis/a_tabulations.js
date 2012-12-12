@@ -546,22 +546,22 @@ var Tabulation = (function(){
 
 var DataLoader = (function(){
     function fetchLocalStorage(url){
-		var p, data, stringData = localStorage.getItem(url);
-		if(stringData) {
-			data = JSON.parse(stringData);
-			$.getJSON(url).then(function(d){
-			    localStorage.removeItem(url)
-				localStorage.setItem(url, JSON.stringify(d));
-			});
-			return $.Deferred().resolve([data]);
-		} else {
-			p = new $.Deferred();
-			$.getJSON(url).then(function(d){
-				localStorage.setItem(url, JSON.stringify(d));
-				p.resolve([d]);
-			});
-			return p.promise();
-		}
+  		var p, data, stringData = localStorage.getItem(url);
+  		if(stringData) {
+  			data = JSON.parse(stringData);
+  			$.getJSON(url).then(function(d){
+  			    localStorage.removeItem(url)
+  				localStorage.setItem(url, JSON.stringify(d));
+  			});
+  			return $.Deferred().resolve([data]);
+  		} else {
+  			p = new $.Deferred();
+  			$.getJSON(url).then(function(d){
+  				localStorage.setItem(url, JSON.stringify(d));
+  				p.resolve([d]);
+  			});
+  			return p.promise();
+  		}
     }
     function fetch(url) {
         return $.getJSON(url);

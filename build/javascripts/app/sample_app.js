@@ -1,5 +1,4 @@
 (function() {
-  var env;
 
   $(".url-for").each(function() {
     var d;
@@ -10,21 +9,12 @@
     }, d)));
   });
 
-  env = {
-    root: "" + NMIS.url_root + "#",
-    state: state,
-    lga: lga
-  };
-
   NMIS.Breadcrumb.init("p.bc", {
-    levels: [[state.name, env.root], [lga.name, ("" + NMIS.url_root + "#/") + state.slug + "/" + lga.slug + "/"]]
+    levels: []
   });
 
-  /*
-  Run the app.
-  */
-
-
-  dashboard.run();
+  this.dashboard.get("/", function() {
+    return this.redirect("" + NMIS.url_root + "#/" + NMIS._districts_[0].url_code);
+  });
 
 }).call(this);

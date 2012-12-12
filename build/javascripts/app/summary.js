@@ -2,7 +2,10 @@
   var loadSummary, summaryMap;
 
   loadSummary = function(s) {
-    var bcValues, displayConditionalContent, initSummaryMap, params, _env;
+    var bcValues, displayConditionalContent, initSummaryMap, lga, lga_code, overviewObj, params, state, _env;
+    lga_code = "" + s.params.state + "/" + s.params.lga;
+    lga = NMIS.getDistrictByUrlCode(lga_code);
+    state = lga.group;
     initSummaryMap = function() {
       var $mapDiv, ll, mapDiv, mapZoom, summaryMap;
       $mapDiv = $(".profile-box .map").eq(0);
@@ -42,6 +45,10 @@
     NMIS.DisplayWindow.setVisibility(false);
     NMIS.DisplayWindow.setDWHeight();
     params = s.params;
+    overviewObj = {
+      name: "Overview",
+      slug: "overview"
+    };
     _env = {
       mode: {
         name: "Summary",

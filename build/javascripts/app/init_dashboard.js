@@ -44,13 +44,6 @@
     slug: "overview"
   };
 
-  NMIS.loadSectors(sectorData, {
-    "default": {
-      name: "Overview",
-      slug: "overview"
-    }
-  });
-
   NMIS.init();
 
   wElems = NMIS.DisplayWindow.getElems();

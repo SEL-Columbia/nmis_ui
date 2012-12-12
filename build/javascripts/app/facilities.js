@@ -5,10 +5,11 @@ Facilities:
 
 
 (function() {
-  var facilitiesMap, facilitiesMapCreated, launchFacilities, launch_facilities, lgaDataReq, mustachify, prepFacilities, resizeDisplayWindowAndFacilityTable, variableDataReq;
+  var facilitiesMap, facilitiesMapCreated, get_lgaDataReq, get_sectorsReq, get_variableDataReq, launchFacilities, launch_facilities, mustachify, prepFacilities, resizeDisplayWindowAndFacilityTable,
+    __indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; };
 
   launch_facilities = function() {
-    var params;
+    var district, params;
     params = {};
     if (("" + window.location.search).match(/facility=(\d+)/)) {
       params.facilityId = ("" + window.location.search).match(/facility=(\d+)/)[1];
@@ -19,27 +20,47 @@ Facilities:
         return params[pname] = param.replace("/", "");
       }
     });
+    district = NMIS.getDistrictByUrlCode("" + params.state + "/" + params.lga);
+    NMIS._currentDistrict = district;
+    log(NMIS._currentDistrict);
     if (params.sector === "overview") {
       params.sector = undefined;
     }
-    prepFacilities(params);
-    return $.when(lgaDataReq, variableDataReq).done(function(req1, req2) {
-      var lgaData, variableData;
-      lgaData = req1[0];
-      variableData = req2[0];
-      return launchFacilities(lgaData, variableData, params);
+    return get_sectorsReq().done(function() {
+      var facilities_req, profile_data_req, variables_req;
+      prepFacilities(params);
+      if (__indexOf.call(district.data_modules, "facilities") < 0) {
+        throw "'facilities' is not a listed data_module for " + district.url_code;
+      }
+      facilities_req = NMIS.DataLoader.fetch(district.module_url("facilities"));
+      if (__indexOf.call(district.data_modules, "variables") >= 0) {
+        variables_req = NMIS.DataLoader.fetch(district.module_url("variables"));
+      } else {
+        variables_req = NMIS.DataLoader.fetch(NMIS._defaultVariableUrl_);
+      }
+      if (__indexOf.call(district.data_modules, "profile_data") >= 0) {
+        profile_data_req = NMIS.DataLoader.fetch(district.module_url("profile_data"));
+      }
+      return $.when(facilities_req, variables_req, profile_data_req).done(function(req1, req2) {
+        var lgaData, variableData;
+        lgaData = req1[0];
+        variableData = req2[0];
+        return launchFacilities(lgaData, variableData, params);
+      });
     });
   };
 
   NMIS.launch_facilities = launch_facilities;
 
   prepFacilities = function(params) {
-    var bcValues, e, facilitiesMode;
+    var bcValues, e, facilitiesMode, lga, state;
     NMIS.DisplayWindow.setVisibility(true);
     facilitiesMode = {
       name: "Facility Detail",
       slug: "facilities"
     };
+    lga = NMIS.getDistrictByUrlCode("" + params.state + "/" + params.lga);
+    state = lga.group;
     e = {
       state: state,
       lga: lga,
@@ -83,21 +104,22 @@ Facilities:
 
 
   launchFacilities = function(lgaData, variableData, params) {
-    var MapMgr_opts, createFacilitiesMap, dTableHeight, displayTitle, e, facilities, mapZoom, obj, sector, sectors, tableElem, twrap;
+    var MapMgr_opts, createFacilitiesMap, dTableHeight, displayTitle, e, facilities, lga, mapZoom, obj, sector, sectors, state, tableElem, twrap;
+    lga = NMIS._currentDistrict;
+    state = NMIS._currentDistrict.group;
     createFacilitiesMap = function() {
       var bounds, facilitiesMap, iconURLData, ll, mapClick, markerClick, markerMouseout, markerMouseover;
       iconURLData = function(item) {
         var sectorIconURL, slug, status;
         sectorIconURL = function(slug, status) {
-          var iconFiles, url;
+          var iconFiles;
           iconFiles = {
             education: "education.png",
             health: "health.png",
             water: "water.png",
             "default": "book_green_wb.png"
           };
-          url = "./images/icons_f/" + status + "_" + (iconFiles[slug] || iconFiles["default"]);
-          return url;
+          return "./images/icons_f/" + status + "_" + (iconFiles[slug] || iconFiles["default"]);
         };
         slug = void 0;
         status = item.status;
@@ -235,8 +257,8 @@ Facilities:
     sectors = variableData.sectors;
     sector = NMIS.Sectors.pluck(params.sector);
     e = {
-      state: state.slug,
-      lga: lga.slug,
+      state: state,
+      lga: lga,
       mode: "facilities",
       sector: sector,
       subsector: sector.getSubsector(params.subsector),
@@ -431,9 +453,31 @@ Facilities:
   */
 
 
-  lgaDataReq = NMIS.DataLoader.fetch("" + NMIS.url_root + "pvt_data/facility_data.json");
+  get_lgaDataReq = function() {
+    var _lgaDataReq;
+    _lgaDataReq = NMIS.DataLoader.fetch(NMIS._lgaFacilitiesDataUrl_);
+    return _lgaDataReq;
+  };
 
-  variableDataReq = NMIS.DataLoader.fetch("" + NMIS.url_root + "pvt_data/facility_variables.json");
+  get_variableDataReq = function() {
+    var _variableDataReq;
+    _variableDataReq = NMIS.DataLoader.fetch(NMIS._defaultVariableUrl_);
+    return _variableDataReq;
+  };
+
+  get_sectorsReq = function() {
+    var _sectorReq;
+    _sectorReq = NMIS.DataLoader.fetch(NMIS._defaultSectorUrl_);
+    _sectorReq.done(function(s) {
+      return NMIS.loadSectors(s.sectors, {
+        "default": {
+          name: "Overview",
+          slug: "overview"
+        }
+      });
+    });
+    return _sectorReq;
+  };
 
   dashboard.get("" + NMIS.url_root + "#/:state/:lga/facilities/?(#.*)?", NMIS.launch_facilities);
 

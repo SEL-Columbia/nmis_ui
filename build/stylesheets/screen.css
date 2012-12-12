@@ -5241,3 +5241,23 @@ div.dataTables_wrapper div.dataTables_scrollBody .facility-dt td:first-child {
 /* line 742, screen.css.scss */
 .topbar .container {
   min-height: 72px; }
+
+/* line 2, mods/data_source_selector.scss */
+.topbar .data-src {
+  color: #bfbfbf;
+  font-size: 11px;
+  position: absolute;
+  top: 3px;
+  right: 18px; }
+  /* line 8, mods/data_source_selector.scss */
+  .topbar .data-src strong {
+    font-weight: normal; }
+  /* line 11, mods/data_source_selector.scss */
+  .topbar .data-src span {
+    font-weight: 0; }
+  /* line 14, mods/data_source_selector.scss */
+  .topbar .data-src a {
+    color: #afafaf; }
+    /* line 16, mods/data_source_selector.scss */
+    .topbar .data-src a:hover {
+      color: #bfbfbf; }

@@ -18,8 +18,8 @@
   this.log = function() {
     log.history = log.history || [];
     log.history.push(arguments);
-    if (this.console) {
-      return console.log(Array.prototype.slice.call(arguments));
+    if (window.console) {
+      return console.log.apply(console, Array.prototype.slice.call(arguments));
     }
   };
 
