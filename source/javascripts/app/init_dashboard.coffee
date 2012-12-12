@@ -35,11 +35,6 @@ overviewObj =
   name: "Overview"
   slug: "overview"
 
-NMIS.loadSectors sectorData,
-  default:
-    name: "Overview"
-    slug: "overview"
-
 NMIS.init()
 wElems = NMIS.DisplayWindow.getElems()
 NMIS._wElems = wElems
@@ -64,7 +59,6 @@ NMIS.LocalNav.init wElems.wrap,
 
 NMIS.urlFor = (_o) ->
   o = _.extend(
-    
     #defaults
     root: "#{NMIS.url_root}#"
     mode: "summary"

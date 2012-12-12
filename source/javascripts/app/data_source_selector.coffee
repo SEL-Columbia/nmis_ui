@@ -22,36 +22,44 @@ display_in_header = (s)->
   brand.empty().append(logo).append(title)
   header.find("span").text(s.id)
 
-load_data_source = (root_url)->
-  $.getJSON "#{root_url}/schema.json", (schema)->
+load_data_source = (root_url, cb)->
+  $.getJSON "#{root_url}schema.json", (schema)->
     display_in_header schema
     load_districts schema.districts
-    load_sectors "#{root_url}/#{schema.default_sectors}"
-    load_variables "#{root_url}/#{schema.default_variables}"
+    NMIS._defaultSectorUrl_ = root_url + schema.default_sectors if schema.default_sectors?
+    NMIS._defaultVariableUrl_ = root_url + schema.default_variables if schema.default_variables?
+    cb()
 
 clear_data_source = ->
   header.find("span").html("&hellip;")
 
 data_src = $.cookie("data-source")
-if data_src?
-  # data_src = "http://modilabs.github.com/#{data_src}"
-  data_src = "/#{data_src}"
-else
-  data_src = default_data_source.url
-load_data_source data_src
+data_src = default_data_source.url unless data_src?
+load_data_source data_src, ()->
+  ###
+  At this point the districts will have loaded.
+  ###
+  dashboard.run()
+
+NMIS._data_src_root_url = data_src
 
 class District
   constructor: (d)->
     _.extend @, d
+    [@group_slug, @slug] = d.url_code.split("/")
     @html_params =
       text: @label
       value: @id
+  module_url: (module_name)->
+    "#{NMIS._data_src_root_url}#{@data_root}/#{module_name}.json"
   set_group: (@group)-> @group.add_district @
+  latLng: "0,0"
 
 class Group
   constructor: (@name)-> @districts = []
   add_district: (d)->
     @districts.push d
+    @slug = d.group_slug unless @slug?
     @districts = @districts.sort (a, b)-> a.label > b.label if b?
     true
 
@@ -115,10 +123,21 @@ load_districts = (district_list)->
 
 load_sectors = (url)->
   q = NMIS.DataLoader.fetch url
-  q.done (s)-> NMIS.loadSectors s.sectors
+  q.done (s)->
+    NMIS.loadSectors s.sectors,
+      default:
+        name: "Overview"
+        slug: "overview"
   q
 
 load_variables = (url)->
   NMIS._defaultVariableUrl_ = url
-  q = NMIS.DataLoader.fetch url
-  dashboard.run()
+  NMIS.DataLoader.fetch url
+
+
+NMIS.getDistrictByUrlCode = (url_code)->
+  matching_district = false
+  for district in NMIS._districts_
+    matching_district = district if district.url_code is url_code
+  throw "District: #{url_code} not found" unless matching_district
+  matching_district

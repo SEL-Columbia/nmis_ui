@@ -5,10 +5,12 @@ $(".url-for").each ->
     state: state.slug
   , d))
 
-env =
-  root: "#{NMIS.url_root}#"
-  state: state
-  lga: lga
-
+# env =
+#   root: "#{NMIS.url_root}#"
+#   state: state
+#   lga: lga
 NMIS.Breadcrumb.init "p.bc",
-  levels: [[state.name, env.root], [lga.name, "#{NMIS.url_root}#/" + state.slug + "/" + lga.slug + "/"]]
+  levels: []
+
+@dashboard.get "/", ()->
+  @redirect "#{NMIS.url_root}#/#{NMIS._districts_[0].url_code}"

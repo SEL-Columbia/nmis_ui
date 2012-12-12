@@ -1,4 +1,7 @@
 loadSummary = (s) ->
+  lga_code = "#{s.params.state}/#{s.params.lga}"
+  lga = NMIS.getDistrictByUrlCode(lga_code)
+  state = lga.group
   initSummaryMap = ->
     $mapDiv = $(".profile-box .map").eq(0)
     mapDiv = $mapDiv.get(0)
@@ -33,6 +36,9 @@ loadSummary = (s) ->
   NMIS.DisplayWindow.setVisibility false
   NMIS.DisplayWindow.setDWHeight()
   params = s.params
+  overviewObj =
+    name: "Overview"
+    slug: "overview"
   _env =
     mode:
       name: "Summary"

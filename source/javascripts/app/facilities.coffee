@@ -8,12 +8,25 @@ launch_facilities = ->
   _.each @params, (param, pname) ->
     params[pname] = param.replace("/", "")  if $.type(param) is "string" and param isnt ""
 
+  district = NMIS.getDistrictByUrlCode("#{params.state}/#{params.lga}")
+  NMIS._currentDistrict = district
+  log NMIS._currentDistrict
   params.sector = `undefined`  if params.sector is "overview"
-  prepFacilities params
-  $.when(get_lgaDataReq(), get_variableDataReq()).done (req1, req2) ->
-    lgaData = req1[0]
-    variableData = req2[0]
-    launchFacilities lgaData, variableData, params
+  get_sectorsReq().done ->
+    prepFacilities params
+    if "facilities" not in district.data_modules
+      throw "'facilities' is not a listed data_module for #{district.url_code}"
+    facilities_req = NMIS.DataLoader.fetch district.module_url("facilities")
+    if "variables" in district.data_modules
+      variables_req = NMIS.DataLoader.fetch district.module_url("variables")
+    else
+      variables_req = NMIS.DataLoader.fetch NMIS._defaultVariableUrl_
+    if "profile_data" in district.data_modules
+      profile_data_req = NMIS.DataLoader.fetch district.module_url("profile_data")
+    $.when(facilities_req, variables_req, profile_data_req).done (req1, req2) ->
+      lgaData = req1[0]
+      variableData = req2[0]
+      launchFacilities lgaData, variableData, params
 
 NMIS.launch_facilities = launch_facilities
 
@@ -23,6 +36,9 @@ prepFacilities = (params) ->
   facilitiesMode =
     name: "Facility Detail"
     slug: "facilities"
+
+  lga = NMIS.getDistrictByUrlCode("#{params.state}/#{params.lga}")
+  state = lga.group
 
   e =
     state: state
@@ -60,6 +76,8 @@ resizeDisplayWindowAndFacilityTable = ->
 The beast: launchFacilities--
 ###
 launchFacilities = (lgaData, variableData, params) ->
+  lga = NMIS._currentDistrict
+  state = NMIS._currentDistrict.group
   createFacilitiesMap = ->
     
     # OSM google maps layer code from:
@@ -71,9 +89,7 @@ launchFacilities = (lgaData, variableData, params) ->
           health: "health.png"
           water: "water.png"
           default: "book_green_wb.png"
-
-        url = "./images/icons_f/#{status}_#{iconFiles[slug] or iconFiles.default}"
-        url
+        "./images/icons_f/#{status}_#{iconFiles[slug] or iconFiles.default}"
       slug = undefined
       status = item.status
       return item._custom_png_data  if status is "custom"
@@ -181,8 +197,8 @@ launchFacilities = (lgaData, variableData, params) ->
   sectors = variableData.sectors
   sector = NMIS.Sectors.pluck(params.sector)
   e =
-    state: state.slug
-    lga: lga.slug
+    state: state
+    lga: lga
     mode: "facilities"
     sector: sector
     subsector: sector.getSubsector(params.subsector)
@@ -344,6 +360,14 @@ get_lgaDataReq = ()->
 get_variableDataReq = ()->
   _variableDataReq = NMIS.DataLoader.fetch NMIS._defaultVariableUrl_
   _variableDataReq
+get_sectorsReq = ()->
+  _sectorReq = NMIS.DataLoader.fetch NMIS._defaultSectorUrl_
+  _sectorReq.done (s)->
+    NMIS.loadSectors s.sectors,
+      default:
+        name: "Overview"
+        slug: "overview"
+  _sectorReq
 
 dashboard.get "#{NMIS.url_root}#/:state/:lga/facilities/?(#.*)?", NMIS.launch_facilities
 dashboard.get "#{NMIS.url_root}#/:state/:lga/facilities/:sector/?(#.*)?", NMIS.launch_facilities
