@@ -51,8 +51,8 @@ $.when_O = (arg_O)->
         ###
         Continue if all are finished.
         ###
-        completed = false
-        completed = true for k, fin of finished when fin
+        completed = true
+        completed = false for k, fin of finished when !fin
         defferred.resolve results if completed
 
   defferred
