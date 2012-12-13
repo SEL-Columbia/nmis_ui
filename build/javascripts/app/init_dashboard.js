@@ -50,25 +50,29 @@
               called.
         */
 
-        _results.push(val.done(function(result) {
-          var completed, fin, k;
-          finished[key] = true;
-          results[key] = result;
-          /*
-                  Continue if all are finished.
-          */
+        _results.push((function() {
+          var local_key;
+          local_key = key;
+          return val.done(function(result) {
+            var completed, fin, k;
+            finished[local_key] = true;
+            results[local_key] = result;
+            /*
+                      Continue iff all are finished.
+            */
 
-          completed = true;
-          for (k in finished) {
-            fin = finished[k];
-            if (!fin) {
-              completed = false;
+            completed = true;
+            for (k in finished) {
+              fin = finished[k];
+              if (!fin) {
+                completed = false;
+              }
             }
-          }
-          if (completed) {
-            return defferred.resolve(results);
-          }
-        }));
+            if (completed) {
+              return defferred.resolve(results);
+            }
+          });
+        })());
       }
       return _results;
     });

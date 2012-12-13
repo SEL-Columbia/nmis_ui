@@ -50,25 +50,29 @@
               called.
         */
 
-        _results.push(val.done(function(result) {
-          var completed, fin, k;
-          finished[key] = true;
-          results[key] = result;
-          /*
-                  Continue if all are finished.
-          */
+        _results.push((function() {
+          var local_key;
+          local_key = key;
+          return val.done(function(result) {
+            var completed, fin, k;
+            finished[local_key] = true;
+            results[local_key] = result;
+            /*
+                      Continue iff all are finished.
+            */
 
-          completed = true;
-          for (k in finished) {
-            fin = finished[k];
-            if (!fin) {
-              completed = false;
+            completed = true;
+            for (k in finished) {
+              fin = finished[k];
+              if (!fin) {
+                completed = false;
+              }
             }
-          }
-          if (completed) {
-            return defferred.resolve(results);
-          }
-        }));
+            if (completed) {
+              return defferred.resolve(results);
+            }
+          });
+        })());
       }
       return _results;
     });
@@ -207,7 +211,7 @@
 
 }).call(this);
 (function() {
-  var District, Group, clear_data_source, data_src, default_data_source, display_in_header, header, load_data_source, load_districts, load_sectors, load_variables, nav, select_data_source, select_district, set_default_data_source,
+  var DEFAULT_MODULES, District, Group, ModuleFile, clear_data_source, data_src, default_data_source, display_in_header, header, load_districts, load_sectors, nav, select_data_source, select_district, set_default_data_source,
     __indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; };
 
   header = $('.data-src');
@@ -243,21 +247,6 @@
     return header.find("span").text(s.id);
   };
 
-  load_data_source = function(root_url, cb) {
-    return $.getJSON("" + root_url + "schema.json", function(schema) {
-      var _ref, _ref1;
-      display_in_header(schema);
-      load_districts(schema.districts);
-      if (((_ref = schema.defaults) != null ? _ref.sectors : void 0) != null) {
-        NMIS._defaultSectorUrl_ = root_url + schema.defaults.sectors;
-      }
-      if (((_ref1 = schema.defaults) != null ? _ref1.variables : void 0) != null) {
-        NMIS._defaultVariableUrl_ = root_url + schema.defaults.variables;
-      }
-      return cb();
-    });
-  };
-
   clear_data_source = function() {
     return header.find("span").html("&hellip;");
   };
@@ -268,21 +257,69 @@
     data_src = default_data_source.url;
   }
 
-  load_data_source(data_src, function() {
-    /*
-      At this point the districts will have loaded.
-    */
-    return dashboard.run();
+  NMIS._data_src_root_url = data_src;
+
+  DEFAULT_MODULES = {};
+
+  $(function() {
+    return $.getJSON("" + data_src + "schema.json", function(schema) {
+      var dname, durl, _ref;
+      display_in_header(schema);
+      load_districts(schema.districts);
+      _ref = schema.defaults;
+      for (dname in _ref) {
+        durl = _ref[dname];
+        DEFAULT_MODULES[dname] = new ModuleFile(durl);
+      }
+      /*
+          This launches the application:
+      */
+
+      return dashboard.run();
+    });
   });
 
-  NMIS._data_src_root_url = data_src;
+  ModuleFile = (function() {
+
+    function ModuleFile(filename, district) {
+      var devnull, mid_url, _ref;
+      this.filename = filename;
+      try {
+        _ref = this.filename.match(/(.*)\.(json|csv)/), devnull = _ref[0], this.name = _ref[1], this.file_type = _ref[2];
+      } catch (e) {
+        throw new Error("Filetype not recognized: " + this.filename);
+      }
+      if (NMIS._data_src_root_url == null) {
+        throw new Error("No data_src_root_url");
+      }
+      mid_url = district != null ? "" + district.data_root + "/" : "";
+      this.url = "" + NMIS._data_src_root_url + mid_url + this.filename;
+    }
+
+    ModuleFile.prototype.fetch = function() {
+      return NMIS.DataLoader.fetch(this.url);
+    };
+
+    return ModuleFile;
+
+  })();
 
   District = (function() {
 
     function District(d) {
-      var _ref;
+      var f, _ref;
       _.extend(this, d);
       _ref = d.url_code.split("/"), this.group_slug = _ref[0], this.slug = _ref[1];
+      this.module_files = (function() {
+        var _i, _len, _ref1, _results;
+        _ref1 = this.data_modules;
+        _results = [];
+        for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
+          f = _ref1[_i];
+          _results.push(new ModuleFile(f, this));
+        }
+        return _results;
+      }).call(this);
       this.latLng = this.lat_lng;
       this.html_params = {
         text: this.label,
@@ -291,12 +328,12 @@
     }
 
     District.prototype.module_url = function(module_name) {
-      return "" + NMIS._data_src_root_url + this.data_root + "/" + module_name + ".json";
+      return this.get_data_module(module_name).url;
     };
 
     District.prototype.sectors_data_loader = function() {
       var fetcher;
-      fetcher = NMIS.DataLoader.fetch(NMIS._defaultSectorUrl_);
+      fetcher = this.get_data_module("sectors").fetch();
       fetcher.done(function(s) {
         return NMIS.loadSectors(s.sectors, {
           "default": {
@@ -308,8 +345,30 @@
       return fetcher;
     };
 
+    District.prototype.get_data_module = function(module) {
+      var m, match, _i, _len, _ref;
+      _ref = this.module_files;
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        m = _ref[_i];
+        if (m.name === module) {
+          match = m;
+        }
+      }
+      if (match == null) {
+        match = DEFAULT_MODULES[module];
+      }
+      if (match == null) {
+        throw new Error("Module not found: " + module);
+      }
+      return match;
+    };
+
     District.prototype.has_data_module = function(module) {
-      return __indexOf.call(this.data_modules, module) >= 0;
+      try {
+        return !!this.get_data_module(module);
+      } catch (e) {
+        return false;
+      }
     };
 
     District.prototype.set_group = function(group) {
@@ -444,11 +503,6 @@
     return q;
   };
 
-  load_variables = function(url) {
-    NMIS._defaultVariableUrl_ = url;
-    return NMIS.DataLoader.fetch(url);
-  };
-
   NMIS.getDistrictByUrlCode = function(url_code) {
     var district, matching_district, _i, _len, _ref;
     matching_district = false;
@@ -473,8 +527,7 @@ Facilities:
 
 
 (function() {
-  var facilitiesMap, facilitiesMapCreated, launchFacilities, launch_facilities, prepFacilities, resizeDisplayWindowAndFacilityTable,
-    __indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; };
+  var facilitiesMap, facilitiesMapCreated, launchFacilities, launch_facilities, prepFacilities, resizeDisplayWindowAndFacilityTable;
 
   launch_facilities = function() {
     var district, params;
@@ -494,26 +547,16 @@ Facilities:
       params.sector = undefined;
     }
     return district.sectors_data_loader().done(function() {
-      var facilities_req, profile_data_req, variables_req;
+      var fetchers, mod, _i, _len, _ref;
       prepFacilities(params);
-      if (__indexOf.call(district.data_modules, "facilities") < 0) {
-        throw new Exception("'facilities' is not a listed data_module for " + district.url_code);
+      fetchers = {};
+      _ref = ["facilities", "variables", "profile_data"];
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        mod = _ref[_i];
+        fetchers[mod] = district.get_data_module(mod).fetch();
       }
-      facilities_req = NMIS.DataLoader.fetch(district.module_url("facilities"));
-      if (__indexOf.call(district.data_modules, "variables") >= 0) {
-        variables_req = NMIS.DataLoader.fetch(district.module_url("variables"));
-      } else {
-        variables_req = NMIS.DataLoader.fetch(NMIS._defaultVariableUrl_);
-      }
-      if (__indexOf.call(district.data_modules, "profile_data") >= 0) {
-        profile_data_req = NMIS.DataLoader.fetch(district.module_url("profile_data"));
-      }
-      return $.when(facilities_req, variables_req, profile_data_req).done(function(req1, req2, req3) {
-        var lgaData, profileData, variableData;
-        lgaData = req1[0];
-        variableData = req2[0];
-        profileData = req3[0].profile_data;
-        return launchFacilities(lgaData, variableData, profileData, params);
+      return $.when_O(fetchers).done(function(results) {
+        return launchFacilities(results, params);
       });
     });
   };
@@ -571,8 +614,11 @@ Facilities:
   */
 
 
-  launchFacilities = function(lgaData, variableData, profileData, params) {
-    var MapMgr_opts, createFacilitiesMap, dTableHeight, displayTitle, e, facilities, lga, mapZoom, obj, sector, sectors, state, tableElem, twrap;
+  launchFacilities = function(results, params) {
+    var MapMgr_opts, createFacilitiesMap, dTableHeight, displayTitle, e, facilities, lga, lgaData, mapZoom, obj, profileData, sector, sectors, state, tableElem, twrap, variableData;
+    lgaData = results.facilities;
+    variableData = results.variables;
+    profileData = results.profile_data.profile_data;
     lga = NMIS._currentDistrict;
     state = NMIS._currentDistrict.group;
     createFacilitiesMap = function() {
@@ -768,6 +814,7 @@ Facilities:
       NMIS.IconSwitcher.shiftStatus(function(id, item) {
         return "normal";
       });
+      log("XX", profileData);
       obj = {
         facCount: "15",
         lgaName: "" + lga.label + ", " + lga.group.label,
@@ -776,11 +823,11 @@ Facilities:
           var val;
           val = "";
           if (d[1] === null || d[1] === undefined) {
-            val = DisplayValue.raw("--")[0];
+            val = NMIS.DisplayValue.raw("--")[0];
           } else if (d[1].value !== undefined) {
-            val = DisplayValue.raw(d[1].value)[0];
+            val = NMIS.DisplayValue.raw(d[1].value)[0];
           } else {
-            val = DisplayValue.raw("--");
+            val = NMIS.DisplayValue.raw("--");
           }
           return {
             name: d[0],

@@ -5,8 +5,7 @@ Facilities:
 
 
 (function() {
-  var facilitiesMap, facilitiesMapCreated, launchFacilities, launch_facilities, prepFacilities, resizeDisplayWindowAndFacilityTable,
-    __indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; };
+  var facilitiesMap, facilitiesMapCreated, launchFacilities, launch_facilities, prepFacilities, resizeDisplayWindowAndFacilityTable;
 
   launch_facilities = function() {
     var district, params;
@@ -26,26 +25,16 @@ Facilities:
       params.sector = undefined;
     }
     return district.sectors_data_loader().done(function() {
-      var facilities_req, profile_data_req, variables_req;
+      var fetchers, mod, _i, _len, _ref;
       prepFacilities(params);
-      if (__indexOf.call(district.data_modules, "facilities") < 0) {
-        throw new Exception("'facilities' is not a listed data_module for " + district.url_code);
+      fetchers = {};
+      _ref = ["facilities", "variables", "profile_data"];
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        mod = _ref[_i];
+        fetchers[mod] = district.get_data_module(mod).fetch();
       }
-      facilities_req = NMIS.DataLoader.fetch(district.module_url("facilities"));
-      if (__indexOf.call(district.data_modules, "variables") >= 0) {
-        variables_req = NMIS.DataLoader.fetch(district.module_url("variables"));
-      } else {
-        variables_req = NMIS.DataLoader.fetch(NMIS._defaultVariableUrl_);
-      }
-      if (__indexOf.call(district.data_modules, "profile_data") >= 0) {
-        profile_data_req = NMIS.DataLoader.fetch(district.module_url("profile_data"));
-      }
-      return $.when(facilities_req, variables_req, profile_data_req).done(function(req1, req2, req3) {
-        var lgaData, profileData, variableData;
-        lgaData = req1[0];
-        variableData = req2[0];
-        profileData = req3[0].profile_data;
-        return launchFacilities(lgaData, variableData, profileData, params);
+      return $.when_O(fetchers).done(function(results) {
+        return launchFacilities(results, params);
       });
     });
   };
@@ -103,8 +92,11 @@ Facilities:
   */
 
 
-  launchFacilities = function(lgaData, variableData, profileData, params) {
-    var MapMgr_opts, createFacilitiesMap, dTableHeight, displayTitle, e, facilities, lga, mapZoom, obj, sector, sectors, state, tableElem, twrap;
+  launchFacilities = function(results, params) {
+    var MapMgr_opts, createFacilitiesMap, dTableHeight, displayTitle, e, facilities, lga, lgaData, mapZoom, obj, profileData, sector, sectors, state, tableElem, twrap, variableData;
+    lgaData = results.facilities;
+    variableData = results.variables;
+    profileData = results.profile_data.profile_data;
     lga = NMIS._currentDistrict;
     state = NMIS._currentDistrict.group;
     createFacilitiesMap = function() {
@@ -300,6 +292,7 @@ Facilities:
       NMIS.IconSwitcher.shiftStatus(function(id, item) {
         return "normal";
       });
+      log("XX", profileData);
       obj = {
         facCount: "15",
         lgaName: "" + lga.label + ", " + lga.group.label,
@@ -308,11 +301,11 @@ Facilities:
           var val;
           val = "";
           if (d[1] === null || d[1] === undefined) {
-            val = DisplayValue.raw("--")[0];
+            val = NMIS.DisplayValue.raw("--")[0];
           } else if (d[1].value !== undefined) {
-            val = DisplayValue.raw(d[1].value)[0];
+            val = NMIS.DisplayValue.raw(d[1].value)[0];
           } else {
-            val = DisplayValue.raw("--");
+            val = NMIS.DisplayValue.raw("--");
           }
           return {
             name: d[0],

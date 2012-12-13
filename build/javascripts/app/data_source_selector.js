@@ -1,5 +1,5 @@
 (function() {
-  var District, Group, clear_data_source, data_src, default_data_source, display_in_header, header, load_data_source, load_districts, load_sectors, load_variables, nav, select_data_source, select_district, set_default_data_source,
+  var DEFAULT_MODULES, District, Group, ModuleFile, clear_data_source, data_src, default_data_source, display_in_header, header, load_districts, load_sectors, nav, select_data_source, select_district, set_default_data_source,
     __indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; };
 
   header = $('.data-src');
@@ -35,21 +35,6 @@
     return header.find("span").text(s.id);
   };
 
-  load_data_source = function(root_url, cb) {
-    return $.getJSON("" + root_url + "schema.json", function(schema) {
-      var _ref, _ref1;
-      display_in_header(schema);
-      load_districts(schema.districts);
-      if (((_ref = schema.defaults) != null ? _ref.sectors : void 0) != null) {
-        NMIS._defaultSectorUrl_ = root_url + schema.defaults.sectors;
-      }
-      if (((_ref1 = schema.defaults) != null ? _ref1.variables : void 0) != null) {
-        NMIS._defaultVariableUrl_ = root_url + schema.defaults.variables;
-      }
-      return cb();
-    });
-  };
-
   clear_data_source = function() {
     return header.find("span").html("&hellip;");
   };
@@ -60,21 +45,69 @@
     data_src = default_data_source.url;
   }
 
-  load_data_source(data_src, function() {
-    /*
-      At this point the districts will have loaded.
-    */
-    return dashboard.run();
+  NMIS._data_src_root_url = data_src;
+
+  DEFAULT_MODULES = {};
+
+  $(function() {
+    return $.getJSON("" + data_src + "schema.json", function(schema) {
+      var dname, durl, _ref;
+      display_in_header(schema);
+      load_districts(schema.districts);
+      _ref = schema.defaults;
+      for (dname in _ref) {
+        durl = _ref[dname];
+        DEFAULT_MODULES[dname] = new ModuleFile(durl);
+      }
+      /*
+          This launches the application:
+      */
+
+      return dashboard.run();
+    });
   });
 
-  NMIS._data_src_root_url = data_src;
+  ModuleFile = (function() {
+
+    function ModuleFile(filename, district) {
+      var devnull, mid_url, _ref;
+      this.filename = filename;
+      try {
+        _ref = this.filename.match(/(.*)\.(json|csv)/), devnull = _ref[0], this.name = _ref[1], this.file_type = _ref[2];
+      } catch (e) {
+        throw new Error("Filetype not recognized: " + this.filename);
+      }
+      if (NMIS._data_src_root_url == null) {
+        throw new Error("No data_src_root_url");
+      }
+      mid_url = district != null ? "" + district.data_root + "/" : "";
+      this.url = "" + NMIS._data_src_root_url + mid_url + this.filename;
+    }
+
+    ModuleFile.prototype.fetch = function() {
+      return NMIS.DataLoader.fetch(this.url);
+    };
+
+    return ModuleFile;
+
+  })();
 
   District = (function() {
 
     function District(d) {
-      var _ref;
+      var f, _ref;
       _.extend(this, d);
       _ref = d.url_code.split("/"), this.group_slug = _ref[0], this.slug = _ref[1];
+      this.module_files = (function() {
+        var _i, _len, _ref1, _results;
+        _ref1 = this.data_modules;
+        _results = [];
+        for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
+          f = _ref1[_i];
+          _results.push(new ModuleFile(f, this));
+        }
+        return _results;
+      }).call(this);
       this.latLng = this.lat_lng;
       this.html_params = {
         text: this.label,
@@ -83,12 +116,12 @@
     }
 
     District.prototype.module_url = function(module_name) {
-      return "" + NMIS._data_src_root_url + this.data_root + "/" + module_name + ".json";
+      return this.get_data_module(module_name).url;
     };
 
     District.prototype.sectors_data_loader = function() {
       var fetcher;
-      fetcher = NMIS.DataLoader.fetch(NMIS._defaultSectorUrl_);
+      fetcher = this.get_data_module("sectors").fetch();
       fetcher.done(function(s) {
         return NMIS.loadSectors(s.sectors, {
           "default": {
@@ -100,8 +133,30 @@
       return fetcher;
     };
 
+    District.prototype.get_data_module = function(module) {
+      var m, match, _i, _len, _ref;
+      _ref = this.module_files;
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        m = _ref[_i];
+        if (m.name === module) {
+          match = m;
+        }
+      }
+      if (match == null) {
+        match = DEFAULT_MODULES[module];
+      }
+      if (match == null) {
+        throw new Error("Module not found: " + module);
+      }
+      return match;
+    };
+
     District.prototype.has_data_module = function(module) {
-      return __indexOf.call(this.data_modules, module) >= 0;
+      try {
+        return !!this.get_data_module(module);
+      } catch (e) {
+        return false;
+      }
     };
 
     District.prototype.set_group = function(group) {
@@ -234,11 +289,6 @@
       });
     });
     return q;
-  };
-
-  load_variables = function(url) {
-    NMIS._defaultVariableUrl_ = url;
-    return NMIS.DataLoader.fetch(url);
   };
 
   NMIS.getDistrictByUrlCode = function(url_code) {

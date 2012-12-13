@@ -1,6 +1,133 @@
-var debugMode = true;
 
-var NMIS = (function(){
+/*
+This file is meant to initialize the NMIS object which includes
+independently testable modules.
+*/
+
+
+(function() {
+
+  if (this.NMIS == null) {
+    this.NMIS = {};
+  }
+
+  (function() {
+    /*
+      the internal "value" function takes a value and returns a 1-2 item list:
+      The second returned item (when present) is a class name that should be added
+      to the display element.
+    
+        examples:
+      
+        value(null)
+        //  ["--", "val-null"]
+      
+        value(0)
+        //  ["0"]
+      
+        value(true)
+        //  ["Yes"]
+    */
+
+    var DisplayValue, round_down, value;
+    value = function(v) {
+      var r;
+      r = [v];
+      if (v === undefined) {
+        r = ["&mdash;", "val-undefined"];
+      } else if (v === null) {
+        r = ["null", "val-null"];
+      } else if (v === true) {
+        r = ["Yes"];
+      } else if (v === false) {
+        r = ["No"];
+      } else if (!isNaN(+v)) {
+        r = [round_down(v)];
+      } else if ($.type(v) === "string") {
+        r = [NMIS.HackCaps(v)];
+      }
+      return r;
+    };
+    /*
+      The main function, "NMIS.DisplayValue" receives an element
+      and displays the appropriate value.
+    */
+
+    DisplayValue = function(d, element) {
+      var res;
+      res = value(d);
+      if (res[1] != null) {
+        element.addClass(res[1]);
+      }
+      element.html(res[0]);
+      return element;
+    };
+    DisplayValue.raw = value;
+    DisplayValue.special = function(v, indicator) {
+      var classes, o, r;
+      r = value(v);
+      o = {
+        name: indicator.name,
+        classes: "",
+        value: r[0]
+      };
+      classes = "";
+      if (indicator.display_style === "checkmark_true") {
+        classes = "label ";
+        if (v === true) {
+          classes += "chk-yes";
+        } else if (v === false) {
+          classes += "chk-no";
+        } else {
+          classes += "chk-null";
+        }
+      } else if (indicator.display_style === "checkmark_false") {
+        classes = "label ";
+        if (v === true) {
+          classes += "chk-no";
+        } else if (v === false) {
+          classes += "chk-yes";
+        } else {
+          classes += "chk-null";
+        }
+      }
+      o.classes = classes;
+      return o;
+    };
+    DisplayValue.inTdElem = function(facility, indicator, elem) {
+      var c, chkN, chkY, oclasses, vv;
+      vv = facility[indicator.slug];
+      c = value(vv);
+      chkY = indicator.display_style === "checkmark_true";
+      chkN = indicator.display_style === "checkmark_false";
+      if (chkY || chkN) {
+        oclasses = "label ";
+        if ($.type(vv) === "boolean") {
+          if (vv) {
+            oclasses += (chkY ? "chk-yes" : "chk-no");
+          } else {
+            oclasses += (chkY ? "chk-no" : "chk-yes");
+          }
+        } else {
+          oclasses += "chk-null";
+        }
+        c[0] = $("<span />").addClass(oclasses).html(c[0]);
+      }
+      return elem.html(c[0]);
+    };
+    round_down = function(v, decimals) {
+      var d;
+      if (decimals == null) {
+        decimals = 2;
+      }
+      d = Math.pow(10, decimals);
+      return Math.floor(v * d) / d;
+    };
+    return NMIS.DisplayValue = DisplayValue;
+  })();
+
+}).call(this);
+(function(){
     var data, opts;
 
 var Breadcrumb = (function(){
@@ -60,6 +187,7 @@ var Breadcrumb = (function(){
         clear: clear
     }
 })();
+NMIS.Breadcrumb = Breadcrumb;
 
 var MapMgr = (function(){
     var opts = {},
@@ -150,6 +278,7 @@ var MapMgr = (function(){
         addLoadCallback: addLoadCallback
     }
 })();
+NMIS.MapMgr = MapMgr;
 
 var S3Photos = (function(){
     var s3Root = "http://nmisstatic.s3.amazonaws.com/facimg";
@@ -165,6 +294,7 @@ var S3Photos = (function(){
         url: url
     }
 })();
+NMIS.S3Photos = S3Photos;
 
 var HackCaps = (function(){
     function capitalize(str) {
@@ -183,6 +313,7 @@ var HackCaps = (function(){
         }
     }
 })();
+NMIS.HackCaps = HackCaps;
 
 var FacilitySelector = (function(){
     var active = false;
@@ -220,6 +351,8 @@ var FacilitySelector = (function(){
         deselect: deselect
     }
 })();
+NMIS.FacilitySelector = FacilitySelector;
+
 var FacilityHover = (function(){
     var hoverOverlayWrap,
         hoverOverlay,
@@ -285,6 +418,8 @@ var FacilityHover = (function(){
         hide: hide
     }
 })();
+NMIS.FacilityHover = FacilityHover;
+
 function _getNameFromFacility(f) {
     return f.name || f.facility_name || f.school_name
 }
@@ -342,6 +477,7 @@ var FacilityPopup = (function(){
     }
     return make;
 })();
+NMIS.FacilityPopup = FacilityPopup;
 
 var Env = (function(){
     var env = undefined;
@@ -367,6 +503,7 @@ var Env = (function(){
     }
     return EnvAccessor;
 })();
+NMIS.Env = Env;
 
 var Sectors = (function(){
     var sectors, defaultSector;
@@ -500,6 +637,7 @@ var Sectors = (function(){
         clear: clear
     };
 })();
+NMIS.Sectors = Sectors;
 
 var Tabulation = (function(){
     function init () {
@@ -543,6 +681,7 @@ var Tabulation = (function(){
         sectorSlugAsArray: sectorSlugAsArray,
     };
 })();
+NMIS.Tabulation = Tabulation;
 
 var DataLoader = (function(){
     function fetchLocalStorage(url){
@@ -570,6 +709,7 @@ var DataLoader = (function(){
         fetch: fetch
     };
 })();
+NMIS.DataLoader = DataLoader;
 
 
 var DisplayWindow = (function(){
@@ -803,6 +943,7 @@ var DisplayWindow = (function(){
         getElems: getElems
     };
 })();
+NMIS.DisplayWindow = DisplayWindow;
 
 var IconSwitcher = (function(){
     var context = {};
@@ -915,6 +1056,7 @@ var IconSwitcher = (function(){
         iterate: iterate
     }
 })();
+NMIS.IconSwitcher = IconSwitcher;
 
 var LocalNav = (function(){
     var elem, wrap, opts;
@@ -1000,17 +1142,18 @@ var LocalNav = (function(){
         markActive: markActive
     }
 })();
+NMIS.LocalNav = LocalNav;
 
-    function init(_data, _opts) {
+    NMIS.init = function(_data, _opts) {
         opts = _.extend({
             iconSwitcher: true,
             sectors: false
         }, _opts);
         data = {};
         if(!!opts.sectors) {
-            loadSectors(opts.sectors);
+            NMIS.loadSectors(opts.sectors);
         }
-        loadFacilities(_data);
+        NMIS.loadFacilities(_data);
     	if(opts.iconSwitcher) {
             NMIS.IconSwitcher.init({
         	    items: data,
@@ -1028,16 +1171,17 @@ var LocalNav = (function(){
         }
         return true;
     }
-    function loadSectors(_sectors, opts){
+
+    NMIS.loadSectors = function(_sectors, opts){
         Sectors.init(_sectors, opts);
     }
-    function loadFacilities(_data, opts) {
+    NMIS.loadFacilities = function(_data, opts) {
         _.each(_data, function(val, key){
             var id = val._id || key;
             data[id] = cloneParse(val);
         });
     }
-    function clear() {
+    NMIS.clear = function() {
         data = [];
         Sectors.clear();
     }
@@ -1052,20 +1196,21 @@ var LocalNav = (function(){
             datum._latlng = [ llArr[0], llArr[1] ];
         }
     }
-    function validateData() {
+    NMIS.validateData = function() {
         Sectors.validate();
         _(data).each(ensureUniqueId);
         _(data).each(ensureLatLng);
         return true;
     }
     var _s;
-    function activeSector(s) {
+    NMIS.activeSector = function (s) {
         if(s===undefined) {
             return _s;
         } else {
             _s = s;
         }
     }
+
     function cloneParse(d) {
         var datum = _.clone(d);
     	if(datum.gps===undefined) {
@@ -1078,13 +1223,13 @@ var LocalNav = (function(){
     	datum.sector = Sectors.pluck(sslug);
     	return datum;
     }
-    function dataForSector(sectorSlug) {
+    NMIS.dataForSector = function(sectorSlug) {
         var sector = Sectors.pluck(sectorSlug);
         return _(data).filter(function(datum, id){
             return datum.sector.slug === sector.slug;
         });
     }
-    function dataObjForSector(sectorSlug) {
+    NMIS.dataObjForSector = function(sectorSlug) {
         var sector = Sectors.pluck(sectorSlug);
         var o = {};
         _(data).each(function(datum, id){
@@ -1094,110 +1239,10 @@ var LocalNav = (function(){
         });
         return o;
     }
-    return {
-        Sectors: Sectors,
-        Tabulation: Tabulation,
-        IconSwitcher: IconSwitcher,
-        LocalNav: LocalNav,
-        Breadcrumb: Breadcrumb,
-        DisplayWindow: DisplayWindow,
-//        SectorDataTable: SectorDataTable,
-        DataLoader: DataLoader,
-        FacilityPopup: FacilityPopup,
-        FacilityHover: FacilityHover,
-        FacilitySelector: FacilitySelector,
-        HackCaps: HackCaps,
-        MapMgr: MapMgr,
-        Env: Env,
-        S3Photos: S3Photos,
-        activeSector: activeSector,
-        data: function(){return data;},
-        dataForSector: dataForSector,
-        dataObjForSector: dataObjForSector,
-        validateData: validateData,
-        loadSectors: loadSectors,
-        loadFacilities: loadFacilities,
-        init: init,
-        clear: clear
-    }
+    NMIS.data = function(){
+      return data;
+    };
 })();
-var DisplayValue = (function(){
-    function roundDown(v, i) {
-    	var c = 2;
-    	var d = Math.pow(10, c);
-    	return Math.floor(v * d) / d;
-    }
-    function Value(v) {
-        if(v===undefined) {
-            return ["&mdash;", 'val-undefined'];
-    	} else if (v===null) {
-            return ["null", 'val-null'];
-        } else if (v===true) {
-    	    return ["Yes"];
-    	} else if (v===false) {
-    	    return ["No"];
-    	} else if (!isNaN(+v)) {
-    	    return [roundDown(v)];
-    	} else if ($.type(v) === "string") {
-    	    return [NMIS.HackCaps(v)]
-    	}
-        return [v];
-    }
-    function DisplayInElement(d, td) {
-        var res = Value(d);
-        if (d[1]!==undefined) td.addClass(res[1]);
-        return td.html(res[0]);
-    }
-    DisplayInElement.raw = Value;
-    DisplayInElement.special = function(v, indicator) {
-        var r = Value(v),
-            o = {name: indicator.name, classes: "", value: r[0]};
-        if(indicator.display_style==="checkmark_true") {
-            o.classes = "label ";
-            if(v===true) {
-                o.classes += "chk-yes";
-            } else if(v===false) {
-                o.classes += "chk-no";
-            } else {
-                o.classes += "chk-null";
-            }
-        } else if(indicator.display_style==="checkmark_false") {
-            o.classes = "label ";
-            if(v===true) {
-                o.classes += "chk-no";
-            } else if(v===false) {
-                o.classes += "chk-yes";
-            } else {
-                o.classes += "chk-null";
-            }
-        }
-        return o;
-    }
-    DisplayInElement.inTdElem = function(facility, indicator, elem) {
-        var vv = facility[indicator.slug],
-            c = Value(vv);
-        var chkY = indicator.display_style === "checkmark_true",
-            chkN = indicator.display_style === "checkmark_false";
-
-        if(chkY || chkN) {
-            var oclasses = "label ";
-            if($.type(vv)==="boolean") {
-                if(vv) {
-                    oclasses += chkY ? "chk-yes" : "chk-no";
-                } else {
-                    oclasses += chkY ? "chk-no" : "chk-yes";
-                }
-            } else {
-                oclasses += "chk-null";
-            }
-            c[0] = $('<span />').addClass(oclasses).html(c[0]);
-        }
-        return elem.html(c[0]);
-    }
-
-    return DisplayInElement;
-})();
-
 var SectorDataTable = (function(){
     var dt, table;
     var tableSwitcher;
@@ -1324,7 +1369,8 @@ var SectorDataTable = (function(){
                     $('<td />').attr('title', ftype).addClass('type-icon').html($('<span />').addClass('icon').addClass(ftype).html($('<span />').text(ftype))).appendTo(row);
                 }
                 var z = r[c.slug] || nullMarker();
-                var td = DisplayValue.inTdElem(r, c, $('<td />'));
+                // if(!NMIS.DisplayValue) throw new Error("No DisplayValue")
+                var td = NMIS.DisplayValue.inTdElem(r, c, $('<td />'));
                 row.append(td);
             });
             tbody.append(row);
@@ -1398,7 +1444,7 @@ var FacilityTables = (function(){
         _.each(cols, function(col, i){
             var slug = col.slug;
             var rawval = facility[slug];
-            var val = DisplayValue(rawval, $('<td />', {'class': classesStr(col)})).appendTo(tr);
+            var val = NMIS.DisplayValue(rawval, $('<td />', {'class': classesStr(col)})).appendTo(tr);
         });
         return tr;
     }
