@@ -1,10 +1,10 @@
 (function() {
-  var DisplayPanel, UnderscoreTemplateDisplayPanel, create_sector_panel, establish_template_display_panels, launch_summary, loadSummary, summaryMap, template_not_found, __display_panels, _tdps,
+  var DisplayPanel, TmpSector, UnderscoreTemplateDisplayPanel, create_sector_panel, establish_template_display_panels, launch_summary, loadSummary, summaryMap, template_not_found, __display_panels, _tdps,
     __hasProp = {}.hasOwnProperty,
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
   loadSummary = function(s) {
-    var fetchers, initSummaryMap, lga, lga_code, state, when_fetchers;
+    var fetchers, initSummaryMap, lga, lga_code, state;
     lga_code = "" + s.params.state + "/" + s.params.lga;
     lga = NMIS.getDistrictByUrlCode(lga_code);
     state = lga.group;
@@ -45,33 +45,51 @@
       NMIS.MapMgr.init();
     }
     fetchers = {};
-    when_fetchers = [];
     if (lga.has_data_module("summary")) {
       fetchers.summary = NMIS.DataLoader.fetch(lga.module_url("summary"));
-      when_fetchers.push(fetchers.summary);
     }
     if (lga.has_data_module("summary_sectors")) {
       fetchers.summary_sectors = NMIS.DataLoader.fetch(lga.module_url("summary_sectors"));
-      when_fetchers.push(fetchers.summary_sectors);
     }
     return $.when_O(fetchers).done(function(results) {
       return launch_summary(s.params, state, lga, results);
     });
   };
 
+  TmpSector = (function() {
+
+    function TmpSector(s) {
+      this.slug = s.id;
+      this.name = s.name;
+    }
+
+    return TmpSector;
+
+  })();
+
   launch_summary = function(params, state, lga, query_results) {
-    var bcValues, overviewObj, sector_summary_data, summary_data, _env;
+    var bcValues, current_sector, overviewObj, s, summary_data, summary_sectors, _env, _i, _len, _ref;
     if (query_results == null) {
       query_results = {};
     }
     summary_data = query_results.summary;
-    sector_summary_data = query_results.sector_summary_data;
+    summary_sectors = query_results.summary_sectors;
     NMIS.DisplayWindow.setVisibility(false);
     NMIS.DisplayWindow.setDWHeight();
     overviewObj = {
       name: "Overview",
       slug: "overview"
     };
+    _ref = summary_data.view_details;
+    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+      s = _ref[_i];
+      if (s.id === params.sector) {
+        current_sector = new TmpSector(s);
+      }
+    }
+    if (!current_sector) {
+      current_sector = overviewObj;
+    }
     _env = {
       mode: {
         name: "Summary",
@@ -79,7 +97,7 @@
       },
       state: state,
       lga: lga,
-      sector: NMIS.Sectors.pluck(params.sector) || overviewObj
+      sector: current_sector
     };
     bcValues = NMIS._prepBreadcrumbValues(_env, "state lga mode sector subsector indicator".split(" "), {
       state: state,
@@ -96,21 +114,22 @@
     });
     (function() {
       /*
-          could this be done better?
+          how can we do this better?
       */
 
-      var cc_div, content_div, context, module, sector_id, sector_view_panel, sector_window, sector_window_inner_wrap, _i, _j, _len, _len1, _ref, _ref1;
+      var cc_div, content_div, context, module, sector_id, sector_view_panel, sector_window, sector_window_inner_wrap, _j, _k, _len1, _len2, _ref1, _ref2;
       content_div = $('.content');
       if (content_div.find('#conditional-content').length === 0) {
         context = {};
         context.summary_data = summary_data;
+        context.summary_sectors = summary_sectors;
         context.lga = lga;
         cc_div = $('<div>', {
           id: 'conditional-content'
         });
-        _ref = summary_data.view_details;
-        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-          sector_view_panel = _ref[_i];
+        _ref1 = summary_data.view_details;
+        for (_j = 0, _len1 = _ref1.length; _j < _len1; _j++) {
+          sector_view_panel = _ref1[_j];
           sector_window = $("<div>", {
             "class": "lga"
           });
@@ -120,10 +139,11 @@
           }).appendTo(sector_window);
           sector_id = sector_view_panel.id;
           sector_window.addClass(sector_id);
+          context.summary_sector = context.summary_sectors[sector_id];
           context.view_panel = sector_view_panel;
-          _ref1 = sector_view_panel.modules;
-          for (_j = 0, _len1 = _ref1.length; _j < _len1; _j++) {
-            module = _ref1[_j];
+          _ref2 = sector_view_panel.modules;
+          for (_k = 0, _len2 = _ref2.length; _k < _len2; _k++) {
+            module = _ref2[_k];
             sector_window_inner_wrap.append(create_sector_panel(sector_id, module, context));
           }
           sector_window.appendTo(cc_div);

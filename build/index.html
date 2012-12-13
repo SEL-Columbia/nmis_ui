@@ -306,24 +306,24 @@
   <div class="non-gap">
     <table style="width:100%" class="mdg-table">
       <tbody>
-        <{ _.each([1,2,3,4], function(igrp){ }>
-          <tr>
+        <{ _.each(summary_sector, function(igrp){ }>
+        <tr>
             <th class="indheader mdg_header" colspan="2">
-            <{= "Section "+igrp }>
+            <{= igrp.name }>
             </th>
             <th class="indheader mdg_header flush-right">
               Current
             </th>
           </tr>
-          <{ _.each([["Name","val"],["Name2","val2"]], function(row){ }>
-            <{ if(row[1] !== undefined) { }>
+          <{ _.each(igrp.rows, function(row){ }>
+            <{ if(row.value !== undefined) { }>
               <tr>
                 <td class="empty-first empty bb"></td>
                 <td class="indicator-name bb">
-                  <{= row[0] }>
+                  <{= row.name }>
                 </td>
                 <td class="indvalue bb">
-                  <{= row[1] }>
+                  <{= row.value }>
                 </td>
               </tr>
             <{ } }>

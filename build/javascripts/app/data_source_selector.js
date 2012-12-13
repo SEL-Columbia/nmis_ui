@@ -37,14 +37,16 @@
 
   load_data_source = function(root_url, cb) {
     return $.getJSON("" + root_url + "schema.json", function(schema) {
+      var _ref, _ref1;
       display_in_header(schema);
       load_districts(schema.districts);
-      if (schema.default_sectors != null) {
+      if (((_ref = schema.defaults) != null ? _ref.sectors : void 0) != null) {
         NMIS._defaultSectorUrl_ = root_url + schema.default_sectors;
       }
-      if (schema.default_variables != null) {
+      if (((_ref1 = schema.defaults) != null ? _ref1.variables : void 0) != null) {
         NMIS._defaultVariableUrl_ = root_url + schema.default_variables;
       }
+      log(NMIS._defaultSectorUrl_);
       return cb();
     });
   };

@@ -58,11 +58,11 @@
                   Continue if all are finished.
           */
 
-          completed = false;
+          completed = true;
           for (k in finished) {
             fin = finished[k];
-            if (fin) {
-              completed = true;
+            if (!fin) {
+              completed = false;
             }
           }
           if (completed) {
