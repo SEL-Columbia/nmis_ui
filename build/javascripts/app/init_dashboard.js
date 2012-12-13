@@ -1,6 +1,86 @@
 (function() {
   var overviewObj, url_root, wElems;
 
+  $.when_O = function(arg_O) {
+    /*
+      When handling multiple $.Defferreds,
+    
+      $.when(...) receives a list and then passes
+      a list of arguments.
+    
+      This mini plugin receives an object of named deferreds
+      and resolves with an object with the results.
+    
+      Example:
+    
+      var shows = {
+        "simpsons": $.getJSON(simpsons_shows),
+        "southPark": $.getJSON(southpark_shows)
+      };
+    
+      $.when_O(shows).done(function(showResults){
+        var showNames = [];
+        if(showResults.familyGuy) showNames.push("Family Guy")
+        if(showResults.simpsons) showNames.push("Simpsons")
+        if(showResults.southPark) showNames.push("South Park")
+    
+        console.log(showNames);
+        //  ["Simpsons", "South Park"]
+      });
+    */
+
+    var defferred, finished, key, promises, val;
+    defferred = new $.Deferred;
+    promises = [];
+    finished = {};
+    for (key in arg_O) {
+      val = arg_O[key];
+      promises.push(val);
+      finished[key] = false;
+    }
+    $.when.apply(null, promises).done(function() {
+      var results, _results;
+      results = {};
+      _results = [];
+      for (key in arg_O) {
+        val = arg_O[key];
+        /*
+              in $.getJSON, for example, I want to access the parsedJSON object so
+              I don't want to finish everything until all success callback have been
+              called.
+        */
+
+        _results.push(val.done(function(result) {
+          var completed, fin, k;
+          finished[key] = true;
+          results[key] = result;
+          /*
+                  Continue if all are finished.
+          */
+
+          completed = false;
+          for (k in finished) {
+            fin = finished[k];
+            if (fin) {
+              completed = true;
+            }
+          }
+          if (completed) {
+            return defferred.resolve(results);
+          }
+        }));
+      }
+      return _results;
+    });
+    return defferred;
+  };
+
+  _.templateSettings = {
+    escape: /<{-([\s\S]+?)}>/g,
+    evaluate: /<{([\s\S]+?)}>/g,
+    interpolate: /<{=([\s\S]+?)}>/g
+  };
+
   url_root = "" + window.location.pathname;
 
   if (!!~url_root.indexOf("index.html")) {
@@ -16,6 +96,13 @@
     return this.get("" + url_root + "#/:state/:lga/?", function() {
       return dashboard.setLocation("" + url_root + "#/" + this.params.state + "/" + this.params.lga + "/summary/");
     });
+  });
+
+  this.dashboard.get("" + url_root + "#data=(.*)", function() {
+    var data_src;
+    data_src = this.params.splat[0];
+    $.cookie("data-source", data_src);
+    return this.redirect("" + url_root);
   });
 
   $(".page-header").remove();

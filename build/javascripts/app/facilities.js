@@ -5,7 +5,7 @@ Facilities:
 
 
 (function() {
-  var facilitiesMap, facilitiesMapCreated, get_lgaDataReq, get_sectorsReq, get_variableDataReq, launchFacilities, launch_facilities, mustachify, prepFacilities, resizeDisplayWindowAndFacilityTable,
+  var facilitiesMap, facilitiesMapCreated, launchFacilities, launch_facilities, prepFacilities, resizeDisplayWindowAndFacilityTable,
     __indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; };
 
   launch_facilities = function() {
@@ -22,15 +22,14 @@ Facilities:
     });
     district = NMIS.getDistrictByUrlCode("" + params.state + "/" + params.lga);
     NMIS._currentDistrict = district;
-    log(NMIS._currentDistrict);
     if (params.sector === "overview") {
       params.sector = undefined;
     }
-    return get_sectorsReq().done(function() {
+    return district.sectors_data_loader().done(function() {
       var facilities_req, profile_data_req, variables_req;
       prepFacilities(params);
       if (__indexOf.call(district.data_modules, "facilities") < 0) {
-        throw "'facilities' is not a listed data_module for " + district.url_code;
+        throw new Exception("'facilities' is not a listed data_module for " + district.url_code);
       }
       facilities_req = NMIS.DataLoader.fetch(district.module_url("facilities"));
       if (__indexOf.call(district.data_modules, "variables") >= 0) {
@@ -41,11 +40,12 @@ Facilities:
       if (__indexOf.call(district.data_modules, "profile_data") >= 0) {
         profile_data_req = NMIS.DataLoader.fetch(district.module_url("profile_data"));
       }
-      return $.when(facilities_req, variables_req, profile_data_req).done(function(req1, req2) {
-        var lgaData, variableData;
+      return $.when(facilities_req, variables_req, profile_data_req).done(function(req1, req2, req3) {
+        var lgaData, profileData, variableData;
         lgaData = req1[0];
         variableData = req2[0];
-        return launchFacilities(lgaData, variableData, params);
+        profileData = req3[0].profile_data;
+        return launchFacilities(lgaData, variableData, profileData, params);
       });
     });
   };
@@ -86,7 +86,7 @@ Facilities:
     });
   };
 
-  mustachify = function(id, obj) {
+  this.mustachify = function(id, obj) {
     return Mustache.to_html($("#" + id).eq(0).html().replace(/<{/g, "{{").replace(/\}>/g, "}}"), obj);
   };
 
@@ -103,7 +103,7 @@ Facilities:
   */
 
 
-  launchFacilities = function(lgaData, variableData, params) {
+  launchFacilities = function(lgaData, variableData, profileData, params) {
     var MapMgr_opts, createFacilitiesMap, dTableHeight, displayTitle, e, facilities, lga, mapZoom, obj, sector, sectors, state, tableElem, twrap;
     lga = NMIS._currentDistrict;
     state = NMIS._currentDistrict.group;
@@ -156,7 +156,7 @@ Facilities:
           })));
         }
       };
-      ll = _.map(lga.latLng.split(","), function(x) {
+      ll = _.map(lga.lat_lng.split(","), function(x) {
         return +x;
       });
       if (!!facilitiesMap) {
@@ -302,7 +302,7 @@ Facilities:
       });
       obj = {
         facCount: "15",
-        lgaName: "" + lga.name + ", " + state.name,
+        lgaName: "" + lga.label + ", " + lga.group.label,
         overviewSectors: [],
         profileData: _.map(profileData, function(d) {
           var val;
@@ -447,37 +447,6 @@ Facilities:
   facilitiesMapCreated = void 0;
 
   facilitiesMap = void 0;
-
-  /*
-  TODO: something about these NMIS.DataLoader
-  */
-
-
-  get_lgaDataReq = function() {
-    var _lgaDataReq;
-    _lgaDataReq = NMIS.DataLoader.fetch(NMIS._lgaFacilitiesDataUrl_);
-    return _lgaDataReq;
-  };
-
-  get_variableDataReq = function() {
-    var _variableDataReq;
-    _variableDataReq = NMIS.DataLoader.fetch(NMIS._defaultVariableUrl_);
-    return _variableDataReq;
-  };
-
-  get_sectorsReq = function() {
-    var _sectorReq;
-    _sectorReq = NMIS.DataLoader.fetch(NMIS._defaultSectorUrl_);
-    _sectorReq.done(function(s) {
-      return NMIS.loadSectors(s.sectors, {
-        "default": {
-          name: "Overview",
-          slug: "overview"
-        }
-      });
-    });
-    return _sectorReq;
-  };
 
   dashboard.get("" + NMIS.url_root + "#/:state/:lga/facilities/?(#.*)?", NMIS.launch_facilities);
 

@@ -74,6 +74,7 @@
       var _ref;
       _.extend(this, d);
       _ref = d.url_code.split("/"), this.group_slug = _ref[0], this.slug = _ref[1];
+      this.latLng = this.lat_lng;
       this.html_params = {
         text: this.label,
         value: this.id
@@ -84,12 +85,28 @@
       return "" + NMIS._data_src_root_url + this.data_root + "/" + module_name + ".json";
     };
 
+    District.prototype.sectors_data_loader = function() {
+      var fetcher;
+      fetcher = NMIS.DataLoader.fetch(NMIS._defaultSectorUrl_);
+      fetcher.done(function(s) {
+        return NMIS.loadSectors(s.sectors, {
+          "default": {
+            name: "Overview",
+            slug: "overview"
+          }
+        });
+      });
+      return fetcher;
+    };
+
+    District.prototype.has_data_module = function(module) {
+      return __indexOf.call(this.data_modules, module) >= 0;
+    };
+
     District.prototype.set_group = function(group) {
       this.group = group;
       return this.group.add_district(this);
     };
-
-    District.prototype.latLng = "0,0";
 
     return District;
 
@@ -100,6 +117,7 @@
     function Group(name) {
       this.name = name;
       this.districts = [];
+      this.label = this.name;
     }
 
     Group.prototype.add_district = function(d) {
