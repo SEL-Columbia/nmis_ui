@@ -35,7 +35,7 @@ DEFAULT_MODULES = {}
 $ ->
   $.getJSON "#{data_src}schema.json", (schema)->
     display_in_header schema
-    load_districts schema.districts
+    load_districts schema.groups, schema.districts
     DEFAULT_MODULES[dname] = new ModuleFile(durl) for dname, durl of schema.defaults
 
     ###
@@ -59,6 +59,7 @@ class District
     _.extend @, d
     [@group_slug, @slug] = d.url_code.split("/")
     # change everything over to @lat_lng at a later time?
+    @data_modules = [] unless @data_modules?
     @module_files = (new ModuleFile(f, @) for f in @data_modules)
     @latLng = @lat_lng
     @html_params =
@@ -95,8 +96,10 @@ class District
   set_group: (@group)-> @group.add_district @
 
 class Group
-  constructor: (@name)->
+  constructor: (details)->
     @districts = []
+    @label = details.label
+    @id = details.id
     @label = @name
   add_district: (d)->
     @districts.push d
@@ -110,21 +113,21 @@ nav.on 'submit', 'form', (evt)->
   select_district nav.find('select').val()
   false
 
-load_districts = (district_list)->
+load_districts = (group_list, district_list)->
   group_names = []
   groups = []
   districts = []
-  get_or_create_group = (name)->
-    if name not in group_names
-      g = new Group(name)
-      groups.push g
-    else
-      for group in groups
-        g = group if group.name is name
-    g
+  get_group_by_id = (grp_id)->
+    grp_found = false
+    grp_found = grp for grp in groups when grp.id is grp_id
+    log grp_found, grp_id
+    grp_found
+
+  groups = (new Group(grp_details) for grp_details in group_list)
+
   for district in district_list
     d = new District district
-    d.set_group get_or_create_group d.group
+    d.set_group get_group_by_id d.group
     districts.push d
   new_select = $ '<select>',
     id: 'lga-select'
