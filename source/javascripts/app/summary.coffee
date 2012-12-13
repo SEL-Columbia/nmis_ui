@@ -33,33 +33,38 @@ loadSummary = (s) ->
   else
     NMIS.MapMgr.addLoadCallback initSummaryMap
     NMIS.MapMgr.init()
+
   fetchers = {}
-  when_fetchers = []
   if lga.has_data_module("summary")
     fetchers.summary = NMIS.DataLoader.fetch(lga.module_url("summary"))
-    when_fetchers.push(fetchers.summary)
   if lga.has_data_module("summary_sectors")
     fetchers.summary_sectors = NMIS.DataLoader.fetch(lga.module_url("summary_sectors"))
-    when_fetchers.push(fetchers.summary_sectors)
   $.when_O(fetchers).done (results)->
     launch_summary(s.params, state, lga, results)
 
+class TmpSector
+  constructor: (s)->
+    @slug = s.id
+    @name = s.name
+
 launch_summary = (params, state, lga, query_results={})->
   summary_data = query_results.summary
-  sector_summary_data = query_results.sector_summary_data
+  summary_sectors = query_results.summary_sectors
   NMIS.DisplayWindow.setVisibility false
   NMIS.DisplayWindow.setDWHeight()
   overviewObj =
     name: "Overview"
     slug: "overview"
+
+  current_sector = new TmpSector(s) for s in summary_data.view_details when s.id is params.sector
+  current_sector = overviewObj unless current_sector
   _env =
     mode:
       name: "Summary"
       slug: "summary"
-
     state: state
     lga: lga
-    sector: NMIS.Sectors.pluck(params.sector) or overviewObj
+    sector: current_sector
 
   bcValues = NMIS._prepBreadcrumbValues(_env, "state lga mode sector subsector indicator".split(" "),
     state: state
@@ -74,12 +79,13 @@ launch_summary = (params, state, lga, query_results={})->
     a.attr "href", NMIS.urlFor(env)
   do ->
     ###
-    could this be done better?
+    how can we do this better?
     ###
     content_div = $('.content')
     if content_div.find('#conditional-content').length == 0
       context = {}
       context.summary_data = summary_data
+      context.summary_sectors = summary_sectors
       context.lga = lga
       cc_div = $ '<div>', id: 'conditional-content'
       for sector_view_panel in summary_data.view_details
@@ -88,6 +94,7 @@ launch_summary = (params, state, lga, query_results={})->
         sector_window_inner_wrap = $("<div>", class:'cwrap').appendTo(sector_window)
         sector_id = sector_view_panel.id
         sector_window.addClass sector_id
+        context.summary_sector = context.summary_sectors[sector_id]
         context.view_panel = sector_view_panel
         for module in sector_view_panel.modules
           sector_window_inner_wrap.append create_sector_panel(sector_id, module, context)

@@ -26,8 +26,9 @@ load_data_source = (root_url, cb)->
   $.getJSON "#{root_url}schema.json", (schema)->
     display_in_header schema
     load_districts schema.districts
-    NMIS._defaultSectorUrl_ = root_url + schema.default_sectors if schema.default_sectors?
-    NMIS._defaultVariableUrl_ = root_url + schema.default_variables if schema.default_variables?
+    NMIS._defaultSectorUrl_ = root_url + schema.default_sectors if schema.defaults?.sectors?
+    NMIS._defaultVariableUrl_ = root_url + schema.default_variables if schema.defaults?.variables?
+    log NMIS._defaultSectorUrl_
     cb()
 
 clear_data_source = ->
