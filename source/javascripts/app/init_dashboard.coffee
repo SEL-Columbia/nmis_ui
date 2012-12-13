@@ -44,16 +44,18 @@ $.when_O = (arg_O)->
       I don't want to finish everything until all success callback have been
       called.
       ###
-      val.done (result)->
-        finished[key] = true
-        results[key] = result
+      do ->
+        local_key = key
+        val.done (result)->
+          finished[local_key] = true
+          results[local_key] = result
 
-        ###
-        Continue if all are finished.
-        ###
-        completed = true
-        completed = false for k, fin of finished when !fin
-        defferred.resolve results if completed
+          ###
+          Continue iff all are finished.
+          ###
+          completed = true
+          completed = false for k, fin of finished when !fin
+          defferred.resolve results if completed
 
   defferred
 

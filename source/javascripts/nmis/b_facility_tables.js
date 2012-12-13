@@ -1,80 +1,3 @@
-var DisplayValue = (function(){
-    function roundDown(v, i) {
-    	var c = 2;
-    	var d = Math.pow(10, c);
-    	return Math.floor(v * d) / d;
-    }
-    function Value(v) {
-        if(v===undefined) {
-            return ["&mdash;", 'val-undefined'];
-    	} else if (v===null) {
-            return ["null", 'val-null'];
-        } else if (v===true) {
-    	    return ["Yes"];
-    	} else if (v===false) {
-    	    return ["No"];
-    	} else if (!isNaN(+v)) {
-    	    return [roundDown(v)];
-    	} else if ($.type(v) === "string") {
-    	    return [NMIS.HackCaps(v)]
-    	}
-        return [v];
-    }
-    function DisplayInElement(d, td) {
-        var res = Value(d);
-        if (d[1]!==undefined) td.addClass(res[1]);
-        return td.html(res[0]);
-    }
-    DisplayInElement.raw = Value;
-    DisplayInElement.special = function(v, indicator) {
-        var r = Value(v),
-            o = {name: indicator.name, classes: "", value: r[0]};
-        if(indicator.display_style==="checkmark_true") {
-            o.classes = "label ";
-            if(v===true) {
-                o.classes += "chk-yes";
-            } else if(v===false) {
-                o.classes += "chk-no";
-            } else {
-                o.classes += "chk-null";
-            }
-        } else if(indicator.display_style==="checkmark_false") {
-            o.classes = "label ";
-            if(v===true) {
-                o.classes += "chk-no";
-            } else if(v===false) {
-                o.classes += "chk-yes";
-            } else {
-                o.classes += "chk-null";
-            }
-        }
-        return o;
-    }
-    DisplayInElement.inTdElem = function(facility, indicator, elem) {
-        var vv = facility[indicator.slug],
-            c = Value(vv);
-        var chkY = indicator.display_style === "checkmark_true",
-            chkN = indicator.display_style === "checkmark_false";
-
-        if(chkY || chkN) {
-            var oclasses = "label ";
-            if($.type(vv)==="boolean") {
-                if(vv) {
-                    oclasses += chkY ? "chk-yes" : "chk-no";
-                } else {
-                    oclasses += chkY ? "chk-no" : "chk-yes";
-                }
-            } else {
-                oclasses += "chk-null";
-            }
-            c[0] = $('<span />').addClass(oclasses).html(c[0]);
-        }
-        return elem.html(c[0]);
-    }
-
-    return DisplayInElement;
-})();
-
 var SectorDataTable = (function(){
     var dt, table;
     var tableSwitcher;
@@ -201,7 +124,8 @@ var SectorDataTable = (function(){
                     $('<td />').attr('title', ftype).addClass('type-icon').html($('<span />').addClass('icon').addClass(ftype).html($('<span />').text(ftype))).appendTo(row);
                 }
                 var z = r[c.slug] || nullMarker();
-                var td = DisplayValue.inTdElem(r, c, $('<td />'));
+                // if(!NMIS.DisplayValue) throw new Error("No DisplayValue")
+                var td = NMIS.DisplayValue.inTdElem(r, c, $('<td />'));
                 row.append(td);
             });
             tbody.append(row);
@@ -275,7 +199,7 @@ var FacilityTables = (function(){
         _.each(cols, function(col, i){
             var slug = col.slug;
             var rawval = facility[slug];
-            var val = DisplayValue(rawval, $('<td />', {'class': classesStr(col)})).appendTo(tr);
+            var val = NMIS.DisplayValue(rawval, $('<td />', {'class': classesStr(col)})).appendTo(tr);
         });
         return tr;
     }

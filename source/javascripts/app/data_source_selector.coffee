@@ -22,43 +22,55 @@ display_in_header = (s)->
   brand.empty().append(logo).append(title)
   header.find("span").text(s.id)
 
-load_data_source = (root_url, cb)->
-  $.getJSON "#{root_url}schema.json", (schema)->
-    display_in_header schema
-    load_districts schema.districts
-    NMIS._defaultSectorUrl_ = root_url + schema.defaults.sectors if schema.defaults?.sectors?
-    NMIS._defaultVariableUrl_ = root_url + schema.defaults.variables if schema.defaults?.variables?
-    cb()
-
 clear_data_source = ->
   header.find("span").html("&hellip;")
 
 data_src = $.cookie("data-source")
 data_src = default_data_source.url unless data_src?
-load_data_source data_src, ()->
-  ###
-  At this point the districts will have loaded.
-  ###
-  dashboard.run()
 
 NMIS._data_src_root_url = data_src
+
+DEFAULT_MODULES = {}
+
+$ ->
+  $.getJSON "#{data_src}schema.json", (schema)->
+    display_in_header schema
+    load_districts schema.districts
+    DEFAULT_MODULES[dname] = new ModuleFile(durl) for dname, durl of schema.defaults
+
+    ###
+    This launches the application:
+    ###
+    dashboard.run()
+
+class ModuleFile
+  constructor: (@filename, district)->
+    try
+      [devnull, @name, @file_type] = @filename.match(/(.*)\.(json|csv)/)
+    catch e
+      throw new Error("Filetype not recognized: #{@filename}")
+    throw new Error "No data_src_root_url" unless NMIS._data_src_root_url?
+    mid_url = if district? then "#{district.data_root}/" else ""
+    @url = "#{NMIS._data_src_root_url}#{mid_url}#{@filename}"
+  fetch: ()-> NMIS.DataLoader.fetch @url
 
 class District
   constructor: (d)->
     _.extend @, d
     [@group_slug, @slug] = d.url_code.split("/")
     # change everything over to @lat_lng at a later time?
+    @module_files = (new ModuleFile(f, @) for f in @data_modules)
     @latLng = @lat_lng
     @html_params =
       text: @label
       value: @id
   module_url: (module_name)->
-    "#{NMIS._data_src_root_url}#{@data_root}/#{module_name}.json"
+    @get_data_module(module_name).url
   sectors_data_loader: ()->
     # if @has_data_module("sectors")
     #   fetcher = NMIS.DataLoader.fetch @module_url("sectors")
     # else
-    fetcher = NMIS.DataLoader.fetch(NMIS._defaultSectorUrl_)
+    fetcher = @get_data_module("sectors").fetch()
     fetcher.done (s)->
       NMIS.loadSectors s.sectors,
         default:
@@ -66,7 +78,20 @@ class District
           slug: "overview"
     fetcher
 
-  has_data_module: (module)-> module in @data_modules
+  get_data_module: (module)->
+    match = m for m in @module_files when m.name is module
+    unless match?
+      # log "GETTING DEFAULT #{module}", DEFAULT_MODULES, module in DEFAULT_MODULES
+      match = DEFAULT_MODULES[module]
+    throw new Error("Module not found: #{module}") unless match?
+    match
+
+  has_data_module: (module)->
+    try
+      !!@get_data_module module
+    catch e
+      false
+
   set_group: (@group)-> @group.add_district @
 
 class Group
@@ -145,11 +170,6 @@ load_sectors = (url)->
         name: "Overview"
         slug: "overview"
   q
-
-load_variables = (url)->
-  NMIS._defaultVariableUrl_ = url
-  NMIS.DataLoader.fetch url
-
 
 NMIS.getDistrictByUrlCode = (url_code)->
   matching_district = false

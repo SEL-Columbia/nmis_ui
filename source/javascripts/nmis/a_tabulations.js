@@ -1,4 +1,3 @@
-var NMIS = {};
 (function(){
     var data, opts;
 

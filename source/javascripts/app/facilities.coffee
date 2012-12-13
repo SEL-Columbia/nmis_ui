@@ -13,20 +13,12 @@ launch_facilities = ->
   params.sector = `undefined`  if params.sector is "overview"
   district.sectors_data_loader().done ->
     prepFacilities params
-    if "facilities" not in district.data_modules
-      throw new Exception "'facilities' is not a listed data_module for #{district.url_code}"
-    facilities_req = NMIS.DataLoader.fetch district.module_url("facilities")
-    if "variables" in district.data_modules
-      variables_req = NMIS.DataLoader.fetch district.module_url("variables")
-    else
-      variables_req = NMIS.DataLoader.fetch NMIS._defaultVariableUrl_
-    if "profile_data" in district.data_modules
-      profile_data_req = NMIS.DataLoader.fetch district.module_url("profile_data")
-    $.when(facilities_req, variables_req, profile_data_req).done (req1, req2, req3) ->
-      lgaData = req1[0]
-      variableData = req2[0]
-      profileData = req3[0].profile_data
-      launchFacilities lgaData, variableData, profileData , params
+
+    fetchers = {}
+    for mod in ["facilities", "variables", "profile_data"]
+      fetchers[mod] = district.get_data_module(mod).fetch()
+
+    $.when_O(fetchers).done (results)-> launchFacilities results, params
 
 NMIS.launch_facilities = launch_facilities
 
@@ -75,7 +67,11 @@ resizeDisplayWindowAndFacilityTable = ->
 ###
 The beast: launchFacilities--
 ###
-launchFacilities = (lgaData, variableData, profileData, params) ->
+launchFacilities = (results, params) ->
+  lgaData = results.facilities
+  variableData = results.variables
+  profileData = results.profile_data.profile_data
+
   lga = NMIS._currentDistrict
   state = NMIS._currentDistrict.group
   createFacilitiesMap = ->
@@ -237,6 +233,7 @@ launchFacilities = (lgaData, variableData, profileData, params) ->
     NMIS.IconSwitcher.shiftStatus (id, item) ->
       "normal"
 
+    log "XX", profileData
     obj =
       facCount: "15"
       lgaName: "" + lga.label + ", " + lga.group.label
@@ -244,11 +241,11 @@ launchFacilities = (lgaData, variableData, profileData, params) ->
       profileData: _.map(profileData, (d) ->
         val = ""
         if d[1] is null or d[1] is `undefined`
-          val = DisplayValue.raw("--")[0]
+          val = NMIS.DisplayValue.raw("--")[0]
         else if d[1].value isnt `undefined`
-          val = DisplayValue.raw(d[1].value)[0]
+          val = NMIS.DisplayValue.raw(d[1].value)[0]
         else
-          val = DisplayValue.raw("--")
+          val = NMIS.DisplayValue.raw("--")
         name: d[0]
         value: val
       )
