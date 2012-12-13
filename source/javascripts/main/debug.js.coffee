@@ -16,3 +16,6 @@ unless window.console? and console.log?
   log.history = log.history or [] # store logs to an array for reference
   log.history.push arguments
   console.log.apply console, Array::slice.call(arguments) if window.console
+
+@log.error = ->
+  console.error.apply console, Array::slice.call(arguments) if window.console
