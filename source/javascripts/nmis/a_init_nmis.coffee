@@ -100,3 +100,6 @@ do ->
     Math.floor(v * d) / d
 
   NMIS.DisplayValue = DisplayValue
+
+error = (message, opts={})-> log.error message
+NMIS.error = error
