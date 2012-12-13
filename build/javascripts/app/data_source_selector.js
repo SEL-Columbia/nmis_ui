@@ -41,12 +41,11 @@
       display_in_header(schema);
       load_districts(schema.districts);
       if (((_ref = schema.defaults) != null ? _ref.sectors : void 0) != null) {
-        NMIS._defaultSectorUrl_ = root_url + schema.default_sectors;
+        NMIS._defaultSectorUrl_ = root_url + schema.defaults.sectors;
       }
       if (((_ref1 = schema.defaults) != null ? _ref1.variables : void 0) != null) {
-        NMIS._defaultVariableUrl_ = root_url + schema.default_variables;
+        NMIS._defaultVariableUrl_ = root_url + schema.defaults.variables;
       }
-      log(NMIS._defaultSectorUrl_);
       return cb();
     });
   };
