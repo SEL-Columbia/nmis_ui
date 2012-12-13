@@ -1,6 +1,5 @@
-var debugMode = true;
-
-var NMIS = (function(){
+var NMIS = {};
+(function(){
     var data, opts;
 
 var Breadcrumb = (function(){
@@ -60,6 +59,7 @@ var Breadcrumb = (function(){
         clear: clear
     }
 })();
+NMIS.Breadcrumb = Breadcrumb;
 
 var MapMgr = (function(){
     var opts = {},
@@ -150,6 +150,7 @@ var MapMgr = (function(){
         addLoadCallback: addLoadCallback
     }
 })();
+NMIS.MapMgr = MapMgr;
 
 var S3Photos = (function(){
     var s3Root = "http://nmisstatic.s3.amazonaws.com/facimg";
@@ -165,6 +166,7 @@ var S3Photos = (function(){
         url: url
     }
 })();
+NMIS.S3Photos = S3Photos;
 
 var HackCaps = (function(){
     function capitalize(str) {
@@ -183,6 +185,7 @@ var HackCaps = (function(){
         }
     }
 })();
+NMIS.HackCaps = HackCaps;
 
 var FacilitySelector = (function(){
     var active = false;
@@ -220,6 +223,8 @@ var FacilitySelector = (function(){
         deselect: deselect
     }
 })();
+NMIS.FacilitySelector = FacilitySelector;
+
 var FacilityHover = (function(){
     var hoverOverlayWrap,
         hoverOverlay,
@@ -285,6 +290,8 @@ var FacilityHover = (function(){
         hide: hide
     }
 })();
+NMIS.FacilityHover = FacilityHover;
+
 function _getNameFromFacility(f) {
     return f.name || f.facility_name || f.school_name
 }
@@ -342,6 +349,7 @@ var FacilityPopup = (function(){
     }
     return make;
 })();
+NMIS.FacilityPopup = FacilityPopup;
 
 var Env = (function(){
     var env = undefined;
@@ -367,6 +375,7 @@ var Env = (function(){
     }
     return EnvAccessor;
 })();
+NMIS.Env = Env;
 
 var Sectors = (function(){
     var sectors, defaultSector;
@@ -500,6 +509,7 @@ var Sectors = (function(){
         clear: clear
     };
 })();
+NMIS.Sectors = Sectors;
 
 var Tabulation = (function(){
     function init () {
@@ -543,6 +553,7 @@ var Tabulation = (function(){
         sectorSlugAsArray: sectorSlugAsArray,
     };
 })();
+NMIS.Tabulation = Tabulation;
 
 var DataLoader = (function(){
     function fetchLocalStorage(url){
@@ -570,6 +581,7 @@ var DataLoader = (function(){
         fetch: fetch
     };
 })();
+NMIS.DataLoader = DataLoader;
 
 
 var DisplayWindow = (function(){
@@ -803,6 +815,7 @@ var DisplayWindow = (function(){
         getElems: getElems
     };
 })();
+NMIS.DisplayWindow = DisplayWindow;
 
 var IconSwitcher = (function(){
     var context = {};
@@ -915,6 +928,7 @@ var IconSwitcher = (function(){
         iterate: iterate
     }
 })();
+NMIS.IconSwitcher = IconSwitcher;
 
 var LocalNav = (function(){
     var elem, wrap, opts;
@@ -1000,17 +1014,18 @@ var LocalNav = (function(){
         markActive: markActive
     }
 })();
+NMIS.LocalNav = LocalNav;
 
-    function init(_data, _opts) {
+    NMIS.init = function(_data, _opts) {
         opts = _.extend({
             iconSwitcher: true,
             sectors: false
         }, _opts);
         data = {};
         if(!!opts.sectors) {
-            loadSectors(opts.sectors);
+            NMIS.loadSectors(opts.sectors);
         }
-        loadFacilities(_data);
+        NMIS.loadFacilities(_data);
     	if(opts.iconSwitcher) {
             NMIS.IconSwitcher.init({
         	    items: data,
@@ -1028,16 +1043,17 @@ var LocalNav = (function(){
         }
         return true;
     }
-    function loadSectors(_sectors, opts){
+
+    NMIS.loadSectors = function(_sectors, opts){
         Sectors.init(_sectors, opts);
     }
-    function loadFacilities(_data, opts) {
+    NMIS.loadFacilities = function(_data, opts) {
         _.each(_data, function(val, key){
             var id = val._id || key;
             data[id] = cloneParse(val);
         });
     }
-    function clear() {
+    NMIS.clear = function() {
         data = [];
         Sectors.clear();
     }
@@ -1052,20 +1068,21 @@ var LocalNav = (function(){
             datum._latlng = [ llArr[0], llArr[1] ];
         }
     }
-    function validateData() {
+    NMIS.validateData = function() {
         Sectors.validate();
         _(data).each(ensureUniqueId);
         _(data).each(ensureLatLng);
         return true;
     }
     var _s;
-    function activeSector(s) {
+    NMIS.activeSector = function (s) {
         if(s===undefined) {
             return _s;
         } else {
             _s = s;
         }
     }
+
     function cloneParse(d) {
         var datum = _.clone(d);
     	if(datum.gps===undefined) {
@@ -1078,13 +1095,13 @@ var LocalNav = (function(){
     	datum.sector = Sectors.pluck(sslug);
     	return datum;
     }
-    function dataForSector(sectorSlug) {
+    NMIS.dataForSector = function(sectorSlug) {
         var sector = Sectors.pluck(sectorSlug);
         return _(data).filter(function(datum, id){
             return datum.sector.slug === sector.slug;
         });
     }
-    function dataObjForSector(sectorSlug) {
+    NMIS.dataObjForSector = function(sectorSlug) {
         var sector = Sectors.pluck(sectorSlug);
         var o = {};
         _(data).each(function(datum, id){
@@ -1094,30 +1111,7 @@ var LocalNav = (function(){
         });
         return o;
     }
-    return {
-        Sectors: Sectors,
-        Tabulation: Tabulation,
-        IconSwitcher: IconSwitcher,
-        LocalNav: LocalNav,
-        Breadcrumb: Breadcrumb,
-        DisplayWindow: DisplayWindow,
-//        SectorDataTable: SectorDataTable,
-        DataLoader: DataLoader,
-        FacilityPopup: FacilityPopup,
-        FacilityHover: FacilityHover,
-        FacilitySelector: FacilitySelector,
-        HackCaps: HackCaps,
-        MapMgr: MapMgr,
-        Env: Env,
-        S3Photos: S3Photos,
-        activeSector: activeSector,
-        data: function(){return data;},
-        dataForSector: dataForSector,
-        dataObjForSector: dataObjForSector,
-        validateData: validateData,
-        loadSectors: loadSectors,
-        loadFacilities: loadFacilities,
-        init: init,
-        clear: clear
-    }
+    NMIS.data = function(){
+      return data;
+    };
 })();
