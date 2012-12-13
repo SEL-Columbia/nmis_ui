@@ -11,10 +11,10 @@ launch_facilities = ->
   district = NMIS.getDistrictByUrlCode("#{params.state}/#{params.lga}")
   NMIS._currentDistrict = district
   params.sector = `undefined`  if params.sector is "overview"
-  get_sectorsReq().done ->
+  district.sectors_data_loader().done ->
     prepFacilities params
     if "facilities" not in district.data_modules
-      throw "'facilities' is not a listed data_module for #{district.url_code}"
+      throw new Exception "'facilities' is not a listed data_module for #{district.url_code}"
     facilities_req = NMIS.DataLoader.fetch district.module_url("facilities")
     if "variables" in district.data_modules
       variables_req = NMIS.DataLoader.fetch district.module_url("variables")
@@ -63,7 +63,7 @@ prepFacilities = (params) ->
     a.attr "href", NMIS.urlFor(env)
 
 
-mustachify = (id, obj) ->
+@mustachify = (id, obj) ->
   Mustache.to_html $("#" + id).eq(0).html().replace(/<{/g, "{{").replace(/\}>/g, "}}"), obj
 
 resizeDisplayWindowAndFacilityTable = ->
@@ -347,26 +347,9 @@ launchFacilities = (lgaData, variableData, profileData, params) ->
       )()
   resizeDisplayWindowAndFacilityTable()
   NMIS.FacilitySelector.activate id: e.facilityId  unless not e.facilityId
+
 facilitiesMapCreated = undefined
 facilitiesMap = undefined
-
-###
-TODO: something about these NMIS.DataLoader
-###
-get_lgaDataReq = ()->
-  _lgaDataReq = NMIS.DataLoader.fetch NMIS._lgaFacilitiesDataUrl_
-  _lgaDataReq
-get_variableDataReq = ()->
-  _variableDataReq = NMIS.DataLoader.fetch NMIS._defaultVariableUrl_
-  _variableDataReq
-get_sectorsReq = ()->
-  _sectorReq = NMIS.DataLoader.fetch NMIS._defaultSectorUrl_
-  _sectorReq.done (s)->
-    NMIS.loadSectors s.sectors,
-      default:
-        name: "Overview"
-        slug: "overview"
-  _sectorReq
 
 dashboard.get "#{NMIS.url_root}#/:state/:lga/facilities/?(#.*)?", NMIS.launch_facilities
 dashboard.get "#{NMIS.url_root}#/:state/:lga/facilities/:sector/?(#.*)?", NMIS.launch_facilities

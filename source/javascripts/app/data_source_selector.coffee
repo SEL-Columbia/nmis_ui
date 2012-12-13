@@ -12,7 +12,7 @@ header.on 'click', 'a', (evt)->
 select_data_source = ()->
   
 set_default_data_source = ->
-  header.find("span").text(default_data_source.name)
+  header.find("span").text default_data_source.name
 
 display_in_header = (s)->
   title = s.title
@@ -47,12 +47,26 @@ class District
   constructor: (d)->
     _.extend @, d
     [@group_slug, @slug] = d.url_code.split("/")
-    @lat_lng = d.lat_lng
+    # change everything over to @lat_lng at a later time?
+    @latLng = @lat_lng
     @html_params =
       text: @label
       value: @id
   module_url: (module_name)->
     "#{NMIS._data_src_root_url}#{@data_root}/#{module_name}.json"
+  sectors_data_loader: ()->
+    # if @has_data_module("sectors")
+    #   fetcher = NMIS.DataLoader.fetch @module_url("sectors")
+    # else
+    fetcher = NMIS.DataLoader.fetch(NMIS._defaultSectorUrl_)
+    fetcher.done (s)->
+      NMIS.loadSectors s.sectors,
+        default:
+          name: "Overview"
+          slug: "overview"
+    fetcher
+
+  has_data_module: (module)-> module in @data_modules
   set_group: (@group)-> @group.add_district @
 
 class Group
