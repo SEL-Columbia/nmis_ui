@@ -4,6 +4,11 @@ independently testable modules.
 ###
 @NMIS = {} unless @NMIS?
 
+_.templateSettings =
+  escape: /<{-([\s\S]+?)}>/g
+  evaluate: /<{([\s\S]+?)}>/g
+  interpolate: /<{=([\s\S]+?)}>/g
+
 do ->
   ###
   the internal "value" function takes a value and returns a 1-2 item list:
