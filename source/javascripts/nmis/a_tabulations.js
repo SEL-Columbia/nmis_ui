@@ -92,22 +92,6 @@ var MapMgr = (function(){
 })();
 NMIS.MapMgr = MapMgr;
 
-var S3Photos = (function(){
-    var s3Root = "http://nmisstatic.s3.amazonaws.com/facimg";
-    function url(s3id, size) {
-        if(!size) size = "0";
-        var codes = s3id.split(":");
-        return [s3Root,
-            codes[0],
-            size,
-            codes[1] + ".jpg"].join("/");
-    }
-    return {
-        url: url
-    }
-})();
-NMIS.S3Photos = S3Photos;
-
 var HackCaps = (function(){
     function capitalize(str) {
         if(!str) {

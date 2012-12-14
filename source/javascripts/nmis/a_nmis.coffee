@@ -46,3 +46,13 @@ do ->
     clear: clear
 
   NMIS.Breadcrumb = Breadcrumb
+
+
+do ->
+  NMIS.S3Photos = do ->
+    s3Root = "http://nmisstatic.s3.amazonaws.com/facimg"
+    url: (s3id, size=0)->
+      [code, id] = s3id.split ":"
+      "#{s3Root}/#{code}/#{size}/#{id}.jpg"
+
+#
