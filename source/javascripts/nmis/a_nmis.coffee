@@ -69,4 +69,73 @@ do ->
       output.join ' '
     else
       str
+
+do ->
+  NMIS.MapMgr = do->
+    opts = {}
+    started = false
+    finished = false
+    callbackStr = "NMIS.MapMgr.loaded"
+    elem = false
+    fakse = false
+    loadCallbacks = []
+    mapLoadFn = -> $.getScript "http://maps.googleapis.com/maps/api/js?sensor=false&callback=#{callbackStr}"
+    addLoadCallback = (cb) -> loadCallbacks.push cb
+    isLoaded = -> finished
+    clear = -> started = finished = false
+    loaded = ->
+      cb.call(opts) for cb in loadCallbacks
+      loadCallbacks = []
+      finished = true
+
+    init = (_opts)->
+      return true  if started
+
+      if _opts isnt `undefined`
+        opts = _.extend(
+          #defaults
+          launch: true
+          fake: false
+          fakeDelay: 3000
+          mapLoadFn: false
+          elem: "body"
+          defaultMapType: "SATELLITE"
+          loadCallbacks: []
+        , _opts)
+        loadCallbacks = Array::concat.apply(loadCallbacks, opts.loadCallbacks)
+        fake = !!opts.fake
+        mapLoadFn = opts.mapLoadFn  if opts.mapLoadFn
+      else
+        fake = false
+      started = true
+      unless fake
+        mapLoadFn()
+      else
+        _.delay loaded, opts.fakeDelay
+      started
+
+    mapboxLayer = (options) ->
+      throw (new Error("Google Maps has not yet loaded into the page."))  if typeof google is "undefined"
+      new google.maps.ImageMapType(
+        getTileUrl: (coord, z) ->
+          # Y coordinate is flipped in Mapbox, compared to Google
+          # Simplistic predictable hashing
+          "http://b.tiles.mapbox.com/v3/modilabs." + options.tileset + "/" + z + "/" + coord.x + "/" + coord.y + ".png?updated=1331159407403"
+
+        name: options.name
+        alt: options.name
+        tileSize: new google.maps.Size(256, 256)
+        isPng: true
+        minZoom: 0
+        maxZoom: options.maxZoom or 17
+      )
+
+    # returns all MapMgr's externally callable functions
+    init: init
+    clear: clear
+    loaded: loaded
+    isLoaded: isLoaded
+    mapboxLayer: mapboxLayer
+    addLoadCallback: addLoadCallback
+
 #
