@@ -367,4 +367,82 @@ do ->
     hideSubmenu: hideSubmenu
     markActive: markActive
 
+do ->
+  NMIS.Tabulation = do ->
+    init = -> true
+    filterBySector = (sector) ->
+      sector = NMIS.Sectors.pluck(sector)
+      _.filter NMIS.data(), (d) ->
+        d.sector is sector
+
+    sectorSlug = (sector, slug, keys) ->
+      occurrences = {}
+      values = _(filterBySector(sector)).chain().pluck(slug).map((v) ->
+        "" + v
+      ).value()
+      keys = _.uniq(values).sort()  if keys is `undefined`
+      _.each keys, (key) ->
+        occurrences[key] = 0
+
+      _.each values, (d) ->
+        occurrences[d]++  if occurrences[d] isnt `undefined`
+
+      occurrences
+    sectorSlugAsArray = (sector, slug, keys) ->
+      occurrences = sectorSlug.apply(this, arguments_)
+      keys = _.keys(occurrences).sort()  if keys is `undefined`
+      _(keys).map (key) ->
+        occurrences: "" + key
+        value: occurrences[key]
+
+    init: init
+    sectorSlug: sectorSlug
+    sectorSlugAsArray: sectorSlugAsArray
+
+  ###
+  var Tabulation = (function(){
+      function init () {
+          return true;
+      }
+      function filterBySector (sector) {
+          var sector = Sectors.pluck(sector);
+          return _.filter(NMIS.data(), function(d){
+              return d.sector == sector;
+          })
+      }
+      function sectorSlug (sector, slug, keys) {
+          var occurrences = {};
+          var values = _(filterBySector(sector)).chain()
+                          .pluck(slug)
+                          .map(function(v){
+                              return '' + v;
+                          })
+                          .value();
+          if(keys===undefined) keys = _.uniq(values).sort();
+          _.each(keys, function(key) { occurrences[key] = 0; });
+          _.each(values, function(d){
+              if(occurrences[d] !== undefined)
+                  occurrences[d]++;
+          });
+          return occurrences;
+      }
+      function sectorSlugAsArray (sector, slug, keys) {
+          var occurrences = sectorSlug.apply(this, arguments);
+          if(keys===undefined) { keys = _.keys(occurrences).sort(); }
+          return _(keys).map(function(key){
+              return {
+                  occurrences: '' + key,
+                  value: occurrences[key]
+              };
+          });
+      }
+      return {
+          init: init,
+          sectorSlug: sectorSlug,
+          sectorSlugAsArray: sectorSlugAsArray,
+      };
+  })();
+  NMIS.Tabulation = Tabulation;
+  ###
+
 #
