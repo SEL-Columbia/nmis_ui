@@ -17,9 +17,6 @@ headers = do ->
 do ->
 
   display_in_header = (s)->
-    # log "setting header?"
-    # set_header() if !header
-    # set_nav() if !nav
     title = s.title
     $('title').html(title)
     brand = $('.brand')

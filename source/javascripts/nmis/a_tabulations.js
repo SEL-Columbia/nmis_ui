@@ -314,7 +314,7 @@ var FacilityPopup = (function(){
         obj.sector_data = _.map(subgroups, function (o, i, arr) {
             return _.extend({}, o, {
                 variables: _.map(facility.sector.columnsInSubGroup(o.slug), function (oo, ii, oiarr) {
-                    return DisplayValue.special(facility[oo.slug], oo);
+                    return NMIS.DisplayValue.special(facility[oo.slug], oo);
                 })
             });
         });
