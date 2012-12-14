@@ -5,10 +5,12 @@ launch_facilities = ->
   params = {}
   params.facilityId = ("" + window.location.search).match(/facility=(\d+)/)[1]  if ("" + window.location.search).match(/facility=(\d+)/)
   $("#conditional-content").hide()
+
   _.each @params, (param, pname) ->
     params[pname] = param.replace("/", "")  if $.type(param) is "string" and param isnt ""
 
   district = NMIS.getDistrictByUrlCode("#{params.state}/#{params.lga}")
+
   NMIS._currentDistrict = district
   params.sector = `undefined`  if params.sector is "overview"
   district.sectors_data_loader().done ->
@@ -68,7 +70,7 @@ resizeDisplayWindowAndFacilityTable = ->
 The beast: launchFacilities--
 ###
 launchFacilities = (results, params) ->
-  lgaData = results.facilities
+  facilities = results.facilities
   variableData = results.variables
   profileData = results.profile_data.profile_data
 
@@ -187,9 +189,6 @@ launchFacilities = (results, params) ->
         icon.url = iconURLData(item)[0]
         mapItem.marker.setIcon icon
 
-  lgaData.profileData = {}  if lgaData.profileData is `undefined`
-  lgaData.profileData.gps = value: "40.809587 -73.953223 183.0 4.0"  if lgaData.profileData.gps is `undefined`
-  facilities = lgaData.facilities
   sectors = variableData.sectors
   sector = NMIS.Sectors.pluck(params.sector)
   e =
@@ -209,7 +208,7 @@ launchFacilities = (results, params) ->
     e.subsector = _.first(e.sector.subGroups())
     e.subsectorUndefined = true
   MapMgr_opts =
-    llString: lgaData.profileData.gps.value
+    # llString: lgaData.profileData.gps.value
     elem: NMIS._wElems.elem0
 
   mapZoom = 8
