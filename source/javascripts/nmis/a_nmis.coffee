@@ -11,14 +11,14 @@ do ->
     elem = false
     context = {}
 
-    init = (_elem, opts) ->
+    init = (_elem, opts={}) ->
       elem = $(_elem).eq(0)
 
       opts.draw = true  unless opts.draw?
       setLevels opts.levels, false  if opts.levels?
       draw()  unless not opts.draw
     clear = ->
-      elem.empty()  if elem isnt `undefined`
+      elem.empty()  if elem
       levels = []
     setLevels = (new_levels=[], needs_draw=true) ->
       levels[i] = level for level, i in new_levels when level?
