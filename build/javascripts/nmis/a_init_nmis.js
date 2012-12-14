@@ -6,10 +6,17 @@ independently testable modules.
 
 
 (function() {
+  var error;
 
   if (this.NMIS == null) {
     this.NMIS = {};
   }
+
+  _.templateSettings = {
+    escape: /<{-([\s\S]+?)}>/g,
+    evaluate: /<{([\s\S]+?)}>/g,
+    interpolate: /<{=([\s\S]+?)}>/g
+  };
 
   (function() {
     /*
@@ -125,5 +132,14 @@ independently testable modules.
     };
     return NMIS.DisplayValue = DisplayValue;
   })();
+
+  error = function(message, opts) {
+    if (opts == null) {
+      opts = {};
+    }
+    return log.error(message);
+  };
+
+  NMIS.error = error;
 
 }).call(this);

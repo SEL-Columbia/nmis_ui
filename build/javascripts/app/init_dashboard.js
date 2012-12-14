@@ -1,89 +1,5 @@
 (function() {
-  var overviewObj, url_root, wElems;
-
-  $.when_O = function(arg_O) {
-    /*
-      When handling multiple $.Defferreds,
-    
-      $.when(...) receives a list and then passes
-      a list of arguments.
-    
-      This mini plugin receives an object of named deferreds
-      and resolves with an object with the results.
-    
-      Example:
-    
-      var shows = {
-        "simpsons": $.getJSON(simpsons_shows),
-        "southPark": $.getJSON(southpark_shows)
-      };
-    
-      $.when_O(shows).done(function(showResults){
-        var showNames = [];
-        if(showResults.familyGuy) showNames.push("Family Guy")
-        if(showResults.simpsons) showNames.push("Simpsons")
-        if(showResults.southPark) showNames.push("South Park")
-    
-        console.log(showNames);
-        //  ["Simpsons", "South Park"]
-      });
-    */
-
-    var defferred, finished, key, promises, val;
-    defferred = new $.Deferred;
-    promises = [];
-    finished = {};
-    for (key in arg_O) {
-      val = arg_O[key];
-      promises.push(val);
-      finished[key] = false;
-    }
-    $.when.apply(null, promises).done(function() {
-      var results, _results;
-      results = {};
-      _results = [];
-      for (key in arg_O) {
-        val = arg_O[key];
-        /*
-              in $.getJSON, for example, I want to access the parsedJSON object so
-              I don't want to finish everything until all success callback have been
-              called.
-        */
-
-        _results.push((function() {
-          var local_key;
-          local_key = key;
-          return val.done(function(result) {
-            var completed, fin, k;
-            finished[local_key] = true;
-            results[local_key] = result;
-            /*
-                      Continue iff all are finished.
-            */
-
-            completed = true;
-            for (k in finished) {
-              fin = finished[k];
-              if (!fin) {
-                completed = false;
-              }
-            }
-            if (completed) {
-              return defferred.resolve(results);
-            }
-          });
-        })());
-      }
-      return _results;
-    });
-    return defferred;
-  };
-
-  _.templateSettings = {
-    escape: /<{-([\s\S]+?)}>/g,
-    evaluate: /<{([\s\S]+?)}>/g,
-    interpolate: /<{=([\s\S]+?)}>/g
-  };
+  var data_src, default_data_source_url, overviewObj, url_root, wElems;
 
   url_root = "" + window.location.pathname;
 
@@ -93,23 +9,24 @@
 
   NMIS.url_root = url_root;
 
+  /*
+  
+  initializing a Sammy.js object, called "dashboard".
+  This will route URLs and handle links to pre-routed URLs.
+  
+  routes are defined in nmis_facilities.js and nmis_summary.js by:
+     dashboard.get("/url/:variable", callback);
+  
+  URL actions can be triggered by calling:
+     dashboard.setLocation("/url/hello");
+  */
+
+
   this.dashboard = $.sammy("body", function() {
-    this.get("^$", function() {
-      return dashboard.setLocation("" + url_root + "#/state/lga");
-    });
-    return this.get("" + url_root + "#/:state/:lga/?", function() {
+    return this.get("" + NMIS.url_root + "#/:state/:lga/?", function() {
       return dashboard.setLocation("" + url_root + "#/" + this.params.state + "/" + this.params.lga + "/summary/");
     });
   });
-
-  this.dashboard.get("" + url_root + "#data=(.*)", function() {
-    var data_src;
-    data_src = this.params.splat[0];
-    $.cookie("data-source", data_src);
-    return this.redirect("" + url_root);
-  });
-
-  $(".page-header").remove();
 
   NMIS.DisplayWindow.init(".content", {
     offsetElems: ".topbar .fill .container",
@@ -145,12 +62,14 @@
     sections: [[["mode:summary", "LGA Summary", "#"], ["mode:facilities", "Facility Detail", "#"]], [["sector:overview", "Overview", "#"], ["sector:health", "Health", "#"], ["sector:education", "Education", "#"], ["sector:water", "Water", "#"]]]
   });
 
-  NMIS.urlFor = function(_o) {
-    var o, uu, _pushAsDefined;
-    o = _.extend({
-      root: "" + NMIS.url_root + "#",
-      mode: "summary"
-    }, _o);
+  NMIS.urlFor = function(o) {
+    var uu, _pushAsDefined;
+    if (o.root == null) {
+      o.root = "" + NMIS.url_root + "#";
+    }
+    if (o.mode == null) {
+      o.mode = "summary";
+    }
     if (!o.lga || !o.state) {
       return "" + NMIS.url_root + "#?error";
     }
@@ -186,11 +105,6 @@
 
   NMIS._prepBreadcrumbValues = function(e, keys, env) {
     var arr, i, key, l, name, val;
-    i = void 0;
-    l = void 0;
-    key = void 0;
-    val = void 0;
-    name = void 0;
     arr = [];
     i = 0;
     l = keys.length;
@@ -208,5 +122,47 @@
     }
     return arr;
   };
+
+  NMIS.Breadcrumb.init("p.bc", {
+    levels: []
+  });
+
+  dashboard.get("" + NMIS.url_root + "#/:state/:lga/facilities/?(#.*)?", NMIS.launch_facilities);
+
+  dashboard.get("" + NMIS.url_root + "#/:state/:lga/facilities/:sector/?(#.*)?", NMIS.launch_facilities);
+
+  dashboard.get("" + NMIS.url_root + "#/:state/:lga/facilities/:sector/:subsector/?(#.*)?", NMIS.launch_facilities);
+
+  dashboard.get("" + NMIS.url_root + "#/:state/:lga/facilities/:sector/:subsector/:indicator/?(#.*)?", NMIS.launch_facilities);
+
+  dashboard.get("" + NMIS.url_root + "#/:state/:lga/summary/?(#.*)?", NMIS.loadSummary);
+
+  dashboard.get("" + NMIS.url_root + "#/:state/:lga/summary/:sector/?(#.*)?", NMIS.loadSummary);
+
+  dashboard.get("" + NMIS.url_root + "#/:state/:lga/summary/:sector/:subsector/?(#.*)?", NMIS.loadSummary);
+
+  dashboard.get("" + NMIS.url_root + "#/:state/:lga/summary/:sector/:subsector/:indicator/?(#.*)?", NMIS.loadSummary);
+
+  data_src = $.cookie("data-source");
+
+  default_data_source_url = "./path_to_generic_data_source/";
+
+  if (data_src == null) {
+    data_src = default_data_source_url;
+  }
+
+  NMIS._data_src_root_url = data_src;
+
+  this.dashboard.get("" + NMIS.url_root + "#data=(.*)", function() {
+    data_src = this.params.splat[0];
+    $.cookie("data-source", data_src);
+    return this.redirect("" + NMIS.url_root);
+  });
+
+  $(function() {
+    return NMIS.load_schema(data_src).done(function() {
+      return dashboard.run();
+    });
+  });
 
 }).call(this);

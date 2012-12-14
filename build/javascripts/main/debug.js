@@ -23,4 +23,10 @@
     }
   };
 
+  this.log.error = function() {
+    if (window.console) {
+      return console.error.apply(console, Array.prototype.slice.call(arguments));
+    }
+  };
+
 }).call(this);
