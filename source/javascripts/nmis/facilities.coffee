@@ -343,5 +343,74 @@ launchFacilities = (results, params) ->
   resizeDisplayWindowAndFacilityTable()
   NMIS.FacilitySelector.activate id: e.facilityId  unless not e.facilityId
 
-facilitiesMapCreated = undefined
-facilitiesMap = undefined
+createOurGraph = (pieWrap, legend, data, _opts) ->
+  ###
+  creates a graph with some default options.
+  if we want to customize stuff (ie. have behavior that changes based on
+  different input) then we should work it into the "_opts" parameter.
+  ###
+  gid = $(pieWrap).get(0).id
+  unless gid
+    $(pieWrap).attr "id", "pie-wrap"
+    gid = "pie-wrap"
+  defaultOpts =
+    x: 50
+    y: 40
+    r: 35
+    font: "12px 'Fontin Sans', Fontin-Sans, sans-serif"
+
+  opts = $.extend({}, defaultOpts, _opts)
+  rearranged_vals = $.map legend, (val) -> $.extend val, value: data[val.key]
+  pvals = ((vals) ->
+    values = []
+    colors = []
+    legend = []
+    vals.sort (a, b) ->
+      b.value - a.value
+
+    $(vals).each ->
+      if @value > 0
+        values.push @value
+        colors.push @color
+        legend.push "%% - " + @legend + " (##)"
+
+    values: values
+    colors: colors
+    legend: legend
+  )(rearranged_vals)
+
+  ###
+  NOTE: hack to get around a graphael bug!
+  if there is only one color the chart will
+  use the default value (Raphael.fn.g.colors[0])
+  here, we will set it to whatever the highest
+  value that we have is
+  ###
+  Raphael.fn.g.colors[0] = pvals.colors[0]
+  #
+
+  r = Raphael(gid)
+  r.g.txtattr.font = opts.font
+  pie = r.g.piechart(opts.x, opts.y, opts.r, pvals.values,
+    colors: pvals.colors
+    legend: pvals.legend
+    legendpos: "east"
+  )
+  hover_on = ->
+    @sector.stop()
+    @sector.scale 1.1, 1.1, @cx, @cy
+    if @label
+      @label[0].stop()
+      @label[0].scale 1.4
+      @label[1].attr "font-weight": 800
+  hover_off = ->
+    @sector.animate
+      scale: [1, 1, @cx, @cy]
+    , 500, "bounce"
+    if @label
+      @label[0].animate
+        scale: 1
+      , 500, "bounce"
+      @label[1].attr "font-weight": 400
+  pie.hover hover_on, hover_off
+  r
