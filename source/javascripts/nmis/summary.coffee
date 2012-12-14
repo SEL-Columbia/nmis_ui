@@ -1,4 +1,4 @@
-loadSummary = (s) ->
+NMIS.loadSummary = (s) ->
   lga_code = "#{s.params.state}/#{s.params.lga}"
   lga = NMIS.getDistrictByUrlCode(lga_code)
   state = lga.group
@@ -141,8 +141,3 @@ create_sector_panel = (sector_id, module, context)->
   div
 
 summaryMap = undefined
-
-dashboard.get "#{NMIS.url_root}#/:state/:lga/summary/?(#.*)?", loadSummary
-dashboard.get "#{NMIS.url_root}#/:state/:lga/summary/:sector/?(#.*)?", loadSummary
-dashboard.get "#{NMIS.url_root}#/:state/:lga/summary/:sector/:subsector/?(#.*)?", loadSummary
-dashboard.get "#{NMIS.url_root}#/:state/:lga/summary/:sector/:subsector/:indicator/?(#.*)?", loadSummary

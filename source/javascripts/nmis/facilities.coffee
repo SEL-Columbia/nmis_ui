@@ -233,7 +233,6 @@ launchFacilities = (results, params) ->
     NMIS.IconSwitcher.shiftStatus (id, item) ->
       "normal"
 
-    log "XX", profileData
     obj =
       facCount: "15"
       lgaName: "" + lga.label + ", " + lga.group.label
@@ -347,8 +346,3 @@ launchFacilities = (results, params) ->
 
 facilitiesMapCreated = undefined
 facilitiesMap = undefined
-
-dashboard.get "#{NMIS.url_root}#/:state/:lga/facilities/?(#.*)?", NMIS.launch_facilities
-dashboard.get "#{NMIS.url_root}#/:state/:lga/facilities/:sector/?(#.*)?", NMIS.launch_facilities
-dashboard.get "#{NMIS.url_root}#/:state/:lga/facilities/:sector/:subsector/?(#.*)?", NMIS.launch_facilities
-dashboard.get "#{NMIS.url_root}#/:state/:lga/facilities/:sector/:subsector/:indicator/?(#.*)?", NMIS.launch_facilities
