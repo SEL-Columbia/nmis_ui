@@ -92,25 +92,6 @@ var MapMgr = (function(){
 })();
 NMIS.MapMgr = MapMgr;
 
-var HackCaps = (function(){
-    function capitalize(str) {
-        if(!str) {
-            return "";
-        } else {
-            return str[0].toUpperCase() + str.slice(1);
-        }
-    }
-
-    return function(str){
-        if($.type(str)==="string") {
-            return _.map(str.split("_"), capitalize).join(" ");
-        } else {
-            return str;
-        }
-    }
-})();
-NMIS.HackCaps = HackCaps;
-
 var FacilitySelector = (function(){
     var active = false;
     function activate(params){

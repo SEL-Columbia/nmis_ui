@@ -55,4 +55,18 @@ do ->
       [code, id] = s3id.split ":"
       "#{s3Root}/#{code}/#{size}/#{id}.jpg"
 
+do ->
+  capitalize = (str) ->
+    unless str
+      ""
+    else
+      str[0].toUpperCase() + str.slice(1)
+  NMIS.HackCaps = (str)->
+    if $.type(str) is "string"
+      output = []
+      for section in str.split "_"
+        output.push capitalize section
+      output.join ' '
+    else
+      str
 #
