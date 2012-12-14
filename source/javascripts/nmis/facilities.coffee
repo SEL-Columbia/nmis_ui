@@ -337,13 +337,13 @@ launchFacilities = (results, params) ->
             ]
           unless not pieChartDisplayDefinitions
             tabulations = NMIS.Tabulation.sectorSlug(sector.slug, column.slug, "true false undefined".split(" "))
-            createOurGraph pcWrap, pieChartDisplayDefinitions, tabulations, {}
+            prepare_data_for_pie_graph pcWrap, pieChartDisplayDefinitions, tabulations, {}
         ) mm.find(".raph-circle").get(0)
       )()
   resizeDisplayWindowAndFacilityTable()
   NMIS.FacilitySelector.activate id: e.facilityId  unless not e.facilityId
 
-createOurGraph = (pieWrap, legend, data, _opts) ->
+prepare_data_for_pie_graph = (pieWrap, legend, data, _opts) ->
   ###
   creates a graph with some default options.
   if we want to customize stuff (ie. have behavior that changes based on
@@ -361,23 +361,21 @@ createOurGraph = (pieWrap, legend, data, _opts) ->
 
   opts = $.extend({}, defaultOpts, _opts)
   rearranged_vals = $.map legend, (val) -> $.extend val, value: data[val.key]
-  pvals = ((vals) ->
-    values = []
-    colors = []
-    legend = []
-    vals.sort (a, b) ->
-      b.value - a.value
+  values = []
+  colors = []
+  legend = []
+  rearranged_vals.sort (a, b) -> b.value - a.value
 
-    $(vals).each ->
-      if @value > 0
-        values.push @value
-        colors.push @color
-        legend.push "%% - " + @legend + " (##)"
+  for item in rearranged_vals
+    if item.value > 0
+      values.push item.value
+      colors.push item.color
+      legend.push "%% - #{item.legend} (##)"
 
+  pvals =
     values: values
     colors: colors
     legend: legend
-  )(rearranged_vals)
 
   ###
   NOTE: hack to get around a graphael bug!
