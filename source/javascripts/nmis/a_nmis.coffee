@@ -399,4 +399,22 @@ do ->
     sectorSlug: sectorSlug
     sectorSlugAsArray: sectorSlugAsArray
 
+do ->
+  NMIS.Env = do ->
+    env = false
+    env_accessor = (arg)->
+      if arg?
+        set_env arg
+      else
+        get_env()
+
+    get_env = ()->
+      throw new Error("NMIS.Env is not set") unless env
+      _.extend {}, env
+    set_env = (_env)-> env = _.extend {}, _env
+
+    env_accessor.extend = (o)-> _.extend(get_env(), o)
+
+    env_accessor
+
 #

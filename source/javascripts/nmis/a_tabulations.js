@@ -1,32 +1,6 @@
 (function(){
     var data, opts;
 
-var Env = (function(){
-    var env = undefined;
-    function EnvAccessor(arg) {
-        if(arg===undefined) {
-            return getEnv();
-        } else {
-            setEnv(arg);
-        }
-    }
-    EnvAccessor.extend = function(o){
-        return _.extend(getEnv(), o);
-    }
-    function setEnv(_env) {
-        env = _.extend({}, _env);
-    }
-    function getEnv() {
-        if(env === undefined) {
-            throw new Error("NMIS.Env is not set");
-        } else {
-            return _.extend({}, env);
-        }
-    }
-    return EnvAccessor;
-})();
-NMIS.Env = Env;
-
 var Sectors = (function(){
     var sectors, defaultSector;
     function changeKey(o, key) {
