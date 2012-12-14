@@ -24,13 +24,23 @@ do ->
     brand.empty().append(logo).append(title)
     headers('header').find("span").text(s.id)
 
-  load_schema = (data_src, cb)->
+  load_schema = (data_src)->
     schema_url = "#{data_src}schema.json"
+    deferred = new $.Deferred
     $.getJSON "#{data_src}schema.json", (schema)->
       display_in_header schema
-      NMIS.load_districts schema.groups, schema.districts
       NMIS.ModuleFile.DEFAULT_MODULES[dname] = new NMIS.ModuleFile(durl) for dname, durl of schema.defaults
-      cb()
+      if schema.districts_json?
+        districts_module = new NMIS.ModuleFile(schema.districts_json)
+        districts_module.fetch().done (dl)->
+          NMIS.load_districts dl.groups, dl.districts
+          deferred.resolve()
+      else if schema.districts? and schema.groups?
+        NMIS.load_districts schema.groups, schema.districts
+        deferred.resolve()
+      else
+        deferred.fail()
+    deferred
 
   NMIS.load_schema = load_schema
 

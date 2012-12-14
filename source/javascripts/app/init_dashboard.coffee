@@ -131,4 +131,4 @@ NMIS._data_src_root_url = data_src
   @redirect "#{NMIS.url_root}"
 
 # After document has loaded, load "schema" and when that is complete, run sammy.
-$ -> NMIS.load_schema data_src, ()-> dashboard.run()
+$ -> NMIS.load_schema(data_src).done ()-> dashboard.run()
