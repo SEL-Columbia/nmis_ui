@@ -389,7 +389,7 @@ do ->
 
       occurrences
     sectorSlugAsArray = (sector, slug, keys) ->
-      occurrences = sectorSlug.apply(this, arguments_)
+      occurrences = sectorSlug.apply(this, arguments)
       keys = _.keys(occurrences).sort()  if keys is `undefined`
       _(keys).map (key) ->
         occurrences: "" + key
