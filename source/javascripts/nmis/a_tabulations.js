@@ -399,19 +399,26 @@ NMIS.DisplayWindow = DisplayWindow;
         return true;
     }
 
+    //uses: Sectors
     NMIS.loadSectors = function(_sectors, opts){
         Sectors.init(_sectors, opts);
     }
+
+    //uses: data
     NMIS.loadFacilities = function(_data, opts) {
         _.each(_data, function(val, key){
             var id = val._id || key;
             data[id] = cloneParse(val);
         });
     }
+
+    //uses: data
     NMIS.clear = function() {
         data = [];
         Sectors.clear();
     }
+
+    //uses: Sectors, data
     NMIS.validateData = function() {
         Sectors.validate();
         _(data).each(function(datum){
@@ -427,6 +434,8 @@ NMIS.DisplayWindow = DisplayWindow;
         });
         return true;
     }
+
+    //uses: _s
     var _s;
     NMIS.activeSector = function (s) {
         if(s===undefined) {
@@ -436,8 +445,9 @@ NMIS.DisplayWindow = DisplayWindow;
         }
     }
 
+    //uses: Sectors
     function cloneParse(d) {
-        var datum = _.clone(d);
+      var datum = _.clone(d);
     	if(datum.gps===undefined) {
     	    datum._ll = false;
     	} else {
@@ -448,12 +458,16 @@ NMIS.DisplayWindow = DisplayWindow;
     	datum.sector = Sectors.pluck(sslug);
     	return datum;
     }
+
+    //uses: Sectors, data
     NMIS.dataForSector = function(sectorSlug) {
         var sector = Sectors.pluck(sectorSlug);
         return _(data).filter(function(datum, id){
             return datum.sector.slug === sector.slug;
         });
     }
+
+    //uses: Sectors, data
     NMIS.dataObjForSector = function(sectorSlug) {
         var sector = Sectors.pluck(sectorSlug);
         var o = {};
@@ -464,6 +478,8 @@ NMIS.DisplayWindow = DisplayWindow;
         });
         return o;
     }
+
+    //uses: data
     NMIS.data = function(){
       return data;
     };
