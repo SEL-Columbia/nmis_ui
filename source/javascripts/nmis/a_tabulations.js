@@ -1,6 +1,4 @@
 (function(){
-    var data, opts;
-
 var Sectors = (function(){
     var sectors, defaultSector;
     function changeKey(o, key) {
@@ -134,6 +132,11 @@ var Sectors = (function(){
     };
 })();
 NMIS.Sectors = Sectors;
+})();
+
+
+(function(){
+    var data, opts;
 
     //uses: data, opts
     NMIS.init = function(_data, _opts) {
@@ -164,9 +167,9 @@ NMIS.Sectors = Sectors;
         return true;
     }
 
-    //uses: Sectors
+    //uses: NMIS.Sectors
     NMIS.loadSectors = function(_sectors, opts){
-        Sectors.init(_sectors, opts);
+        NMIS.Sectors.init(_sectors, opts);
     }
 
     //uses: data
@@ -180,12 +183,12 @@ NMIS.Sectors = Sectors;
     //uses: data
     NMIS.clear = function() {
         data = [];
-        Sectors.clear();
+        NMIS.Sectors.clear();
     }
 
-    //uses: Sectors, data
+    //uses: NMIS.Sectors, data
     NMIS.validateData = function() {
-        Sectors.validate();
+        NMIS.Sectors.validate();
         _(data).each(function(datum){
           if(datum._uid === undefined) {
               datum._uid = _.uniqueId('fp');
@@ -210,7 +213,7 @@ NMIS.Sectors = Sectors;
         }
     }
 
-    //uses: Sectors
+    //uses: NMIS.Sectors
     function cloneParse(d) {
       var datum = _.clone(d);
     	if(datum.gps===undefined) {
@@ -220,21 +223,21 @@ NMIS.Sectors = Sectors;
     	    datum._ll = [ll[0], ll[1]];
     	}
     	var sslug = datum.sector.toLowerCase();
-    	datum.sector = Sectors.pluck(sslug);
+    	datum.sector = NMIS.Sectors.pluck(sslug);
     	return datum;
     }
 
-    //uses: Sectors, data
+    //uses: NMIS.Sectors, data
     NMIS.dataForSector = function(sectorSlug) {
-        var sector = Sectors.pluck(sectorSlug);
+        var sector = NMIS.Sectors.pluck(sectorSlug);
         return _(data).filter(function(datum, id){
             return datum.sector.slug === sector.slug;
         });
     }
 
-    //uses: Sectors, data
+    //uses: NMIS.Sectors, data
     NMIS.dataObjForSector = function(sectorSlug) {
-        var sector = Sectors.pluck(sectorSlug);
+        var sector = NMIS.Sectors.pluck(sectorSlug);
         var o = {};
         _(data).each(function(datum, id){
             if(datum.sector.slug === sector.slug) {
