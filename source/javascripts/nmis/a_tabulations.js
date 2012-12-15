@@ -370,6 +370,7 @@ var DisplayWindow = (function(){
 NMIS.DisplayWindow = DisplayWindow;
 
 
+    //uses: data, opts
     NMIS.init = function(_data, _opts) {
         opts = _.extend({
             iconSwitcher: true,
@@ -411,21 +412,19 @@ NMIS.DisplayWindow = DisplayWindow;
         data = [];
         Sectors.clear();
     }
-    function ensureUniqueId(datum) {
-        if(datum._uid === undefined) {
-            datum._uid = _.uniqueId('fp');
-        }
-    }
-    function ensureLatLng(datum) {
-        if(datum._latlng === undefined && datum.gps !== undefined) {
-            var llArr = datum.gps.split(' ');
-            datum._latlng = [ llArr[0], llArr[1] ];
-        }
-    }
     NMIS.validateData = function() {
         Sectors.validate();
-        _(data).each(ensureUniqueId);
-        _(data).each(ensureLatLng);
+        _(data).each(function(datum){
+          if(datum._uid === undefined) {
+              datum._uid = _.uniqueId('fp');
+          }
+        });
+        _(data).each(function(datum){
+          if(datum._latlng === undefined && datum.gps !== undefined) {
+              var llArr = datum.gps.split(' ');
+              datum._latlng = [ llArr[0], llArr[1] ];
+          }
+        });
         return true;
     }
     var _s;
