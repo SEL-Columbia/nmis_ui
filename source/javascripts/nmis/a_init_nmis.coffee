@@ -11,6 +11,94 @@ _.templateSettings =
 
 do ->
   ###
+  This is the abdomen of the NMIS code. NMIS.init() initializes "data" and "opts"
+  which were used a lot in the early versions.
+
+  Many modules still access [facility-]data through NMIS.data()
+
+  opts has more-or-less been replaced by NMIS.Env()
+  ###
+  data = false
+  opts = false
+
+  NMIS.init = (_data, _opts) ->
+    opts = _.extend(
+      iconSwitcher: true
+      sectors: false
+    , _opts)
+    data = {}
+    NMIS.loadSectors opts.sectors  unless not opts.sectors
+    NMIS.loadFacilities _data
+    if opts.iconSwitcher
+      NMIS.IconSwitcher.init
+        items: data
+        statusShiftDone: ->
+          tally = {}
+          _.each @items, (item) ->
+            tally[item.status] = 0  unless tally[item.status]
+            tally[item.status]++
+    true
+
+  NMIS.loadSectors = (_sectors, opts) ->
+    NMIS.Sectors.init _sectors, opts
+
+  cloneParse = (d) ->
+    datum = _.clone(d)
+    if datum.gps is `undefined`
+      datum._ll = false
+    else
+      ll = datum.gps.split(" ")
+      datum._ll = [ll[0], ll[1]]
+    sslug = datum.sector.toLowerCase()
+    datum.sector = NMIS.Sectors.pluck(sslug)
+    datum
+  NMIS.loadFacilities = (_data, opts) ->
+    _.each _data, (val, key) ->
+      id = val._id or key
+      data[id] = cloneParse(val)
+
+
+  NMIS.clear = ->
+    data = []
+    NMIS.Sectors.clear()
+
+  NMIS.validateData = ->
+    NMIS.Sectors.validate()
+    _(data).each (datum) ->
+      datum._uid = _.uniqueId("fp")  if datum._uid is `undefined`
+
+    _(data).each (datum) ->
+      if datum._latlng is `undefined` and datum.gps isnt `undefined`
+        llArr = datum.gps.split(" ")
+        datum._latlng = [llArr[0], llArr[1]]
+    true
+
+  _s = undefined
+  NMIS.activeSector = (s) ->
+    if s is `undefined`
+      _s
+    else
+      _s = s
+
+  #uses: NMIS.Sectors, data
+  NMIS.dataForSector = (sectorSlug) ->
+    sector = NMIS.Sectors.pluck(sectorSlug)
+    _(data).filter (datum, id) ->
+      datum.sector.slug is sector.slug
+
+  #uses: NMIS.Sectors, data
+  NMIS.dataObjForSector = (sectorSlug) ->
+    sector = NMIS.Sectors.pluck(sectorSlug)
+    o = {}
+    _(data).each (datum, id) ->
+      o[id] = datum  if datum.sector.slug is sector.slug
+    o
+
+  #uses: data
+  NMIS.data = -> data
+
+do ->
+  ###
   the internal "value" function takes a value and returns a 1-2 item list:
   The second returned item (when present) is a class name that should be added
   to the display element.
