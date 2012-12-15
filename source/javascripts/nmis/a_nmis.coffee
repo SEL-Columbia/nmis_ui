@@ -417,4 +417,186 @@ do ->
 
     env_accessor
 
+do ->
+  NMIS.DisplayWindow = do ->
+    elem = undefined
+    elem1 = undefined
+    elem0 = undefined
+    elem1content = undefined
+    opts = undefined
+    visible = undefined
+    hbuttons = undefined
+    titleElems = {}
+    curSize = undefined
+    resizerSet = undefined
+    resized = undefined
+    curTitle = undefined
+
+    init = (_elem, _opts) ->
+      clear()  if opts isnt `undefined`
+      unless resizerSet
+        resizerSet = true
+        $(window).resize resized
+      elem = $("<div />").appendTo($(_elem))
+      #default options:
+      opts = _.extend(
+        height: 100
+        clickSizes: [["full", "Table Only"], ["middle", "Split"], ["minimized", "Map Only"]]
+        size: "middle"
+        sizeCookie: false
+        callbacks: {}
+        visible: false
+        heights:
+          full: Infinity
+          middle: 280
+          minimized: 46
+        allowHide: true
+        padding: 10
+      , _opts)
+
+      elem0 = $("<div />").addClass("elem0").appendTo(elem)
+      elem1 = $("<div />").addClass("elem1").appendTo(elem)
+
+      visible = !!opts.visible
+      setVisibility visible, false
+
+      opts.size = $.cookie("displayWindowSize") or opts.size  if opts.sizeCookie
+      elem.addClass "display-window-wrap"
+      elem1.addClass "display-window-content"
+      createHeaderBar().appendTo elem1
+      elem1content = $("<div />").addClass("elem1-content").appendTo(elem1)
+
+      setSize opts.size
+
+    setDWHeight = (height) ->
+      if height is `undefined`
+        height = "auto"
+      else height = fullHeight()  if height is "calculate"
+      elem.height height
+      elem0.height height
+    setTitle = (t, tt) ->
+      _.each titleElems, (e) -> e.text t
+      if tt isnt `undefined`
+        $("head title").text "NMIS: " + tt
+      else
+        $("head title").text "NMIS: " + t
+    showTitle = (i) ->
+      curTitle = i
+      _.each titleElems, (e, key) ->
+        if key is i
+          e.show()
+        else
+          e.hide()
+
+    addCallback = (cbname, cb) ->
+      opts.callbacks[cbname] = []  if opts.callbacks[cbname] is `undefined`
+      opts.callbacks[cbname].push cb
+
+    setBarHeight = (h, animate, cb) ->
+      if animate
+        elem1.animate
+          height: h
+        ,
+          duration: 200
+          complete: cb
+
+      else
+        elem1.css height: h
+        (cb or ->
+        )()
+
+    setSize = (_size, animate) ->
+      size = undefined
+      if opts.heights[_size] isnt `undefined`
+        size = opts.heights[_size]
+        size = fullHeight()  if size is Infinity
+        $.cookie "displayWindowSize", _size
+        setBarHeight size, animate, ->
+          elem1.removeClass "size-" + curSize  unless not curSize
+          elem1.addClass "size-" + _size
+          curSize = _size
+
+      if opts.callbacks[_size] isnt `undefined`
+        _.each opts.callbacks[_size], (cb) ->
+          cb animate
+
+      if opts.callbacks.resize isnt `undefined`
+        _.each opts.callbacks.resize, (cb) ->
+          cb animate, _size, elem, elem1, elem1content
+
+      hbuttons.find(".primary").removeClass "primary"
+      hbuttons.find(".clicksize." + _size).addClass "primary"
+    setVisibility = (tf) ->
+      css = {}
+      unless tf
+        css =
+          left: "1000em"
+          display: "none"
+      else
+        css =
+          left: "0"
+          display: "block"
+      elem0.css css
+      elem1.css css
+    addTitle = (key, jqElem) ->
+      titleElems[key] = jqElem
+      showTitle key  if curTitle is key
+    createHeaderBar = ->
+      hbuttons = $("<span />") #.addClass('print-hide-inline');
+      _.each opts.clickSizes, (sizeArr) ->
+        size = sizeArr[0]
+        desc = sizeArr[1]
+        $("<a />").attr("class", "btn small clicksize " + size).text(desc).attr("title", desc).click(->
+          setSize size, false
+        ).appendTo hbuttons
+
+      titleElems.bar = $("<h3 />").addClass("bar-title").hide()
+      $("<div />",
+        class: "display-window-bar breadcrumb"
+      ).css(margin: 0).append(titleElems.bar).append hbuttons
+
+    clear = ->
+      elem isnt `undefined` and elem.empty()
+      titleElems = {}
+
+    getElems = ->
+      wrap: elem
+      elem0: elem0
+      elem1: elem1
+      elem1content: elem1content
+
+    fullHeight = ->
+      # gets the available height of the DisplayWindow wrap (everything except the header.)
+      oh = 0
+      $(opts.offsetElems).each -> oh += $(this).height()
+      $(window).height() - oh - opts.padding
+
+    elem1contentHeight = ->
+      padding = 30
+      elem1.height() - hbuttons.height() - padding
+
+    resized = _.throttle(->
+      if curSize isnt "full"
+        fh = fullHeight()
+        elem.stop true, false
+        elem.animate height: fh
+        elem0.stop true, false
+        elem0.animate height: fh
+    , 1000)
+
+    init: init
+    clear: clear
+    setSize: setSize
+    getSize: ->
+      curSize
+
+    setVisibility: setVisibility
+    addCallback: addCallback
+    setDWHeight: setDWHeight
+    addTitle: addTitle
+    setTitle: setTitle
+    showTitle: showTitle
+    elem1contentHeight: elem1contentHeight
+    getElems: getElems
+
 #
