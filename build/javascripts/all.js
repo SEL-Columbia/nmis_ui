@@ -20,6 +20,120 @@ independently testable modules.
 
   (function() {
     /*
+      This is the abdomen of the NMIS code. NMIS.init() initializes "data" and "opts"
+      which were used a lot in the early versions.
+    
+      Many modules still access [facility-]data through NMIS.data()
+    
+      opts has more-or-less been replaced by NMIS.Env()
+    */
+
+    var cloneParse, data, opts, _s;
+    data = false;
+    opts = false;
+    NMIS.init = function(_data, _opts) {
+      opts = _.extend({
+        iconSwitcher: true,
+        sectors: false
+      }, _opts);
+      data = {};
+      if (!!opts.sectors) {
+        NMIS.loadSectors(opts.sectors);
+      }
+      NMIS.loadFacilities(_data);
+      if (opts.iconSwitcher) {
+        NMIS.IconSwitcher.init({
+          items: data,
+          statusShiftDone: function() {
+            var tally;
+            tally = {};
+            return _.each(this.items, function(item) {
+              if (!tally[item.status]) {
+                tally[item.status] = 0;
+              }
+              return tally[item.status]++;
+            });
+          }
+        });
+      }
+      return true;
+    };
+    NMIS.loadSectors = function(_sectors, opts) {
+      return NMIS.Sectors.init(_sectors, opts);
+    };
+    cloneParse = function(d) {
+      var datum, ll, sslug;
+      datum = _.clone(d);
+      if (datum.gps === undefined) {
+        datum._ll = false;
+      } else {
+        ll = datum.gps.split(" ");
+        datum._ll = [ll[0], ll[1]];
+      }
+      sslug = datum.sector.toLowerCase();
+      datum.sector = NMIS.Sectors.pluck(sslug);
+      return datum;
+    };
+    NMIS.loadFacilities = function(_data, opts) {
+      return _.each(_data, function(val, key) {
+        var id;
+        id = val._id || key;
+        return data[id] = cloneParse(val);
+      });
+    };
+    NMIS.clear = function() {
+      data = [];
+      return NMIS.Sectors.clear();
+    };
+    NMIS.validateData = function() {
+      NMIS.Sectors.validate();
+      _(data).each(function(datum) {
+        if (datum._uid === undefined) {
+          return datum._uid = _.uniqueId("fp");
+        }
+      });
+      _(data).each(function(datum) {
+        var llArr;
+        if (datum._latlng === undefined && datum.gps !== undefined) {
+          llArr = datum.gps.split(" ");
+          return datum._latlng = [llArr[0], llArr[1]];
+        }
+      });
+      return true;
+    };
+    _s = void 0;
+    NMIS.activeSector = function(s) {
+      if (s === undefined) {
+        return _s;
+      } else {
+        return _s = s;
+      }
+    };
+    NMIS.dataForSector = function(sectorSlug) {
+      var sector;
+      sector = NMIS.Sectors.pluck(sectorSlug);
+      return _(data).filter(function(datum, id) {
+        return datum.sector.slug === sector.slug;
+      });
+    };
+    NMIS.dataObjForSector = function(sectorSlug) {
+      var o, sector;
+      sector = NMIS.Sectors.pluck(sectorSlug);
+      o = {};
+      _(data).each(function(datum, id) {
+        if (datum.sector.slug === sector.slug) {
+          return o[id] = datum;
+        }
+      });
+      return o;
+    };
+    return NMIS.data = function() {
+      return data;
+    };
+  })();
+
+  (function() {
+    /*
       the internal "value" function takes a value and returns a 1-2 item list:
       The second returned item (when present) is a class name that should be added
       to the display element.
@@ -710,7 +824,7 @@ until they play well together (and I ensure they don't over-depend on other modu
       };
       sectorSlugAsArray = function(sector, slug, keys) {
         var occurrences;
-        occurrences = sectorSlug.apply(this, arguments_);
+        occurrences = sectorSlug.apply(this, arguments);
         if (keys === undefined) {
           keys = _.keys(occurrences).sort();
         }
@@ -756,367 +870,227 @@ until they play well together (and I ensure they don't over-depend on other modu
     })();
   })();
 
-}).call(this);
-(function(){
-    var data, opts;
-
-var Sectors = (function(){
-    var sectors, defaultSector;
-    function changeKey(o, key) {
-        o['_' + key] = o[key];
-        delete(o[key]);
-        return o;
-    }
-    function Sector(d){
-        changeKey(d, 'subgroups');
-        changeKey(d, 'columns');
-        changeKey(d, 'default');
-        $.extend(this, d);
-    }
-    Sector.prototype.subGroups = function() {
-        if(!this._subgroups) { return []; }
-        return this._subgroups;
-    }
-    Sector.prototype.subSectors = function() {
-        return this.subGroups();
-    }
-    Sector.prototype.getColumns = function() {
-        if(!this._columns) { return []; }
-        function displayOrderSort(a,b) { return (a.display_order > b.display_order) ? 1 : -1 }
-        return this._columns.sort(displayOrderSort);
-    }
-    Sector.prototype.columnsInSubGroup = function(sgSlug) {
-        return _.filter(this.getColumns(), function(sg){
-            return !!_.find(sg.subgroups, function(f){return f==sgSlug});
-        });
-    }
-    Sector.prototype.getIndicators = function() {
-        return this._columns || [];
-    }
-    Sector.prototype.isDefault = function() {
-        return !!this._default;
-    }
-    Sector.prototype.getSubsector = function(query) {
-        if(!query) { return; }
-        var ssSlug = query.slug || query;
-        var ssI = 0, ss = this.subSectors(), ssL = ss.length;
-        for(;ssI < ssL; ssI++) {
-            if(ss[ssI].slug === ssSlug) {
-                return new SubSector(this, ss[ssI]);
-            }
+  (function() {
+    return NMIS.DisplayWindow = (function() {
+      var addCallback, addTitle, clear, createHeaderBar, curSize, curTitle, elem, elem0, elem1, elem1content, elem1contentHeight, fullHeight, getElems, hbuttons, init, opts, resized, resizerSet, setBarHeight, setDWHeight, setSize, setTitle, setVisibility, showTitle, titleElems, visible;
+      elem = void 0;
+      elem1 = void 0;
+      elem0 = void 0;
+      elem1content = void 0;
+      opts = void 0;
+      visible = void 0;
+      hbuttons = void 0;
+      titleElems = {};
+      curSize = void 0;
+      resizerSet = void 0;
+      resized = void 0;
+      curTitle = void 0;
+      init = function(_elem, _opts) {
+        if (opts !== undefined) {
+          clear();
         }
-    }
-    Sector.prototype.getIndicator = function(query) {
-        if(!query) { return; }
-        var islug = query.slug || query;
-        var ssI = 0, ss = this.getIndicators(), ssL = ss.length;
-        for(;ssI < ssL; ssI++) {
-            if(ss[ssI].slug === islug) {
-                return new Indicator(this, ss[ssI]);
-            }
+        if (!resizerSet) {
+          resizerSet = true;
+          $(window).resize(resized);
         }
-    }
-    //
-    // The Indicator ans SubSector objects might be unnecessary.
-    // We can see if the provide any benefit at some point down the line.
-    //
-    function SubSector(sector, opts) {
-        this.sector = sector;
-        _.extend(this, opts);
-    }
-    SubSector.prototype.columns = function(){
-        var _ssSlug = this.slug;
-        return _.filter(this.sector.getColumns(), function(t){
-            return !!_.find(t.subgroups, function(tt){return tt==_ssSlug;})
-        });
-    };
-    function Indicator(sector, opts) {
-        this.sector = sector;
-        _.extend(this, opts);
-    }
-    Indicator.prototype.customIconForItem = function(item) {
-        return [this.iconify_png_url+item[this.slug]+".png", 32, 24];
-    }
-    function init(_sectors, opts) {
-        if(!!opts && !!opts['default']) {
-            defaultSector = new Sector(_.extend(opts['default'], {'default': true}));
-        }
-        sectors = _(_sectors).chain()
-                        .clone()
-                        .map(function(s){return new Sector(_.extend({}, s));})
-                        .value();
-        return true;
-    }
-    function clear() {
-        sectors = [];
-    }
-    function pluck(slug) {
-        return _(sectors).chain()
-                .filter(function(s){return s.slug == slug;})
-                .first()
-                .value() || defaultSector;
-    }
-    function all() {
-        return sectors;
-    }
-    function validate() {
-        if(!sectors instanceof Array)
-            warn("Sectors must be defined as an array");
-        if(sectors.length===0)
-            warn("Sectors array is empty");
-        _.each(sectors, function(sector){
-            if(sector.name === undefined) { warn("Sector name must be defined."); }
-            if(sector.slug === undefined) { warn("Sector slug must be defined."); }
-        });
-        var slugs = _(sectors).pluck('slug');
-        if(slugs.length !== _(slugs).uniq().length) {
-            warn("Sector slugs must not be reused");
-        }
-        // $(this.columns).each(function(i, val){
-        //   var name = val.name;
-        //   var slug = val.slug;
-        //   name === undefined && warn("Each column needs a slug", this);
-        //   slug === undefined && warn("Each column needs a name", this);
-        // });
-        return true;
-    }
-    function slugs() {
-        return _.pluck(sectors, 'slug');
-    }
-    return {
-        init: init,
-        pluck: pluck,
-        slugs: slugs,
-        all: all,
-        validate: validate,
-        clear: clear
-    };
-})();
-NMIS.Sectors = Sectors;
-
-
-var DisplayWindow = (function(){
-    var elem, elem1, elem0, elem1content;
-    var opts;
-    var visible;
-    var hbuttons;
-    var titleElems = {};
-    var curSize;
-    var resizerSet;
-    function init(_elem, _opts) {
-        if(opts !== undefined) { clear(); }
-        if(!resizerSet) {resizerSet=true; $(window).resize(resized);}
-        elem = $('<div />').appendTo($(_elem));
+        elem = $("<div />").appendTo($(_elem));
         opts = _.extend({
-            //default options:
-            height: 100,
-            clickSizes: [
-                ['full', 'Table Only'],
-                ['middle', 'Split'],
-                ['minimized', 'Map Only']
-            ],
-            size: 'middle',
-            sizeCookie: false,
-            callbacks: {},
-            visible: false,
-            heights: {
-                full: Infinity,
-                middle: 280,
-                minimized: 46
-            },
-            allowHide: true,
-            padding: 10
+          height: 100,
+          clickSizes: [["full", "Table Only"], ["middle", "Split"], ["minimized", "Map Only"]],
+          size: "middle",
+          sizeCookie: false,
+          callbacks: {},
+          visible: false,
+          heights: {
+            full: Infinity,
+            middle: 280,
+            minimized: 46
+          },
+          allowHide: true,
+          padding: 10
         }, _opts);
-        elem0 = $('<div />')
-            .addClass('elem0')
-            .appendTo(elem);
-        elem1 = $('<div />')
-            .addClass('elem1')
-            .appendTo(elem);
+        elem0 = $("<div />").addClass("elem0").appendTo(elem);
+        elem1 = $("<div />").addClass("elem1").appendTo(elem);
         visible = !!opts.visible;
         setVisibility(visible, false);
-        if(opts.sizeCookie) {
-            opts.size = $.cookie("displayWindowSize") || opts.size;
+        if (opts.sizeCookie) {
+          opts.size = $.cookie("displayWindowSize") || opts.size;
         }
-
-        elem.addClass('display-window-wrap');
-        elem1.addClass('display-window-content');
-
-        createHeaderBar()
-            .appendTo(elem1);
-        elem1content = $('<div />')
-            .addClass('elem1-content')
-            .appendTo(elem1);
-        setSize(opts.size);
-    }
-    var resized = _.throttle(function(){
-        if(curSize!=="full") {
-            var fh = fullHeight();
-            elem.stop(true, false);
-            elem.animate({height: fh});
-            elem0.stop(true, false);
-            elem0.animate({height: fh});
-        }
-    }, 1000);
-    function setDWHeight(height) {
-        if (height===undefined) {
-            height = 'auto';
-        } else if (height === "calculate") {
+        elem.addClass("display-window-wrap");
+        elem1.addClass("display-window-content");
+        createHeaderBar().appendTo(elem1);
+        elem1content = $("<div />").addClass("elem1-content").appendTo(elem1);
+        return setSize(opts.size);
+      };
+      setDWHeight = function(height) {
+        if (height === undefined) {
+          height = "auto";
+        } else {
+          if (height === "calculate") {
             height = fullHeight();
+          }
         }
         elem.height(height);
-        elem0.height(height);
-    }
-    function setTitle(t, tt) {
-        _.each(titleElems, function(e){
-            e.text(t);
+        return elem0.height(height);
+      };
+      setTitle = function(t, tt) {
+        _.each(titleElems, function(e) {
+          return e.text(t);
         });
-        if(tt!== undefined) {
-            $('head title').text('NMIS: '+ tt);
+        if (tt !== undefined) {
+          return $("head title").text("NMIS: " + tt);
         } else {
-            $('head title').text('NMIS: '+ t);
+          return $("head title").text("NMIS: " + t);
         }
-    }
-    var curTitle;
-    function showTitle(i) {
+      };
+      showTitle = function(i) {
         curTitle = i;
-        _.each(titleElems, function(e, key){
-            if(key===i) {
-                e.show();
-            } else {
-                e.hide();
-            }
+        return _.each(titleElems, function(e, key) {
+          if (key === i) {
+            return e.show();
+          } else {
+            return e.hide();
+          }
         });
-    }
-    function addCallback(cbname, cb) {
-        if(opts.callbacks[cbname]===undefined) {
-            opts.callbacks[cbname] = [];
+      };
+      addCallback = function(cbname, cb) {
+        if (opts.callbacks[cbname] === undefined) {
+          opts.callbacks[cbname] = [];
         }
-        opts.callbacks[cbname].push(cb);
-    }
-    function setBarHeight(h, animate, cb) {
-        if(animate) {
-            elem1.animate({
-                height: h
-            }, {
-                duration: 200,
-                complete: cb
-            });
+        return opts.callbacks[cbname].push(cb);
+      };
+      setBarHeight = function(h, animate, cb) {
+        if (animate) {
+          return elem1.animate({
+            height: h
+          }, {
+            duration: 200,
+            complete: cb
+          });
         } else {
-            elem1.css({
-                height: h
-            });
-            (cb || function(){})();
+          elem1.css({
+            height: h
+          });
+          return (cb || function() {})();
         }
-    }
-    // var prevSize, sizeTempSet = false;
-    // function setTempSize(size, animate) {
-    //     prevSize = curSize;
-    //     sizeTempSet = true;
-    //     setSize(size, animate);
-    // }
-    // function unsetTempSize(animate) {
-    //     if(sizeTempSet) {
-    //         setSize(prevSize, animate);
-    //         prevSize = undefined;
-    //         sizeTempSet = false;
-    //     }
-    // }
-    function setSize(_size, animate) {
+      };
+      setSize = function(_size, animate) {
         var size;
-        if(opts.heights[_size] !== undefined) {
-            size = opts.heights[_size];
-            if(size === Infinity) {
-                size = fullHeight();
+        size = void 0;
+        if (opts.heights[_size] !== undefined) {
+          size = opts.heights[_size];
+          if (size === Infinity) {
+            size = fullHeight();
+          }
+          $.cookie("displayWindowSize", _size);
+          setBarHeight(size, animate, function() {
+            if (!!curSize) {
+              elem1.removeClass("size-" + curSize);
             }
-            $.cookie("displayWindowSize", _size);
-            setBarHeight(size, animate, function(){
-                if(!!curSize) elem1.removeClass('size-'+curSize);
-                elem1.addClass('size-'+_size);
-                curSize = _size;
-            });
+            elem1.addClass("size-" + _size);
+            return curSize = _size;
+          });
         }
-        if(opts.callbacks[_size] !== undefined) {
-            _.each(opts.callbacks[_size], function(cb){
-                cb(animate);
-            });
+        if (opts.callbacks[_size] !== undefined) {
+          _.each(opts.callbacks[_size], function(cb) {
+            return cb(animate);
+          });
         }
-        if(opts.callbacks.resize !== undefined) {
-            _.each(opts.callbacks.resize, function(cb){
-                cb(animate, _size, elem, elem1, elem1content);
-            });
+        if (opts.callbacks.resize !== undefined) {
+          _.each(opts.callbacks.resize, function(cb) {
+            return cb(animate, _size, elem, elem1, elem1content);
+          });
         }
-        hbuttons.find('.primary')
-            .removeClass('primary');
-        hbuttons.find('.clicksize.'+_size)
-            .addClass('primary');
-    }
-    function setVisibility(tf) {
-        var css = {};
-        if(!tf) {
-            css = {'left': '1000em', display: 'none'};
+        hbuttons.find(".primary").removeClass("primary");
+        return hbuttons.find(".clicksize." + _size).addClass("primary");
+      };
+      setVisibility = function(tf) {
+        var css;
+        css = {};
+        if (!tf) {
+          css = {
+            left: "1000em",
+            display: "none"
+          };
         } else {
-            css = {'left': '0', display: 'block'};
+          css = {
+            left: "0",
+            display: "block"
+          };
         }
         elem0.css(css);
-        elem1.css(css);
-    }
-    function addTitle(key, jqElem) {
+        return elem1.css(css);
+      };
+      addTitle = function(key, jqElem) {
         titleElems[key] = jqElem;
-        if(curTitle===key) {
-            showTitle(key);
+        if (curTitle === key) {
+          return showTitle(key);
         }
-    }
-    function createHeaderBar() {
-        hbuttons = $('<span />'); //.addClass('print-hide-inline');
-        _.each(opts.clickSizes, function(sizeArr){
-            var size = sizeArr[0],
-                desc = sizeArr[1];
-            $('<a />')
-                .attr('class', 'btn small clicksize ' + size)
-                .text(desc)
-                .attr('title', desc)
-                .click(function(){
-                    setSize(size, false)
-                })
-                .appendTo(hbuttons);
+      };
+      createHeaderBar = function() {
+        hbuttons = $("<span />");
+        _.each(opts.clickSizes, function(sizeArr) {
+          var desc, size;
+          size = sizeArr[0];
+          desc = sizeArr[1];
+          return $("<a />").attr("class", "btn small clicksize " + size).text(desc).attr("title", desc).click(function() {
+            return setSize(size, false);
+          }).appendTo(hbuttons);
         });
-        titleElems.bar = $('<h3 />').addClass('bar-title').hide();
-        return $('<div />', {'class': 'display-window-bar breadcrumb'})
-            .css({'margin':0})
-            .append(titleElems.bar)
-            .append(hbuttons);
-    }
-    function clear(){
+        titleElems.bar = $("<h3 />").addClass("bar-title").hide();
+        return $("<div />", {
+          "class": "display-window-bar breadcrumb"
+        }).css({
+          margin: 0
+        }).append(titleElems.bar).append(hbuttons);
+      };
+      clear = function() {
         elem !== undefined && elem.empty();
-        titleElems = {};
-    }
-    function getElems() {
+        return titleElems = {};
+      };
+      getElems = function() {
         return {
-            wrap: elem,
-            elem0: elem0,
-            elem1: elem1,
-            elem1content: elem1content
-        }
-    }
-    function fullHeight() {
-        // gets the available height of the DisplayWindow wrap (everything except the header.)
-        var oh = 0;
-        $(opts.offsetElems).each(function(){ oh += $(this).height(); });
+          wrap: elem,
+          elem0: elem0,
+          elem1: elem1,
+          elem1content: elem1content
+        };
+      };
+      fullHeight = function() {
+        var oh;
+        oh = 0;
+        $(opts.offsetElems).each(function() {
+          return oh += $(this).height();
+        });
         return $(window).height() - oh - opts.padding;
-    }
-    function elem1contentHeight() {
-        var padding = 30;
+      };
+      elem1contentHeight = function() {
+        var padding;
+        padding = 30;
         return elem1.height() - hbuttons.height() - padding;
-    }
-    return {
+      };
+      resized = _.throttle(function() {
+        var fh;
+        if (curSize !== "full") {
+          fh = fullHeight();
+          elem.stop(true, false);
+          elem.animate({
+            height: fh
+          });
+          elem0.stop(true, false);
+          return elem0.animate({
+            height: fh
+          });
+        }
+      }, 1000);
+      return {
         init: init,
         clear: clear,
         setSize: setSize,
-        getSize: function(){return curSize},
+        getSize: function() {
+          return curSize;
+        },
         setVisibility: setVisibility,
-//        setTempSize: setTempSize,
-//        unsetTempSize: unsetTempSize,
         addCallback: addCallback,
         setDWHeight: setDWHeight,
         addTitle: addTitle,
@@ -1124,110 +1098,11 @@ var DisplayWindow = (function(){
         showTitle: showTitle,
         elem1contentHeight: elem1contentHeight,
         getElems: getElems
-    };
-})();
-NMIS.DisplayWindow = DisplayWindow;
+      };
+    })();
+  })();
 
-
-    NMIS.init = function(_data, _opts) {
-        opts = _.extend({
-            iconSwitcher: true,
-            sectors: false
-        }, _opts);
-        data = {};
-        if(!!opts.sectors) {
-            NMIS.loadSectors(opts.sectors);
-        }
-        NMIS.loadFacilities(_data);
-    	if(opts.iconSwitcher) {
-            NMIS.IconSwitcher.init({
-        	    items: data,
-        	    statusShiftDone: function(){
-        	        var tally = {};
-    	            _.each(this.items, function(item){
-    	                if(!tally[item.status]) {
-    	                    tally[item.status]=0;
-    	                }
-    	                tally[item.status]++;
-    	            });
-//    	            log(JSON.stringify(tally));
-        	    }
-        	});
-        }
-        return true;
-    }
-
-    NMIS.loadSectors = function(_sectors, opts){
-        Sectors.init(_sectors, opts);
-    }
-    NMIS.loadFacilities = function(_data, opts) {
-        _.each(_data, function(val, key){
-            var id = val._id || key;
-            data[id] = cloneParse(val);
-        });
-    }
-    NMIS.clear = function() {
-        data = [];
-        Sectors.clear();
-    }
-    function ensureUniqueId(datum) {
-        if(datum._uid === undefined) {
-            datum._uid = _.uniqueId('fp');
-        }
-    }
-    function ensureLatLng(datum) {
-        if(datum._latlng === undefined && datum.gps !== undefined) {
-            var llArr = datum.gps.split(' ');
-            datum._latlng = [ llArr[0], llArr[1] ];
-        }
-    }
-    NMIS.validateData = function() {
-        Sectors.validate();
-        _(data).each(ensureUniqueId);
-        _(data).each(ensureLatLng);
-        return true;
-    }
-    var _s;
-    NMIS.activeSector = function (s) {
-        if(s===undefined) {
-            return _s;
-        } else {
-            _s = s;
-        }
-    }
-
-    function cloneParse(d) {
-        var datum = _.clone(d);
-    	if(datum.gps===undefined) {
-    	    datum._ll = false;
-    	} else {
-    	    var ll = datum.gps.split(' ');
-    	    datum._ll = [ll[0], ll[1]];
-    	}
-    	var sslug = datum.sector.toLowerCase();
-    	datum.sector = Sectors.pluck(sslug);
-    	return datum;
-    }
-    NMIS.dataForSector = function(sectorSlug) {
-        var sector = Sectors.pluck(sectorSlug);
-        return _(data).filter(function(datum, id){
-            return datum.sector.slug === sector.slug;
-        });
-    }
-    NMIS.dataObjForSector = function(sectorSlug) {
-        var sector = Sectors.pluck(sectorSlug);
-        var o = {};
-        _(data).each(function(datum, id){
-            if(datum.sector.slug === sector.slug) {
-                o[id] = datum;
-            }
-        });
-        return o;
-    }
-    NMIS.data = function(){
-      return data;
-    };
-})();
+}).call(this);
 (function() {
   var DEFAULT_MODULES, District, Group, ModuleFile, headers;
 
@@ -1539,291 +1414,512 @@ NMIS.DisplayWindow = DisplayWindow;
   ModuleFile.DEFAULT_MODULES = DEFAULT_MODULES;
 
 }).call(this);
-var SectorDataTable = (function(){
-    var dt, table;
-    var tableSwitcher;
-    var dataTableDraw = function(){};
-    function createIn(tableWrap, env, _opts) {
-        var opts = _.extend({
-            sScrollY: 120
+(function() {
+
+  (function() {
+    return NMIS.SectorDataTable = (function() {
+      var createIn, dataTableDraw, dt, getSelect, handleHeadRowClick, nullMarker, resizeColumns, setDtMaxHeight, table, tableSwitcher, _createTbody, _createThead;
+      dt = void 0;
+      table = void 0;
+      tableSwitcher = void 0;
+      createIn = function(tableWrap, env, _opts) {
+        var columns, data, dataTableDraw, opts;
+        opts = _.extend({
+          sScrollY: 120
         }, _opts);
-        var data = NMIS.dataForSector(env.sector.slug);
-        if(env.subsector===undefined) {
-            throw(new Error("Subsector is undefined"));
+        data = NMIS.dataForSector(env.sector.slug);
+        if (env.subsector === undefined) {
+          throw new Error("Subsector is undefined");
         }
         env.subsector = env.sector.getSubsector(env.subsector.slug);
-        var columns = env.subsector.columns();
-
-        if(tableSwitcher) {tableSwitcher.remove();}
-        tableSwitcher = $('<select />');
-        _.each(env.sector.subGroups(), function(sg){
-            $('<option />').val(sg.slug).text(sg.name).appendTo(tableSwitcher);
-        });
-        table = $('<table />')
-            .addClass('facility-dt')
-            .append(_createThead(columns))
-            .append(_createTbody(columns, data));
-        tableWrap.append(table);
-        dataTableDraw = function(s){
-            dt = table.dataTable({
-                sScrollY: s,
-                bDestroy: true,
-                bScrollCollapse: false,
-                bPaginate: false,
-                fnDrawCallback: function() {
-                    var newSelectDiv, ts;
-                    $('.dataTables_info', tableWrap).remove();
-                    if($('.dtSelect', tableWrap).get(0)===undefined) {
-                        ts = getSelect();
-                        newSelectDiv = $('<div />', {'class': 'dataTables_filter dtSelect left'})
-                                            .html($('<p />').text("Grouping:").append(ts));
-                        $('.dataTables_filter', tableWrap).parents().eq(0)
-                                .prepend(newSelectDiv);
-                        ts.val(env.subsector.slug);
-                        ts.change(function(){
-                            var ssSlug = $(this).val();
-                            var nextUrl = NMIS.urlFor(_.extend({},
-                                            env,
-                                            {subsector: env.sector.getSubsector(ssSlug)}));
-                            dashboard.setLocation(nextUrl);
-                        });
-                    }
-                }
-            });
-            return tableWrap;
+        columns = env.subsector.columns();
+        if (tableSwitcher) {
+          tableSwitcher.remove();
         }
+        tableSwitcher = $("<select />");
+        _.each(env.sector.subGroups(), function(sg) {
+          return $("<option />").val(sg.slug).text(sg.name).appendTo(tableSwitcher);
+        });
+        table = $("<table />").addClass("facility-dt").append(_createThead(columns)).append(_createTbody(columns, data));
+        tableWrap.append(table);
+        dataTableDraw = function(s) {
+          dt = table.dataTable({
+            sScrollY: s,
+            bDestroy: true,
+            bScrollCollapse: false,
+            bPaginate: false,
+            fnDrawCallback: function() {
+              var newSelectDiv, ts;
+              newSelectDiv = void 0;
+              ts = void 0;
+              $(".dataTables_info", tableWrap).remove();
+              if ($(".dtSelect", tableWrap).get(0) === undefined) {
+                ts = getSelect();
+                newSelectDiv = $("<div />", {
+                  "class": "dataTables_filter dtSelect left"
+                }).html($("<p />").text("Grouping:").append(ts));
+                $(".dataTables_filter", tableWrap).parents().eq(0).prepend(newSelectDiv);
+                ts.val(env.subsector.slug);
+                return ts.change(function() {
+                  var nextUrl, ssSlug;
+                  ssSlug = $(this).val();
+                  nextUrl = NMIS.urlFor(_.extend({}, env, {
+                    subsector: env.sector.getSubsector(ssSlug)
+                  }));
+                  return dashboard.setLocation(nextUrl);
+                });
+              }
+            }
+          });
+          return tableWrap;
+        };
         dataTableDraw(opts.sScrollY);
-        table.delegate('tr', 'click', function(){
-            dashboard.setLocation(NMIS.urlFor(_.extend({}, NMIS.Env(), {facilityId: $(this).data('rowData')})));
+        table.delegate("tr", "click", function() {
+          return dashboard.setLocation(NMIS.urlFor(_.extend({}, NMIS.Env(), {
+            facilityId: $(this).data("rowData")
+          })));
         });
         return table;
-    }
-    function getSelect() {
+      };
+      getSelect = function() {
         return tableSwitcher.clone();
-    }
-    function setDtMaxHeight(ss) {
-        var tw, h1, h2;
+      };
+      setDtMaxHeight = function(ss) {
+        var h1, h2, tw;
+        tw = void 0;
+        h1 = void 0;
+        h2 = void 0;
         tw = dataTableDraw(ss);
-        // console.group("heights");
-        // log("DEST: ", ss);
-        h1 = $('.dataTables_scrollHead', tw).height();
-        // log(".dataTables_scrollHead: ", h);
-        h2 = $('.dataTables_filter', tw).height();
-        // log(".dataTables_filter: ", h2);
+        h1 = $(".dataTables_scrollHead", tw).height();
+        h2 = $(".dataTables_filter", tw).height();
         ss = ss - (h1 + h2);
-        // log("sScrollY: ", ss);
-        dataTableDraw(ss);
-        // log(".dataTables_wrapper: ", $('.dataTables_wrapper').height());
-        // console.groupEnd();
-    }
-    function handleHeadRowClick() {
-        var column = $(this).data('column');
-        var indicatorSlug = column.slug;
-        if(!!indicatorSlug) {
-            var newEnv = _.extend({}, NMIS.Env(), {
-                indicator: indicatorSlug
-            });
-            if(!newEnv.subsector) {
-                newEnv.subsector = _.first(newEnv.sector.subGroups());
-            }
-            var newUrl = NMIS.urlFor(newEnv);
-            dashboard.setLocation(newUrl);
+        return dataTableDraw(ss);
+      };
+      handleHeadRowClick = function() {
+        var column, indicatorSlug, newEnv, newUrl;
+        column = $(this).data("column");
+        indicatorSlug = column.slug;
+        if (!!indicatorSlug) {
+          newEnv = _.extend({}, NMIS.Env(), {
+            indicator: indicatorSlug
+          });
+          if (!newEnv.subsector) {
+            newEnv.subsector = _.first(newEnv.sector.subGroups());
+          }
+          newUrl = NMIS.urlFor(newEnv);
+          return dashboard.setLocation(newUrl);
         }
-    }
-    function _createThead(cols) {
-        var row = $('<tr />');
-        var startsWithType = cols[0].name=="Type";
-        _.each(cols, function(col, ii){
-            if(ii===1 && !startsWithType) {
-                $('<th />').text('Type').appendTo(row);
-            }
-            row.append($('<th />').text(col.name).data('column', col));
+      };
+      _createThead = function(cols) {
+        var row, startsWithType;
+        row = $("<tr />");
+        startsWithType = cols[0].name === "Type";
+        _.each(cols, function(col, ii) {
+          if (ii === 1 && !startsWithType) {
+            $("<th />").text("Type").appendTo(row);
+          }
+          return row.append($("<th />").text(col.name).data("column", col));
         });
-        row.delegate('th', 'click', handleHeadRowClick);
-        return $('<thead />').html(row);
-    }
-    function nullMarker() {
-        return $('<span />').html('&mdash;').addClass('null-marker');
-    }
-    function resizeColumns() {
-        if(!!dt) dt.fnAdjustColumnSizing();
-    }
-    function _createTbody(cols, rows) {
-        var tbody = $('<tbody />');
-        _.each(rows, function(r){
-            var row = $('<tr />');
-            if (r._id === undefined) {
-              console.error("Facility does not have '_id' defined:", r);
-            } else {
-              row.data("row-data", r._id);
+        row.delegate("th", "click", handleHeadRowClick);
+        return $("<thead />").html(row);
+      };
+      nullMarker = function() {
+        return $("<span />").html("&mdash;").addClass("null-marker");
+      };
+      resizeColumns = function() {
+        if (!!dt) {
+          return dt.fnAdjustColumnSizing();
+        }
+      };
+      _createTbody = function(cols, rows) {
+        var tbody;
+        tbody = $("<tbody />");
+        _.each(rows, function(r) {
+          var row, startsWithType;
+          row = $("<tr />");
+          if (r._id === undefined) {
+            console.error("Facility does not have '_id' defined:", r);
+          } else {
+            row.data("row-data", r._id);
+          }
+          startsWithType = cols[0].name === "Type";
+          _.each(cols, function(c, ii) {
+            var ftype, td, z;
+            if (ii === 1 && !startsWithType) {
+              ftype = r.facility_type || r.education_type || r.water_source_type || "unk";
+              $("<td />").attr("title", ftype).addClass("type-icon").html($("<span />").addClass("icon").addClass(ftype).html($("<span />").text(ftype))).appendTo(row);
             }
-            var startsWithType = cols[0].name=="Type";
-            _.each(cols, function(c, ii){
-                // quick fixes in this function scope will need to be redone.
-                if(ii===1 && !startsWithType) {
-                    var ftype = r.facility_type || r.education_type || r.water_source_type || "unk";
-                    $('<td />').attr('title', ftype).addClass('type-icon').html($('<span />').addClass('icon').addClass(ftype).html($('<span />').text(ftype))).appendTo(row);
-                }
-                var z = r[c.slug] || nullMarker();
-                // if(!NMIS.DisplayValue) throw new Error("No DisplayValue")
-                var td = NMIS.DisplayValue.inTdElem(r, c, $('<td />'));
-                row.append(td);
-            });
-            tbody.append(row);
+            z = r[c.slug] || nullMarker();
+            td = NMIS.DisplayValue.inTdElem(r, c, $("<td />"));
+            return row.append(td);
+          });
+          return tbody.append(row);
         });
         return tbody;
-    }
-    return {
+      };
+      dataTableDraw = function() {};
+      return {
         createIn: createIn,
         setDtMaxHeight: setDtMaxHeight,
         getSelect: getSelect,
         resizeColumns: resizeColumns
-    }
-})();
+      };
+    })();
+  })();
 
-var FacilityTables = (function(){
-    var div;
-    function createForSectors(sArr, _opts) {
-        var opts = _.extend({
-            //default options
-            callback: function(){},
-            sectorCallback: function(){},
-            indicatorClickCallback: function(){}
+  (function() {
+    return NMIS.FacilityTables = (function() {
+      var classesStr, createForSector, createForSectors, div, hasClickAction, highlightColumn, sectorNav, select, _createHeadRow, _createNavigation, _createRow;
+      div = void 0;
+      sectorNav = void 0;
+      createForSectors = function(sArr, _opts) {
+        var opts;
+        opts = _.extend({
+          callback: function() {},
+          sectorCallback: function() {},
+          indicatorClickCallback: function() {}
         }, _opts);
-        if(div===undefined) {
-            div = $('<div />').addClass('facility-display-wrap');
+        if (div === undefined) {
+          div = $("<div />").addClass("facility-display-wrap");
         }
         div.empty();
-        _.each(sArr, function(s){
-            div.append(createForSector(s, opts));
+        _.each(sArr, function(s) {
+          return div.append(createForSector(s, opts));
         });
-        if(opts.callback) {
-            opts.callback.call(this, div);
+        if (opts.callback) {
+          opts.callback.call(this, div);
         }
         return div;
-    }
-    function select(sector, subsector) {
-        if(sectorNav!==undefined) {
-            sectorNav.find('a.active').removeClass('active');
-            sectorNav.find('.sub-sector-link-' + subsector.slug)
-                .addClass('active')
+      };
+      select = function(sector, subsector) {
+        var sectorElem;
+        if (sectorNav !== undefined) {
+          sectorNav.find("a.active").removeClass("active");
+          sectorNav.find(".sub-sector-link-" + subsector.slug).addClass("active");
         }
-        div.find('td, th').hide();
-        var sectorElem = div.find('.facility-display').filter(function(){
-            return $(this).data('sector') === sector.slug;
+        div.find("td, th").hide();
+        sectorElem = div.find(".facility-display").filter(function() {
+          return $(this).data("sector") === sector.slug;
         }).eq(0);
-        sectorElem.find('.subgroup-all, .subgroup-'+subsector.slug).show();
-    }
-    function createForSector(s, opts) {
-        var tbody = $('<tbody />');
-        var sector = NMIS.Sectors.pluck(s);
-        var iDiv = $('<div />')
-                        .addClass('facility-display')
-                        .data('sector', sector.slug);
-        var cols = sector.getColumns().sort(function(a,b){return a.display_order-b.display_order;});
-
-        var orderedFacilities = NMIS.dataForSector(sector.slug);
-        var dobj = NMIS.dataObjForSector(sector.slug);
-        _.each(dobj, function(facility, fid){
-            _createRow(facility, cols, fid)
-                .appendTo(tbody);
+        return sectorElem.find(".subgroup-all, .subgroup-" + subsector.slug).show();
+      };
+      createForSector = function(s, opts) {
+        var cols, dobj, iDiv, orderedFacilities, sector, tbody;
+        tbody = $("<tbody />");
+        sector = NMIS.Sectors.pluck(s);
+        iDiv = $("<div />").addClass("facility-display").data("sector", sector.slug);
+        cols = sector.getColumns().sort(function(a, b) {
+          return a.display_order - b.display_order;
         });
-        $('<table />')
-            .append(_createHeadRow(sector, cols, opts))
-            .append(tbody)
-            .appendTo(iDiv);
+        orderedFacilities = NMIS.dataForSector(sector.slug);
+        dobj = NMIS.dataObjForSector(sector.slug);
+        _.each(dobj, function(facility, fid) {
+          return _createRow(facility, cols, fid).appendTo(tbody);
+        });
+        $("<table />").append(_createHeadRow(sector, cols, opts)).append(tbody).appendTo(iDiv);
         opts.sectorCallback.call(this, sector, iDiv, _createNavigation, div);
         return iDiv;
-    }
-    function _createRow(facility, cols, facilityId) {
-        var tr = $('<tr />').data('facility-id', facilityId);
-        _.each(cols, function(col, i){
-            var slug = col.slug;
-            var rawval = facility[slug];
-            var val = NMIS.DisplayValue(rawval, $('<td />', {'class': classesStr(col)})).appendTo(tr);
+      };
+      _createRow = function(facility, cols, facilityId) {
+        var tr;
+        tr = $("<tr />").data("facility-id", facilityId);
+        _.each(cols, function(col, i) {
+          var rawval, slug, val;
+          slug = col.slug;
+          rawval = facility[slug];
+          return val = NMIS.DisplayValue(rawval, $("<td />", {
+            "class": classesStr(col)
+          })).appendTo(tr);
         });
         return tr;
-    }
-    var sectorNav;
-    function _createNavigation(sector, _hrefCb) {
-        sectorNav = $('<p />').addClass('facility-sectors-navigation');
-        var subgroups = sector.subGroups(),
-            sgl = subgroups.length;
-        _.each(subgroups, function(sg, i){
-            var href = _hrefCb(sg);
-            $('<a />', {href: href})
-                .text(sg.name)
-                .data('subsector', sg.slug)
-                .addClass('sub-sector-link')
-                .addClass('sub-sector-link-'+sg.slug)
-                .appendTo(sectorNav);
-            if(i < sgl - 1)
-                $('<span />').text(' | ').appendTo(sectorNav);
+      };
+      _createNavigation = function(sector, _hrefCb) {
+        var sgl, subgroups;
+        sectorNav = $("<p />").addClass("facility-sectors-navigation");
+        subgroups = sector.subGroups();
+        sgl = subgroups.length;
+        _.each(subgroups, function(sg, i) {
+          var href;
+          href = _hrefCb(sg);
+          $("<a />", {
+            href: href
+          }).text(sg.name).data("subsector", sg.slug).addClass("sub-sector-link").addClass("sub-sector-link-" + sg.slug).appendTo(sectorNav);
+          if (i < sgl - 1) {
+            return $("<span />").text(" | ").appendTo(sectorNav);
+          }
         });
         return sectorNav;
-    }
-    function classesStr(col) {
-        var clss = ['data-cell'];
-        _.each(col.subgroups, function(sg){
-            clss.push('subgroup-'+sg);
+      };
+      classesStr = function(col) {
+        var clss;
+        clss = ["data-cell"];
+        _.each(col.subgroups, function(sg) {
+          return clss.push("subgroup-" + sg);
         });
-        return clss.join(' ');
-    }
-    function hasClickAction(col, carr) {
-    	return !!(!!col.click_actions && col.click_actions.indexOf(col));
-    }
-    function _createHeadRow(sector, cols, opts) {
-        var tr = $('<tr />');
-        _.each(cols, function(col, i){
-	    var th = $('<th />', {'class': classesStr(col)})
-	        .data('col', col);
-	    if (!!col.clickable) {
-    		th.html($('<a />', {href: '#'}).text(col.name).data('col',col));
-	    } else {
-    		th.text(col.name);
-	    }
-	    th.appendTo(tr);
+        return clss.join(" ");
+      };
+      hasClickAction = function(col, carr) {
+        return !!(!!col.click_actions && col.click_actions.indexOf(col));
+      };
+      _createHeadRow = function(sector, cols, opts) {
+        var tr;
+        tr = $("<tr />");
+        _.each(cols, function(col, i) {
+          var th;
+          th = $("<th />", {
+            "class": classesStr(col)
+          }).data("col", col);
+          if (!!col.clickable) {
+            th.html($("<a />", {
+              href: "#"
+            }).text(col.name).data("col", col));
+          } else {
+            th.text(col.name);
+          }
+          return th.appendTo(tr);
         });
-        tr.delegate('a', 'click', function(evt){
-            opts.indicatorClickCallback.call($(this).data('col'));
-            return false;
+        tr.delegate("a", "click", function(evt) {
+          opts.indicatorClickCallback.call($(this).data("col"));
+          return false;
         });
-        return $('<thead />').html(tr);
-    }
-    function highlightColumn(column, _opts) {
-        // var opts = _.extend({
-        //     highlightClass: 'fuchsia'
-        // }, _opts);
-        div.find('.highlighted').removeClass('highlighted');
-        var th = div.find('th').filter(function(){
-            return ($(this).data('col').slug === column.slug)
+        return $("<thead />").html(tr);
+      };
+      highlightColumn = function(column, _opts) {
+        var ind, table, th;
+        div.find(".highlighted").removeClass("highlighted");
+        th = div.find("th").filter(function() {
+          return $(this).data("col").slug === column.slug;
         }).eq(0);
-        var table = th.parents('table').eq(0);
-        var ind = th.index();
-        table.find('tr').each(function(){
-            $(this).children().eq(ind).addClass('highlighted');
+        table = th.parents("table").eq(0);
+        ind = th.index();
+        return table.find("tr").each(function() {
+          return $(this).children().eq(ind).addClass("highlighted");
         });
-//        log(column, '.subgroup-'+column.slug, );
-    }
-    return {
+      };
+      return {
         createForSectors: createForSectors,
         highlightColumn: highlightColumn,
         select: select
-    };
-})();
+      };
+    })();
+  })();
 
-if("undefined" !== typeof NMIS) {
-    NMIS.SectorDataTable = SectorDataTable;
-    NMIS.FacilityTables = FacilityTables;
-} else {
-    $(function(){
-        if(NMIS) {
-            NMIS.SectorDataTable = SectorDataTable;
-            NMIS.FacilityTables = FacilityTables;
+}).call(this);
+(function() {
+  var Indicator, Sector, SubSector, all, clear, defaultSector, init, pluck, sectors, slugs, validate,
+    __indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; },
+    __hasProp = {}.hasOwnProperty;
+
+  sectors = null;
+
+  defaultSector = null;
+
+  Sector = (function() {
+
+    function Sector(d) {
+      var changed_keys, k, val;
+      changed_keys = "subgroups columns default".split(' ');
+      for (k in d) {
+        val = d[k];
+        this[__indexOf.call(changed_keys, k) >= 0 ? "_" + k : k] = val;
+      }
+    }
+
+    Sector.prototype.subGroups = function() {
+      if (this._subgroups != null) {
+        return this._subgroups;
+      } else {
+        return [];
+      }
+    };
+
+    Sector.prototype.subSectors = Sector.prototype.subGroups;
+
+    Sector.prototype.getColumns = function() {
+      if (!this._columns) {
+        return [];
+      }
+      return this._columns.sort(function(a, b) {
+        if (a.display_order > b.display_order) {
+          return 1;
+        } else {
+          return -1;
         }
+      });
+    };
+
+    Sector.prototype.columnsInSubGroup = function(sgSlug) {
+      return _.filter(this.getColumns(), function(sg) {
+        return !!_.find(sg.subgroups, function(f) {
+          return f === sgSlug;
+        });
+      });
+    };
+
+    Sector.prototype.getIndicators = function() {
+      return this._columns || [];
+    };
+
+    Sector.prototype.isDefault = function() {
+      return !!this._default;
+    };
+
+    Sector.prototype.getSubsector = function(query) {
+      var ss, ssI, ssL, ssSlug;
+      if (!query) {
+        return;
+      }
+      ssSlug = query.slug || query;
+      ssI = 0;
+      ss = this.subSectors();
+      ssL = ss.length;
+      while (ssI < ssL) {
+        if (ss[ssI].slug === ssSlug) {
+          return new SubSector(this, ss[ssI]);
+        }
+        ssI++;
+      }
+    };
+
+    Sector.prototype.getIndicator = function(query) {
+      var indicator, islug;
+      if (!query) {
+        return;
+      }
+      islug = query.slug || query;
+      if ((function() {
+        var _i, _len, _ref, _results;
+        _ref = this.getIndicators();
+        _results = [];
+        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+          indicator = _ref[_i];
+          _results.push(indicator.slug === islug);
+        }
+        return _results;
+      }).call(this)) {
+        return new Indicator(this, indicator);
+      }
+    };
+
+    return Sector;
+
+  })();
+
+  SubSector = (function() {
+
+    function SubSector(sector, opts) {
+      var k, val;
+      this.sector = sector;
+      for (k in opts) {
+        val = opts[k];
+        this[k] = val;
+      }
+    }
+
+    SubSector.prototype.columns = function() {
+      var matches, t, tt, _i, _j, _len, _len1, _ref, _ref1;
+      matches = [];
+      _ref = this.sector.getColumns();
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        t = _ref[_i];
+        _ref1 = t.subgroups;
+        for (_j = 0, _len1 = _ref1.length; _j < _len1; _j++) {
+          tt = _ref1[_j];
+          if (tt === this.slug) {
+            matches.push(t);
+          }
+        }
+      }
+      return matches;
+    };
+
+    return SubSector;
+
+  })();
+
+  Indicator = (function() {
+
+    function Indicator(sector, opts) {
+      var k, val;
+      this.sector = sector;
+      for (k in opts) {
+        if (!__hasProp.call(opts, k)) continue;
+        val = opts[k];
+        this[k] = val;
+      }
+    }
+
+    Indicator.prototype.customIconForItem = function(item) {
+      return ["" + this.iconify_png_url + item[this.slug] + ".png", 32, 24];
+    };
+
+    return Indicator;
+
+  })();
+
+  init = function(_sectors, opts) {
+    if (!!opts && !!opts["default"]) {
+      defaultSector = new Sector(_.extend(opts["default"], {
+        "default": true
+      }));
+    }
+    sectors = _(_sectors).chain().clone().map(function(s) {
+      return new Sector(_.extend({}, s));
+    }).value();
+    return true;
+  };
+
+  clear = function() {
+    return sectors = [];
+  };
+
+  pluck = function(slug) {
+    return _(sectors).chain().filter(function(s) {
+      return s.slug === slug;
+    }).first().value() || defaultSector;
+  };
+
+  all = function() {
+    return sectors;
+  };
+
+  validate = function() {
+    var slugs;
+    if (!sectors instanceof Array) {
+      warn("Sectors must be defined as an array");
+    }
+    if (sectors.length === 0) {
+      warn("Sectors array is empty");
+    }
+    _.each(sectors, function(sector) {
+      if (sector.name === undefined) {
+        warn("Sector name must be defined.");
+      }
+      if (sector.slug === undefined) {
+        return warn("Sector slug must be defined.");
+      }
     });
-}
-;
+    slugs = _(sectors).pluck("slug");
+    if (slugs.length !== _(slugs).uniq().length) {
+      warn("Sector slugs must not be reused");
+    }
+    return true;
+  };
+
+  slugs = function() {
+    return _.pluck(sectors, "slug");
+  };
+
+  NMIS.Sectors = {
+    init: init,
+    pluck: pluck,
+    slugs: slugs,
+    all: all,
+    validate: validate,
+    clear: clear
+  };
+
+}).call(this);
 
 /*
 Facilities:

@@ -20,6 +20,120 @@ independently testable modules.
 
   (function() {
     /*
+      This is the abdomen of the NMIS code. NMIS.init() initializes "data" and "opts"
+      which were used a lot in the early versions.
+    
+      Many modules still access [facility-]data through NMIS.data()
+    
+      opts has more-or-less been replaced by NMIS.Env()
+    */
+
+    var cloneParse, data, opts, _s;
+    data = false;
+    opts = false;
+    NMIS.init = function(_data, _opts) {
+      opts = _.extend({
+        iconSwitcher: true,
+        sectors: false
+      }, _opts);
+      data = {};
+      if (!!opts.sectors) {
+        NMIS.loadSectors(opts.sectors);
+      }
+      NMIS.loadFacilities(_data);
+      if (opts.iconSwitcher) {
+        NMIS.IconSwitcher.init({
+          items: data,
+          statusShiftDone: function() {
+            var tally;
+            tally = {};
+            return _.each(this.items, function(item) {
+              if (!tally[item.status]) {
+                tally[item.status] = 0;
+              }
+              return tally[item.status]++;
+            });
+          }
+        });
+      }
+      return true;
+    };
+    NMIS.loadSectors = function(_sectors, opts) {
+      return NMIS.Sectors.init(_sectors, opts);
+    };
+    cloneParse = function(d) {
+      var datum, ll, sslug;
+      datum = _.clone(d);
+      if (datum.gps === undefined) {
+        datum._ll = false;
+      } else {
+        ll = datum.gps.split(" ");
+        datum._ll = [ll[0], ll[1]];
+      }
+      sslug = datum.sector.toLowerCase();
+      datum.sector = NMIS.Sectors.pluck(sslug);
+      return datum;
+    };
+    NMIS.loadFacilities = function(_data, opts) {
+      return _.each(_data, function(val, key) {
+        var id;
+        id = val._id || key;
+        return data[id] = cloneParse(val);
+      });
+    };
+    NMIS.clear = function() {
+      data = [];
+      return NMIS.Sectors.clear();
+    };
+    NMIS.validateData = function() {
+      NMIS.Sectors.validate();
+      _(data).each(function(datum) {
+        if (datum._uid === undefined) {
+          return datum._uid = _.uniqueId("fp");
+        }
+      });
+      _(data).each(function(datum) {
+        var llArr;
+        if (datum._latlng === undefined && datum.gps !== undefined) {
+          llArr = datum.gps.split(" ");
+          return datum._latlng = [llArr[0], llArr[1]];
+        }
+      });
+      return true;
+    };
+    _s = void 0;
+    NMIS.activeSector = function(s) {
+      if (s === undefined) {
+        return _s;
+      } else {
+        return _s = s;
+      }
+    };
+    NMIS.dataForSector = function(sectorSlug) {
+      var sector;
+      sector = NMIS.Sectors.pluck(sectorSlug);
+      return _(data).filter(function(datum, id) {
+        return datum.sector.slug === sector.slug;
+      });
+    };
+    NMIS.dataObjForSector = function(sectorSlug) {
+      var o, sector;
+      sector = NMIS.Sectors.pluck(sectorSlug);
+      o = {};
+      _(data).each(function(datum, id) {
+        if (datum.sector.slug === sector.slug) {
+          return o[id] = datum;
+        }
+      });
+      return o;
+    };
+    return NMIS.data = function() {
+      return data;
+    };
+  })();
+
+  (function() {
+    /*
       the internal "value" function takes a value and returns a 1-2 item list:
       The second returned item (when present) is a class name that should be added
       to the display element.

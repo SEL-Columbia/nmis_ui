@@ -565,7 +565,7 @@ until they play well together (and I ensure they don't over-depend on other modu
       };
       sectorSlugAsArray = function(sector, slug, keys) {
         var occurrences;
-        occurrences = sectorSlug.apply(this, arguments_);
+        occurrences = sectorSlug.apply(this, arguments);
         if (keys === undefined) {
           keys = _.keys(occurrences).sort();
         }
@@ -608,6 +608,238 @@ until they play well together (and I ensure they don't over-depend on other modu
         return _.extend(get_env(), o);
       };
       return env_accessor;
+    })();
+  })();
+
+  (function() {
+    return NMIS.DisplayWindow = (function() {
+      var addCallback, addTitle, clear, createHeaderBar, curSize, curTitle, elem, elem0, elem1, elem1content, elem1contentHeight, fullHeight, getElems, hbuttons, init, opts, resized, resizerSet, setBarHeight, setDWHeight, setSize, setTitle, setVisibility, showTitle, titleElems, visible;
+      elem = void 0;
+      elem1 = void 0;
+      elem0 = void 0;
+      elem1content = void 0;
+      opts = void 0;
+      visible = void 0;
+      hbuttons = void 0;
+      titleElems = {};
+      curSize = void 0;
+      resizerSet = void 0;
+      resized = void 0;
+      curTitle = void 0;
+      init = function(_elem, _opts) {
+        if (opts !== undefined) {
+          clear();
+        }
+        if (!resizerSet) {
+          resizerSet = true;
+          $(window).resize(resized);
+        }
+        elem = $("<div />").appendTo($(_elem));
+        opts = _.extend({
+          height: 100,
+          clickSizes: [["full", "Table Only"], ["middle", "Split"], ["minimized", "Map Only"]],
+          size: "middle",
+          sizeCookie: false,
+          callbacks: {},
+          visible: false,
+          heights: {
+            full: Infinity,
+            middle: 280,
+            minimized: 46
+          },
+          allowHide: true,
+          padding: 10
+        }, _opts);
+        elem0 = $("<div />").addClass("elem0").appendTo(elem);
+        elem1 = $("<div />").addClass("elem1").appendTo(elem);
+        visible = !!opts.visible;
+        setVisibility(visible, false);
+        if (opts.sizeCookie) {
+          opts.size = $.cookie("displayWindowSize") || opts.size;
+        }
+        elem.addClass("display-window-wrap");
+        elem1.addClass("display-window-content");
+        createHeaderBar().appendTo(elem1);
+        elem1content = $("<div />").addClass("elem1-content").appendTo(elem1);
+        return setSize(opts.size);
+      };
+      setDWHeight = function(height) {
+        if (height === undefined) {
+          height = "auto";
+        } else {
+          if (height === "calculate") {
+            height = fullHeight();
+          }
+        }
+        elem.height(height);
+        return elem0.height(height);
+      };
+      setTitle = function(t, tt) {
+        _.each(titleElems, function(e) {
+          return e.text(t);
+        });
+        if (tt !== undefined) {
+          return $("head title").text("NMIS: " + tt);
+        } else {
+          return $("head title").text("NMIS: " + t);
+        }
+      };
+      showTitle = function(i) {
+        curTitle = i;
+        return _.each(titleElems, function(e, key) {
+          if (key === i) {
+            return e.show();
+          } else {
+            return e.hide();
+          }
+        });
+      };
+      addCallback = function(cbname, cb) {
+        if (opts.callbacks[cbname] === undefined) {
+          opts.callbacks[cbname] = [];
+        }
+        return opts.callbacks[cbname].push(cb);
+      };
+      setBarHeight = function(h, animate, cb) {
+        if (animate) {
+          return elem1.animate({
+            height: h
+          }, {
+            duration: 200,
+            complete: cb
+          });
+        } else {
+          elem1.css({
+            height: h
+          });
+          return (cb || function() {})();
+        }
+      };
+      setSize = function(_size, animate) {
+        var size;
+        size = void 0;
+        if (opts.heights[_size] !== undefined) {
+          size = opts.heights[_size];
+          if (size === Infinity) {
+            size = fullHeight();
+          }
+          $.cookie("displayWindowSize", _size);
+          setBarHeight(size, animate, function() {
+            if (!!curSize) {
+              elem1.removeClass("size-" + curSize);
+            }
+            elem1.addClass("size-" + _size);
+            return curSize = _size;
+          });
+        }
+        if (opts.callbacks[_size] !== undefined) {
+          _.each(opts.callbacks[_size], function(cb) {
+            return cb(animate);
+          });
+        }
+        if (opts.callbacks.resize !== undefined) {
+          _.each(opts.callbacks.resize, function(cb) {
+            return cb(animate, _size, elem, elem1, elem1content);
+          });
+        }
+        hbuttons.find(".primary").removeClass("primary");
+        return hbuttons.find(".clicksize." + _size).addClass("primary");
+      };
+      setVisibility = function(tf) {
+        var css;
+        css = {};
+        if (!tf) {
+          css = {
+            left: "1000em",
+            display: "none"
+          };
+        } else {
+          css = {
+            left: "0",
+            display: "block"
+          };
+        }
+        elem0.css(css);
+        return elem1.css(css);
+      };
+      addTitle = function(key, jqElem) {
+        titleElems[key] = jqElem;
+        if (curTitle === key) {
+          return showTitle(key);
+        }
+      };
+      createHeaderBar = function() {
+        hbuttons = $("<span />");
+        _.each(opts.clickSizes, function(sizeArr) {
+          var desc, size;
+          size = sizeArr[0];
+          desc = sizeArr[1];
+          return $("<a />").attr("class", "btn small clicksize " + size).text(desc).attr("title", desc).click(function() {
+            return setSize(size, false);
+          }).appendTo(hbuttons);
+        });
+        titleElems.bar = $("<h3 />").addClass("bar-title").hide();
+        return $("<div />", {
+          "class": "display-window-bar breadcrumb"
+        }).css({
+          margin: 0
+        }).append(titleElems.bar).append(hbuttons);
+      };
+      clear = function() {
+        elem !== undefined && elem.empty();
+        return titleElems = {};
+      };
+      getElems = function() {
+        return {
+          wrap: elem,
+          elem0: elem0,
+          elem1: elem1,
+          elem1content: elem1content
+        };
+      };
+      fullHeight = function() {
+        var oh;
+        oh = 0;
+        $(opts.offsetElems).each(function() {
+          return oh += $(this).height();
+        });
+        return $(window).height() - oh - opts.padding;
+      };
+      elem1contentHeight = function() {
+        var padding;
+        padding = 30;
+        return elem1.height() - hbuttons.height() - padding;
+      };
+      resized = _.throttle(function() {
+        var fh;
+        if (curSize !== "full") {
+          fh = fullHeight();
+          elem.stop(true, false);
+          elem.animate({
+            height: fh
+          });
+          elem0.stop(true, false);
+          return elem0.animate({
+            height: fh
+          });
+        }
+      }, 1000);
+      return {
+        init: init,
+        clear: clear,
+        setSize: setSize,
+        getSize: function() {
+          return curSize;
+        },
+        setVisibility: setVisibility,
+        addCallback: addCallback,
+        setDWHeight: setDWHeight,
+        addTitle: addTitle,
+        setTitle: setTitle,
+        showTitle: showTitle,
+        elem1contentHeight: elem1contentHeight,
+        getElems: getElems
+      };
     })();
   })();
 
