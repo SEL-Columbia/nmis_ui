@@ -227,7 +227,7 @@ launchFacilities = (results, params) ->
   # resizeDataTable(NMIS.DisplayWindow.getSize());
   if e.sector.slug is "overview"
     NMIS._wElems.elem1content.empty()
-    displayTitle = "Facility Detail: " + lga.name + " Overview"
+    displayTitle = "Facility Detail: #{lga.label} » Overview"
     NMIS.DisplayWindow.setTitle displayTitle
     NMIS.IconSwitcher.shiftStatus (id, item) ->
       "normal"
@@ -268,7 +268,7 @@ launchFacilities = (results, params) ->
       NMIS.IconSwitcher.shiftStatus (id, item) ->
         (if item.sector is e.sector then "normal" else "background")
 
-    displayTitle = "Facility Detail: " + lga.name + " " + e.sector.name
+    displayTitle = "Facility Detail: #{lga.label} » #{e.sector.name}"
     NMIS.DisplayWindow.setTitle displayTitle, displayTitle + " - " + e.subsector.name  unless not e.subsector
     
     #        NMIS.DisplayWindow.unsetTempSize(true);
