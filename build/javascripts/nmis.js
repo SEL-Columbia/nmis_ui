@@ -1356,7 +1356,6 @@ until they play well together (and I ensure they don't over-depend on other modu
       this.districts = [];
       this.label = details.label;
       this.id = details.id;
-      this.label = this.name;
     }
 
     Group.prototype.add_district = function(d) {
@@ -2189,7 +2188,7 @@ Facilities:
     NMIS.DisplayWindow.setDWHeight("calculate");
     if (e.sector.slug === "overview") {
       NMIS._wElems.elem1content.empty();
-      displayTitle = "Facility Detail: " + lga.name + " Overview";
+      displayTitle = "Facility Detail: " + lga.label + " » Overview";
       NMIS.DisplayWindow.setTitle(displayTitle);
       NMIS.IconSwitcher.shiftStatus(function(id, item) {
         return "normal";
@@ -2232,7 +2231,7 @@ Facilities:
           counts: c
         });
       });
-      NMIS._wElems.elem1content.html(mustachify("facilities-overview", obj));
+      NMIS._wElems.elem1content.html(_.template($("#facilities-overview").html(), obj));
     } else {
       if (!!e.subsectorUndefined || !NMIS.FacilitySelector.isActive()) {
         NMIS.IconSwitcher.shiftStatus(function(id, item) {
@@ -2243,7 +2242,7 @@ Facilities:
           }
         });
       }
-      displayTitle = "Facility Detail: " + lga.name + " " + e.sector.name;
+      displayTitle = "Facility Detail: " + lga.label + " » " + e.sector.name;
       if (!!e.subsector) {
         NMIS.DisplayWindow.setTitle(displayTitle, displayTitle + " - " + e.subsector.name);
       }
@@ -2272,7 +2271,7 @@ Facilities:
           }
           $(".indicator-feature").remove();
           obj = _.extend({}, e.indicator);
-          mm = $(mustachify("indicator-feature", obj));
+          mm = $(_.template($("#indicator-feature").html(), obj));
           mm.find("a.close").click(function() {
             var xx;
             xx = NMIS.urlFor(_.extend({}, e, {

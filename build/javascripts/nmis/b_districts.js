@@ -251,7 +251,6 @@
       this.districts = [];
       this.label = details.label;
       this.id = details.id;
-      this.label = this.name;
     }
 
     Group.prototype.add_district = function(d) {
