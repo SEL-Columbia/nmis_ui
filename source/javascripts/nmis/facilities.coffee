@@ -292,7 +292,7 @@ launchFacilities = (results, params) ->
         return  if e.indicator.click_actions.length is 0
         $(".indicator-feature").remove()
         obj = _.extend({}, e.indicator)
-        mm = $(mustachify("indicator-feature", obj))
+        mm = $ _.template($("#indicator-feature").html(), obj)
         mm.find("a.close").click ->
           xx = NMIS.urlFor(_.extend({}, e,
             indicator: false
