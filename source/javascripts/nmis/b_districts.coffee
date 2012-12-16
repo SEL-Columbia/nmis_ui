@@ -15,7 +15,6 @@ headers = do ->
         nav
 
 do ->
-
   display_in_header = (s)->
     title = s.title
     $('title').html(title)
@@ -24,7 +23,7 @@ do ->
     brand.empty().append(logo).append(title)
     headers('header').find("span").text(s.id)
 
-  load_schema = (data_src)->
+  NMIS.load_schema = (data_src)->
     schema_url = "#{data_src}schema.json"
     deferred = new $.Deferred
     $.getJSON "#{data_src}schema.json", (schema)->
@@ -42,10 +41,8 @@ do ->
         deferred.fail()
     deferred
 
-  NMIS.load_schema = load_schema
-
 do ->
-  NMIS.load_districts = load_districts = (group_list, district_list)->
+  NMIS.load_districts = (group_list, district_list)->
     group_names = []
     groups = []
     districts = []
@@ -95,13 +92,13 @@ do ->
     headers('nav').find('form div').eq(0).empty().html(new_select).append(submit_button)
     new_select.chosen()
 
-class District
+class NMIS.District
   constructor: (d)->
     _.extend @, d
     [@group_slug, @slug] = d.url_code.split("/")
     # change everything over to @lat_lng at a later time?
     @data_modules = [] unless @data_modules?
-    @module_files = (new ModuleFile(f, @) for f in @data_modules)
+    @module_files = (new NMIS.ModuleFile(f, @) for f in @data_modules)
     @latLng = @lat_lng
     @html_params =
       text: @label
@@ -124,7 +121,7 @@ class District
     match = m for m in @module_files when m.name is module
     unless match?
       # log "GETTING DEFAULT #{module}", DEFAULT_MODULES, module in DEFAULT_MODULES
-      match = DEFAULT_MODULES[module]
+      match = NMIS.ModuleFile.DEFAULT_MODULES[module]
     throw new Error("Module not found: #{module}") unless match?
     match
 
@@ -135,14 +132,14 @@ class District
       false
 
   set_group: (@group)-> @group.add_district @
-NMIS.District = District
+
 NMIS.getDistrictByUrlCode = (url_code)->
   matching_district = false
   matching_district = d for d in NMIS._districts_ when d.url_code is url_code
   throw new Error "District: #{url_code} not found" unless matching_district
   matching_district
 
-class Group
+class NMIS.Group
   constructor: (details)->
     @districts = []
     @label = details.label
@@ -153,9 +150,8 @@ class Group
     @slug = d.group_slug unless @slug?
     @districts = @districts.sort (a, b)-> a.label > b.label if b?
     true
-NMIS.Group = Group
 
-class ModuleFile
+class NMIS.ModuleFile
   constructor: (@filename, district)->
     try
       [devnull, @name, @file_type] = @filename.match(/(.*)\.(json|csv)/)
@@ -166,6 +162,4 @@ class ModuleFile
     @url = "#{NMIS._data_src_root_url}#{mid_url}#{@filename}"
   fetch: ()-> NMIS.DataLoader.fetch @url
 
-DEFAULT_MODULES = {}
-NMIS.ModuleFile = ModuleFile
-ModuleFile.DEFAULT_MODULES = DEFAULT_MODULES
+NMIS.ModuleFile.DEFAULT_MODULES = {}

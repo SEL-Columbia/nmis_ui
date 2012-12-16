@@ -1104,7 +1104,7 @@ until they play well together (and I ensure they don't over-depend on other modu
 
 }).call(this);
 (function() {
-  var DEFAULT_MODULES, District, Group, ModuleFile, headers;
+  var headers;
 
   headers = (function() {
     var header, nav;
@@ -1132,7 +1132,7 @@ until they play well together (and I ensure they don't over-depend on other modu
   })();
 
   (function() {
-    var display_in_header, load_schema;
+    var display_in_header;
     display_in_header = function(s) {
       var brand, logo, title;
       title = s.title;
@@ -1142,7 +1142,7 @@ until they play well together (and I ensure they don't over-depend on other modu
       brand.empty().append(logo).append(title);
       return headers('header').find("span").text(s.id);
     };
-    load_schema = function(data_src) {
+    return NMIS.load_schema = function(data_src) {
       var deferred, schema_url;
       schema_url = "" + data_src + "schema.json";
       deferred = new $.Deferred;
@@ -1169,12 +1169,10 @@ until they play well together (and I ensure they don't over-depend on other modu
       });
       return deferred;
     };
-    return NMIS.load_schema = load_schema;
   })();
 
   (function() {
-    var load_districts;
-    return NMIS.load_districts = load_districts = function(group_list, district_list) {
+    return NMIS.load_districts = function(group_list, district_list) {
       var already_selected, d, district, districts, get_group_by_id, group, group_names, groups, grp_details, new_select, optgroup, select_district, submit_button, _i, _j, _k, _len, _len1, _len2, _ref;
       group_names = [];
       groups = [];
@@ -1257,7 +1255,7 @@ until they play well together (and I ensure they don't over-depend on other modu
     };
   })();
 
-  District = (function() {
+  NMIS.District = (function() {
 
     function District(d) {
       var f, _ref;
@@ -1272,7 +1270,7 @@ until they play well together (and I ensure they don't over-depend on other modu
         _results = [];
         for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
           f = _ref1[_i];
-          _results.push(new ModuleFile(f, this));
+          _results.push(new NMIS.ModuleFile(f, this));
         }
         return _results;
       }).call(this);
@@ -1311,7 +1309,7 @@ until they play well together (and I ensure they don't over-depend on other modu
         }
       }
       if (match == null) {
-        match = DEFAULT_MODULES[module];
+        match = NMIS.ModuleFile.DEFAULT_MODULES[module];
       }
       if (match == null) {
         throw new Error("Module not found: " + module);
@@ -1336,8 +1334,6 @@ until they play well together (and I ensure they don't over-depend on other modu
 
   })();
 
-  NMIS.District = District;
-
   NMIS.getDistrictByUrlCode = function(url_code) {
     var d, matching_district, _i, _len, _ref;
     matching_district = false;
@@ -1354,7 +1350,7 @@ until they play well together (and I ensure they don't over-depend on other modu
     return matching_district;
   };
 
-  Group = (function() {
+  NMIS.Group = (function() {
 
     function Group(details) {
       this.districts = [];
@@ -1380,9 +1376,7 @@ until they play well together (and I ensure they don't over-depend on other modu
 
   })();
 
-  NMIS.Group = Group;
-
-  ModuleFile = (function() {
+  NMIS.ModuleFile = (function() {
 
     function ModuleFile(filename, district) {
       var devnull, mid_url, _ref;
@@ -1407,11 +1401,7 @@ until they play well together (and I ensure they don't over-depend on other modu
 
   })();
 
-  DEFAULT_MODULES = {};
-
-  NMIS.ModuleFile = ModuleFile;
-
-  ModuleFile.DEFAULT_MODULES = DEFAULT_MODULES;
+  NMIS.ModuleFile.DEFAULT_MODULES = {};
 
 }).call(this);
 (function() {
