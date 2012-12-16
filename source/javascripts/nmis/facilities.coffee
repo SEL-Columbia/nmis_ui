@@ -262,7 +262,7 @@ launchFacilities = (results, params) ->
         ))
         counts: c
 
-    NMIS._wElems.elem1content.html mustachify("facilities-overview", obj)
+    NMIS._wElems.elem1content.html _.template($("#facilities-overview").html(), obj)
   else
     if !!e.subsectorUndefined or not NMIS.FacilitySelector.isActive()
       NMIS.IconSwitcher.shiftStatus (id, item) ->

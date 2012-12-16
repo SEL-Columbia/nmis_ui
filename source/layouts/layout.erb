@@ -219,23 +219,23 @@
   		</div>
   	</div>
   </script>
-  <script type="text/x-mustache-template" id="facilities-overview">
+  <script type="text/underscore-template" id="facilities-overview">
   <div class="container no-fill row" id="lga-widget-wrap">
   	<div class="span9">
   		<div class="row">
   			<div class="span8 offset1">
     			<h3>
-    				Facilities <span style="display:none;" class="replace-counts" data-count-slug="facilities">(<{facCount}>)</span>
+    				Facilities <span class="replace-counts">(<{= facCount }>)</span>
     			</h3>
-  			 <{#overviewSectors}>
-  			 <p>
-  			    <a href="<{url}>" class="sector-btn btn large" style="display:block">
-  			      <span class="sector-icon <{slug}>"> &nbsp;. </span>
-  			      <{name}>
-  			      (<{counts}>) &raquo;
-  			    </a>
-  			 </p>
-  			 <{/overviewSectors}>
+    			<{ _.each(overviewSectors, function(s){ }>
+    				<p>
+     			    <a href="<{= s.url }>" class="sector-btn btn large" style="display:block">
+     			      <span class="sector-icon <{= s.slug }>"> &nbsp;. </span>
+     			      <{= s.name }>
+     			      (<{= s.counts }>) &raquo;
+     			    </a>
+    				</p>
+    			<{ }); }>
   			</div>
   		</div>
   	</div>
@@ -244,17 +244,17 @@
   			<tbody>
   				<tr>
   					<td class="header" colspan="2">
-  						<{lgaName}>
+  						<{= lgaName }>
   					</td>
   				</tr>
-  				<{#profileData}>
+  				<{ _.each(profileData, function(d){ }>
   				<tr>
-  				  <td><{name}></td>
+  				  <td><{= d.name }></td>
   				  <td class="l-align">
-  						<span class="replace-data" data-lga-variable="<{value}>"><{value}></span>
+  						<{= d.value }>
   					</td>
   				</tr>
-  				<{/profileData}>
+          <{ }); }>
   			</tbody>
   		</table>
   	</div>

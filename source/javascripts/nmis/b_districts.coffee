@@ -144,7 +144,6 @@ class NMIS.Group
     @districts = []
     @label = details.label
     @id = details.id
-    @label = @name
   add_district: (d)->
     @districts.push d
     @slug = d.group_slug unless @slug?
