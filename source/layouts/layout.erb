@@ -122,68 +122,6 @@
   		</div>
   	</div>
   </script>
-  <script type="text/x-mustache-template" id="facility-hover">
-  <div class="popover below fade in hover-overlay" style="display: block; top: <{top}>px; left: <{left}>px;">
-  	<div class="arrow" style="left:<{arrowLeft}>px"></div>
-  	<div class="inner">
-  		<div class="content">
-  			<p>
-  				<div class="photothumb"></div>
-  				<strong><{name}></strong> <em>(<{community}>)</em>
-  				<br>
-  				<br>
-  				<span style="font-size:smaller; line-height:11px">
-  				Click the icon to view details
-  				</span>
-  			</p>
-  		</div>
-  	</div>
-  </div>
-  </script>
-  <script type="text/x-mustache-template" id="facility-popup">
-  	<div class="row" title="<{name}>">
-  		<div class="row">
-  		  <div class="span2-5">
-  				<ul class="media-grid" style="margin-left:10px">
-  				  <li>
-  						<a href="<{image_url}>" target="_BLANK" class="lightbox-or-something">
-  						  <img src="<{thumbnail_url}>" width="90" height="90">
-  						</a>
-  					</li>
-  				</ul>
-  			</div>
-  			<div class="span6">
-  			  <div class="select-wrap">
-  				<select>
-  					<{#sector_data}>
-  					<option value="<{slug}>"><{name}></option>
-  					<{/sector_data}>
-  				</select>
-  				</div>
-  				<div class="fac-content">
-  				  <{#sector_data}>
-  					<div data-sector-slug="<{slug}>" class="facility-sector-select-box">
-  						<table>
-  							<tbody>
-  								<{#variables}>
-  								<tr>
-  									<td>
-  										<{name}>
-  									</td>
-  									<td>
-  									  <span class="<{classes}>"><{value}></span>
-  									</td>
-  								</tr>
-  								<{/variables}>
-  							</tbody>
-  						</table>
-  					</div>
-  					<{/sector_data}>
-  				</div>
-  			</div>
-  		</div>
-  	</div>
-  </script>
   <script type="text/x-mustache-template" id="indicator-feature">
   	<div class="indicator-feature">
   		<div class="overlay-wrap print-hide-block">
