@@ -60,7 +60,7 @@
         dataTableDraw(opts.sScrollY);
         table.delegate("tr", "click", function() {
           return dashboard.setLocation(NMIS.urlFor(_.extend({}, NMIS.Env(), {
-            facilityId: $(this).data("rowData")
+            facility: $(this).data("rowData")
           })));
         });
         return table;
@@ -204,9 +204,9 @@
         opts.sectorCallback.call(this, sector, iDiv, _createNavigation, div);
         return iDiv;
       };
-      _createRow = function(facility, cols, facilityId) {
+      _createRow = function(facility, cols, facility_id) {
         var tr;
-        tr = $("<tr />").data("facility-id", facilityId);
+        tr = $("<tr />").data("facility-id", facility_id);
         _.each(cols, function(col, i) {
           var rawval, slug, val;
           slug = col.slug;

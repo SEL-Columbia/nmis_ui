@@ -12,6 +12,8 @@ independently testable modules.
     this.NMIS = {};
   }
 
+  NMIS.expected_modules = ["Tabulation", "clear", "Sectors", "validateData", "dataForSector", "data", "FacilityPopup", "Breadcrumb", "IconSwitcher", "MapMgr", "FacilityHover"];
+
   _.templateSettings = {
     escape: /<{-([\s\S]+?)}>/g,
     evaluate: /<{([\s\S]+?)}>/g,
@@ -642,7 +644,7 @@ until they play well together (and I ensure they don't over-depend on other modu
           });
           active = false;
           return dashboard.setLocation(NMIS.urlFor(NMIS.Env.extend({
-            facilityId: false
+            facility: false
           })));
         }
       };
@@ -659,8 +661,8 @@ until they play well together (and I ensure they don't over-depend on other modu
       var fetch, fetchLocalStorage;
       fetchLocalStorage = function(url) {
         var data, p, stringData;
-        p = void 0;
-        data = void 0;
+        p = !1;
+        data = !1;
         stringData = localStorage.getItem(url);
         if (stringData) {
           data = JSON.parse(stringData);
@@ -696,6 +698,7 @@ until they play well together (and I ensure they don't over-depend on other modu
       buttonSections = {};
       submenu = void 0;
       init = function(selector, _opts) {
+        var a, arr, i, id, section, section_code, section_id, spacer, text, url, _i, _j, _len, _len1, _ref, _ref1, _ref2;
         wrap = $(selector);
         opts = _.extend({
           sections: []
@@ -713,27 +716,36 @@ until they play well together (and I ensure they don't over-depend on other modu
           "z-index": 99
         }).html(elem);
         $(".content").eq(0).prepend(wrap);
-        _.each(opts.sections, function(section, i) {
-          if (i !== 0) {
-            $("<li />", {
-              "class": "small spacer"
-            }).html("&nbsp;").appendTo(elem);
-          }
-          return _.each(section, function(arr) {
-            var a, code;
-            code = arr[0].split(":");
-            if (buttonSections[code[0]] === undefined) {
-              buttonSections[code[0]] = {};
-            }
-            a = $("<a />", {
-              href: arr[2],
-              text: arr[1]
-            });
-            buttonSections[code[0]][code[1]] = a;
-            return $("<li />").html(a).appendTo(elem);
-          });
+        spacer = $("<li>", {
+          "class": "small spacer",
+          html: "&nbsp;"
         });
-        return submenu = $("<ul />").addClass("submenu").appendTo(elem);
+        _ref = opts.sections;
+        for (i = _i = 0, _len = _ref.length; _i < _len; i = ++_i) {
+          section = _ref[i];
+          if (i !== 0) {
+            spacer.clone().appendTo(elem);
+          }
+          for (_j = 0, _len1 = section.length; _j < _len1; _j++) {
+            _ref1 = section[_j], id = _ref1[0], text = _ref1[1], url = _ref1[2];
+            arr = [id, text, url];
+            _ref2 = id.split(":"), section_code = _ref2[0], section_id = _ref2[1];
+            if (buttonSections[section_code] === void 0) {
+              buttonSections[section_code] = {};
+            }
+            a = $("<a>", {
+              href: url,
+              text: text
+            });
+            buttonSections[section_code][section_id] = a;
+            $("<li>", {
+              html: a
+            }).appendTo(elem);
+          }
+        }
+        return submenu = $("<ul>", {
+          "class": "submenu"
+        }).appendTo(elem);
       };
       getNavLink = function(code) {
         var name, section, _x;
@@ -1465,7 +1477,7 @@ until they play well together (and I ensure they don't over-depend on other modu
         dataTableDraw(opts.sScrollY);
         table.delegate("tr", "click", function() {
           return dashboard.setLocation(NMIS.urlFor(_.extend({}, NMIS.Env(), {
-            facilityId: $(this).data("rowData")
+            facility: $(this).data("rowData")
           })));
         });
         return table;
@@ -1609,9 +1621,9 @@ until they play well together (and I ensure they don't over-depend on other modu
         opts.sectorCallback.call(this, sector, iDiv, _createNavigation, div);
         return iDiv;
       };
-      _createRow = function(facility, cols, facilityId) {
+      _createRow = function(facility, cols, facility_id) {
         var tr;
-        tr = $("<tr />").data("facility-id", facilityId);
+        tr = $("<tr />").data("facility-id", facility_id);
         _.each(cols, function(col, i) {
           var rawval, slug, val;
           slug = col.slug;
@@ -1922,7 +1934,7 @@ Facilities:
     var district, params;
     params = {};
     if (("" + window.location.search).match(/facility=(\d+)/)) {
-      params.facilityId = ("" + window.location.search).match(/facility=(\d+)/)[1];
+      params.facility = ("" + window.location.search).match(/facility=(\d+)/)[1];
     }
     $("#conditional-content").hide();
     _.each(this.params, function(param, pname) {
@@ -2037,7 +2049,7 @@ Facilities:
         sslug = NMIS.activeSector().slug;
         if (sslug === this.nmis.item.sector.slug || sslug === "overview") {
           return dashboard.setLocation(NMIS.urlFor(_.extend(NMIS.Env(), {
-            facilityId: this.nmis.id
+            facility: this.nmis.id
           })));
         }
       };
@@ -2055,7 +2067,7 @@ Facilities:
         if (NMIS.FacilitySelector.isActive()) {
           NMIS.FacilitySelector.deselect();
           return dashboard.setLocation(NMIS.urlFor(_.extend(NMIS.Env(), {
-            facilityId: false
+            facility: false
           })));
         }
       };
@@ -2099,18 +2111,15 @@ Facilities:
       bounds = new google.maps.LatLngBounds();
       google.maps.event.addListener(facilitiesMap, "click", mapClick);
       NMIS.IconSwitcher.setCallback("createMapItem", function(item, id, itemList) {
-        var $gm, iconData, iconDataForItem, mI;
+        var $gm, iconData, mI, td;
         if (!!item._ll && !this.mapItem(id)) {
           $gm = google.maps;
-          iconData = (iconDataForItem = function(i) {
-            var td;
-            i.iconSlug = i.iconType || i.sector.slug;
-            td = iconURLData(i);
-            return {
-              url: td[0],
-              size: new $gm.Size(td[1], td[2])
-            };
-          })(item);
+          item.iconSlug = item.iconType || item.sector.slug;
+          td = iconURLData(item);
+          iconData = {
+            url: td[0],
+            size: new $gm.Size(td[1], td[2])
+          };
           mI = {
             latlng: new $gm.LatLng(item._ll[0], item._ll[1]),
             icon: new $gm.MarkerImage(iconData.url, iconData.size)
@@ -2157,7 +2166,7 @@ Facilities:
       sector: sector,
       subsector: sector.getSubsector(params.subsector),
       indicator: sector.getIndicator(params.indicator),
-      facilityId: params.facilityId
+      facility: params.facility
     };
     dTableHeight = void 0;
     NMIS.Env(e);
@@ -2330,9 +2339,9 @@ Facilities:
       }
     }
     resizeDisplayWindowAndFacilityTable();
-    if (!!e.facilityId) {
+    if (!!e.facility) {
       return NMIS.FacilitySelector.activate({
-        id: e.facilityId
+        id: e.facility
       });
     }
   };
@@ -2427,14 +2436,22 @@ Facilities:
 
 }).call(this);
 (function() {
-  var FacilityHover, _getNameFromFacility;
+
+
+
+}).call(this);
+(function() {
+  var _getNameFromFacility;
 
   _getNameFromFacility = function(f) {
     return f.name || f.facility_name || f.school_name;
   };
 
-  FacilityHover = (function() {
+  NMIS.FacilityHover = (function() {
     var getPixelOffset, hide, hoverOverlay, hoverOverlayWrap, show, wh;
+    hoverOverlayWrap = void 0;
+    hoverOverlay = void 0;
+    wh = 90;
     getPixelOffset = function(marker, map) {
       var nw, pixelOffset, scale, worldCoordinate, worldCoordinateNW;
       scale = Math.pow(2, map.getZoom());
@@ -2444,7 +2461,7 @@ Facilities:
       return pixelOffset = new google.maps.Point(Math.floor((worldCoordinate.x - worldCoordinateNW.x) * scale), Math.floor((worldCoordinate.y - worldCoordinateNW.y) * scale));
     };
     show = function(marker, opts) {
-      var hoverOverlay, hoverOverlayWrap, img, map, obj;
+      var img, map, obj;
       if (opts === undefined) {
         opts = {};
       }
@@ -2499,9 +2516,6 @@ Facilities:
         return hoverOverlay.hide();
       }
     };
-    hoverOverlayWrap = void 0;
-    hoverOverlay = void 0;
-    wh = 90;
     return {
       show: show,
       hide: hide
@@ -2510,8 +2524,9 @@ Facilities:
 
   NMIS.FacilityPopup = (function() {
     var div, make;
+    div = void 0;
     make = function(facility, opts) {
-      var defaultSubgroup, div, obj, s, sdiv, showDataForSector, subgroups, tmplHtml;
+      var defaultSubgroup, obj, s, sdiv, showDataForSector, subgroups, tmplHtml;
       if (opts === undefined) {
         opts = {};
       }
@@ -2555,7 +2570,7 @@ Facilities:
         height: 300,
         resizable: false,
         close: function() {
-          return FacilitySelector.deselect();
+          return NMIS.FacilitySelector.deselect();
         }
       });
       if (!!opts.addClass) {
@@ -2563,7 +2578,6 @@ Facilities:
       }
       return div;
     };
-    div = void 0;
     return make;
   })();
 

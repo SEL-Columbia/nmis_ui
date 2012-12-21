@@ -12,6 +12,8 @@ independently testable modules.
     this.NMIS = {};
   }
 
+  NMIS.expected_modules = ["Tabulation", "clear", "Sectors", "validateData", "dataForSector", "data", "FacilityPopup", "Breadcrumb", "IconSwitcher", "MapMgr", "FacilityHover"];
+
   _.templateSettings = {
     escape: /<{-([\s\S]+?)}>/g,
     evaluate: /<{([\s\S]+?)}>/g,

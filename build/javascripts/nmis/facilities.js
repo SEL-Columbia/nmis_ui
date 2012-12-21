@@ -11,7 +11,7 @@ Facilities:
     var district, params;
     params = {};
     if (("" + window.location.search).match(/facility=(\d+)/)) {
-      params.facilityId = ("" + window.location.search).match(/facility=(\d+)/)[1];
+      params.facility = ("" + window.location.search).match(/facility=(\d+)/)[1];
     }
     $("#conditional-content").hide();
     _.each(this.params, function(param, pname) {
@@ -126,7 +126,7 @@ Facilities:
         sslug = NMIS.activeSector().slug;
         if (sslug === this.nmis.item.sector.slug || sslug === "overview") {
           return dashboard.setLocation(NMIS.urlFor(_.extend(NMIS.Env(), {
-            facilityId: this.nmis.id
+            facility: this.nmis.id
           })));
         }
       };
@@ -144,7 +144,7 @@ Facilities:
         if (NMIS.FacilitySelector.isActive()) {
           NMIS.FacilitySelector.deselect();
           return dashboard.setLocation(NMIS.urlFor(_.extend(NMIS.Env(), {
-            facilityId: false
+            facility: false
           })));
         }
       };
@@ -188,18 +188,15 @@ Facilities:
       bounds = new google.maps.LatLngBounds();
       google.maps.event.addListener(facilitiesMap, "click", mapClick);
       NMIS.IconSwitcher.setCallback("createMapItem", function(item, id, itemList) {
-        var $gm, iconData, iconDataForItem, mI;
+        var $gm, iconData, mI, td;
         if (!!item._ll && !this.mapItem(id)) {
           $gm = google.maps;
-          iconData = (iconDataForItem = function(i) {
-            var td;
-            i.iconSlug = i.iconType || i.sector.slug;
-            td = iconURLData(i);
-            return {
-              url: td[0],
-              size: new $gm.Size(td[1], td[2])
-            };
-          })(item);
+          item.iconSlug = item.iconType || item.sector.slug;
+          td = iconURLData(item);
+          iconData = {
+            url: td[0],
+            size: new $gm.Size(td[1], td[2])
+          };
           mI = {
             latlng: new $gm.LatLng(item._ll[0], item._ll[1]),
             icon: new $gm.MarkerImage(iconData.url, iconData.size)
@@ -246,7 +243,7 @@ Facilities:
       sector: sector,
       subsector: sector.getSubsector(params.subsector),
       indicator: sector.getIndicator(params.indicator),
-      facilityId: params.facilityId
+      facility: params.facility
     };
     dTableHeight = void 0;
     NMIS.Env(e);
@@ -419,9 +416,9 @@ Facilities:
       }
     }
     resizeDisplayWindowAndFacilityTable();
-    if (!!e.facilityId) {
+    if (!!e.facility) {
       return NMIS.FacilitySelector.activate({
-        id: e.facilityId
+        id: e.facility
       });
     }
   };

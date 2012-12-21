@@ -1,13 +1,14 @@
 (function() {
-  var data_src, default_data_source_url, overviewObj, url_root, wElems;
+  var data_src, default_data_source_url, overviewObj, wElems;
 
-  url_root = "" + window.location.pathname;
-
-  if (!!~url_root.indexOf("index.html")) {
-    url_root = url_root.replace("index.html", "");
-  }
-
-  NMIS.url_root = url_root;
+  NMIS.url_root = (function() {
+    var url_root;
+    url_root = "" + window.location.pathname;
+    if (!!~url_root.indexOf("index.html")) {
+      url_root = url_root.replace("index.html", "");
+    }
+    return url_root;
+  })();
 
   /*
   
@@ -24,27 +25,13 @@
 
   this.dashboard = $.sammy("body", function() {
     return this.get("" + NMIS.url_root + "#/:state/:lga/?", function() {
-      return dashboard.setLocation("" + url_root + "#/" + this.params.state + "/" + this.params.lga + "/summary/");
+      return dashboard.setLocation("" + NMIS.url_root + "#/" + this.params.state + "/" + this.params.lga + "/summary/");
     });
   });
 
   NMIS.DisplayWindow.init(".content", {
     offsetElems: ".topbar .fill .container",
-    sizeCookie: true,
-    callbacks: {
-      resize: [
-        function(animate, sizeName) {
-          switch (sizeName) {
-            case "full":
-              return NMIS.DisplayWindow.showTitle("tables");
-            case "middle":
-              return NMIS.DisplayWindow.showTitle("bar");
-            case "minimized":
-              return NMIS.DisplayWindow.showTitle("bar");
-          }
-        }
-      ]
-    }
+    sizeCookie: true
   });
 
   overviewObj = {
@@ -97,8 +84,8 @@
       }
       return arr;
     })(o, ["root", "state", "lga", "mode", "sector", "subsector", "indicator"]).join("/");
-    if (!!o.facilityId) {
-      uu += "?facility=" + o.facilityId;
+    if (!!o.facility) {
+      uu += "?facility=" + o.facility;
     }
     return uu;
   };

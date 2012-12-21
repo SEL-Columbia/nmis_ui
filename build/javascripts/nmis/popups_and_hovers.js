@@ -1,12 +1,15 @@
 (function() {
-  var FacilityHover, _getNameFromFacility;
+  var _getNameFromFacility;
 
   _getNameFromFacility = function(f) {
     return f.name || f.facility_name || f.school_name;
   };
 
-  FacilityHover = (function() {
+  NMIS.FacilityHover = (function() {
     var getPixelOffset, hide, hoverOverlay, hoverOverlayWrap, show, wh;
+    hoverOverlayWrap = void 0;
+    hoverOverlay = void 0;
+    wh = 90;
     getPixelOffset = function(marker, map) {
       var nw, pixelOffset, scale, worldCoordinate, worldCoordinateNW;
       scale = Math.pow(2, map.getZoom());
@@ -16,7 +19,7 @@
       return pixelOffset = new google.maps.Point(Math.floor((worldCoordinate.x - worldCoordinateNW.x) * scale), Math.floor((worldCoordinate.y - worldCoordinateNW.y) * scale));
     };
     show = function(marker, opts) {
-      var hoverOverlay, hoverOverlayWrap, img, map, obj;
+      var img, map, obj;
       if (opts === undefined) {
         opts = {};
       }
@@ -71,9 +74,6 @@
         return hoverOverlay.hide();
       }
     };
-    hoverOverlayWrap = void 0;
-    hoverOverlay = void 0;
-    wh = 90;
     return {
       show: show,
       hide: hide
@@ -82,8 +82,9 @@
 
   NMIS.FacilityPopup = (function() {
     var div, make;
+    div = void 0;
     make = function(facility, opts) {
-      var defaultSubgroup, div, obj, s, sdiv, showDataForSector, subgroups, tmplHtml;
+      var defaultSubgroup, obj, s, sdiv, showDataForSector, subgroups, tmplHtml;
       if (opts === undefined) {
         opts = {};
       }
@@ -127,7 +128,7 @@
         height: 300,
         resizable: false,
         close: function() {
-          return FacilitySelector.deselect();
+          return NMIS.FacilitySelector.deselect();
         }
       });
       if (!!opts.addClass) {
@@ -135,7 +136,6 @@
       }
       return div;
     };
-    div = void 0;
     return make;
   })();
 

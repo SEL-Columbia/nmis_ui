@@ -2,21 +2,17 @@
 
   describe("nmis modules existence", function() {
     it("has modules defined", function() {
-      var expectDefined;
+      var em, expectDefined, _i, _len, _ref, _results;
       expectDefined = function(x) {
         return expect(x).toBeDefined();
       };
-      expectDefined(NMIS);
-      expectDefined(NMIS.Tabulation);
-      expectDefined(NMIS.clear);
-      expectDefined(NMIS.Sectors);
-      expectDefined(NMIS.validateData);
-      expectDefined(NMIS.dataForSector);
-      expectDefined(NMIS.data);
-      expectDefined(NMIS.FacilityPopup);
-      expectDefined(NMIS.Breadcrumb);
-      expectDefined(NMIS.IconSwitcher);
-      return expectDefined(NMIS.MapMgr);
+      _ref = NMIS.expected_modules;
+      _results = [];
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        em = _ref[_i];
+        _results.push(expectDefined(NMIS[em]));
+      }
+      return _results;
     });
     return it("can be initted", function() {
       var first_result;

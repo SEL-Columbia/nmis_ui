@@ -383,7 +383,7 @@ until they play well together (and I ensure they don't over-depend on other modu
           });
           active = false;
           return dashboard.setLocation(NMIS.urlFor(NMIS.Env.extend({
-            facilityId: false
+            facility: false
           })));
         }
       };
@@ -400,8 +400,8 @@ until they play well together (and I ensure they don't over-depend on other modu
       var fetch, fetchLocalStorage;
       fetchLocalStorage = function(url) {
         var data, p, stringData;
-        p = void 0;
-        data = void 0;
+        p = !1;
+        data = !1;
         stringData = localStorage.getItem(url);
         if (stringData) {
           data = JSON.parse(stringData);
@@ -437,6 +437,7 @@ until they play well together (and I ensure they don't over-depend on other modu
       buttonSections = {};
       submenu = void 0;
       init = function(selector, _opts) {
+        var a, arr, i, id, section, section_code, section_id, spacer, text, url, _i, _j, _len, _len1, _ref, _ref1, _ref2;
         wrap = $(selector);
         opts = _.extend({
           sections: []
@@ -454,27 +455,36 @@ until they play well together (and I ensure they don't over-depend on other modu
           "z-index": 99
         }).html(elem);
         $(".content").eq(0).prepend(wrap);
-        _.each(opts.sections, function(section, i) {
-          if (i !== 0) {
-            $("<li />", {
-              "class": "small spacer"
-            }).html("&nbsp;").appendTo(elem);
-          }
-          return _.each(section, function(arr) {
-            var a, code;
-            code = arr[0].split(":");
-            if (buttonSections[code[0]] === undefined) {
-              buttonSections[code[0]] = {};
-            }
-            a = $("<a />", {
-              href: arr[2],
-              text: arr[1]
-            });
-            buttonSections[code[0]][code[1]] = a;
-            return $("<li />").html(a).appendTo(elem);
-          });
+        spacer = $("<li>", {
+          "class": "small spacer",
+          html: "&nbsp;"
         });
-        return submenu = $("<ul />").addClass("submenu").appendTo(elem);
+        _ref = opts.sections;
+        for (i = _i = 0, _len = _ref.length; _i < _len; i = ++_i) {
+          section = _ref[i];
+          if (i !== 0) {
+            spacer.clone().appendTo(elem);
+          }
+          for (_j = 0, _len1 = section.length; _j < _len1; _j++) {
+            _ref1 = section[_j], id = _ref1[0], text = _ref1[1], url = _ref1[2];
+            arr = [id, text, url];
+            _ref2 = id.split(":"), section_code = _ref2[0], section_id = _ref2[1];
+            if (buttonSections[section_code] === void 0) {
+              buttonSections[section_code] = {};
+            }
+            a = $("<a>", {
+              href: url,
+              text: text
+            });
+            buttonSections[section_code][section_id] = a;
+            $("<li>", {
+              html: a
+            }).appendTo(elem);
+          }
+        }
+        return submenu = $("<ul>", {
+          "class": "submenu"
+        }).appendTo(elem);
       };
       getNavLink = function(code) {
         var name, section, _x;
