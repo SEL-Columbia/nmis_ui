@@ -1,7 +1,8 @@
-url_root = "#{window.location.pathname}"
-url_root = url_root.replace("index.html", "") if !!~ url_root.indexOf "index.html"
 
-NMIS.url_root = url_root
+NMIS.url_root = do ->
+  url_root = "#{window.location.pathname}"
+  url_root = url_root.replace("index.html", "") if !!~ url_root.indexOf "index.html"
+  url_root
 
 ###
 
@@ -20,7 +21,7 @@ URL actions can be triggered by calling:
   @get "#{NMIS.url_root}#/:state/:lga/?", ->
     # when user lands at this base page, they will
     # be redirected to a default section (ie. "summary")
-    dashboard.setLocation "#{url_root}#/#{@params.state}/#{@params.lga}/summary/"
+    dashboard.setLocation "#{NMIS.url_root}#/#{@params.state}/#{@params.lga}/summary/"
 )
 
 #
@@ -30,16 +31,16 @@ URL actions can be triggered by calling:
 NMIS.DisplayWindow.init ".content",
   offsetElems: ".topbar .fill .container"
   sizeCookie: true
-  callbacks:
-    resize: [(animate, sizeName) ->
-      switch sizeName
-        when "full"
-          NMIS.DisplayWindow.showTitle "tables"
-        when "middle"
-          NMIS.DisplayWindow.showTitle "bar"
-        when "minimized"
-          NMIS.DisplayWindow.showTitle "bar"
-    ]
+  # callbacks:
+  #   resize: [(animate, sizeName) ->
+  #     switch sizeName
+  #       when "full"
+  #         NMIS.DisplayWindow.showTitle "tables"
+  #       when "middle"
+  #         NMIS.DisplayWindow.showTitle "bar"
+  #       when "minimized"
+  #         NMIS.DisplayWindow.showTitle "bar"
+  #   ]
 
 overviewObj =
   name: "Overview"
@@ -49,10 +50,6 @@ NMIS.init()
 wElems = NMIS.DisplayWindow.getElems()
 NMIS._wElems = wElems
 
-#
-#NMIS.LocalNav is the navigation element at the top of the page.
-#URLs are rebuilt as the user navigates through the page.
-#
 NMIS.LocalNav.init wElems.wrap,
   sections: [[["mode:summary", "LGA Summary", "#"], ["mode:facilities", "Facility Detail", "#"]], [["sector:overview", "Overview", "#"], ["sector:health", "Health", "#"], ["sector:education", "Education", "#"], ["sector:water", "Water", "#"]]]
 
@@ -87,7 +84,7 @@ NMIS.urlFor = (o) ->
       i++
     arr
   )(o, ["root", "state", "lga", "mode", "sector", "subsector", "indicator"]).join("/")
-  uu += "?facility=" + o.facilityId  unless not o.facilityId
+  uu += "?facility=" + o.facility  unless not o.facility
   uu
 
 NMIS._prepBreadcrumbValues = (e, keys, env) ->

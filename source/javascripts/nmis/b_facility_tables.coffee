@@ -49,7 +49,7 @@ do ->
       dataTableDraw opts.sScrollY
       table.delegate "tr", "click", ->
         dashboard.setLocation NMIS.urlFor(_.extend({}, NMIS.Env(),
-          facilityId: $(this).data("rowData")
+          facility: $(this).data("rowData")
         ))
 
       table
@@ -182,8 +182,8 @@ do ->
       $("<table />").append(_createHeadRow(sector, cols, opts)).append(tbody).appendTo iDiv
       opts.sectorCallback.call this, sector, iDiv, _createNavigation, div
       iDiv
-    _createRow = (facility, cols, facilityId) ->
-      tr = $("<tr />").data("facility-id", facilityId)
+    _createRow = (facility, cols, facility_id) ->
+      tr = $("<tr />").data("facility-id", facility_id)
       _.each cols, (col, i) ->
         slug = col.slug
         rawval = facility[slug]

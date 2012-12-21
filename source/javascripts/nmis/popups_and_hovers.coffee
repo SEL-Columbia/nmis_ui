@@ -3,13 +3,18 @@
 
 _getNameFromFacility = (f) -> f.name or f.facility_name or f.school_name
 
-FacilityHover = do ->
+NMIS.FacilityHover = do ->
+  hoverOverlayWrap = undefined
+  hoverOverlay = undefined
+  wh = 90
+
   getPixelOffset = (marker, map) ->
     scale = Math.pow(2, map.getZoom())
     nw = new google.maps.LatLng(map.getBounds().getNorthEast().lat(), map.getBounds().getSouthWest().lng())
     worldCoordinateNW = map.getProjection().fromLatLngToPoint(nw)
     worldCoordinate = map.getProjection().fromLatLngToPoint(marker.getPosition())
     pixelOffset = new google.maps.Point(Math.floor((worldCoordinate.x - worldCoordinateNW.x) * scale), Math.floor((worldCoordinate.y - worldCoordinateNW.y) * scale))
+
   show = (marker, opts) ->
     opts = {}  if opts is `undefined`
     map = marker.map
@@ -45,13 +50,12 @@ FacilityHover = do ->
     hoverOverlay.find("div.photothumb").html img
     hoverOverlayWrap.html hoverOverlay
   hide = (delay) -> hoverOverlay.hide()  unless not hoverOverlay
-  hoverOverlayWrap = undefined
-  hoverOverlay = undefined
-  wh = 90
   show: show
   hide: hide
 
 NMIS.FacilityPopup = do ->
+  div = undefined
+
   make = (facility, opts) ->
     opts = {}  if opts is `undefined`
     div.remove()  unless not div
@@ -71,7 +75,6 @@ NMIS.FacilityPopup = do ->
         variables: _.map(facility.sector.columnsInSubGroup(o.slug), (oo, ii, oiarr) ->
           NMIS.DisplayValue.special facility[oo.slug], oo
         )
-
     )
     tmplHtml = $("#facility-popup").eq(0).html().replace(/<{/g, "{{").replace(/\}>/g, "}}")
     div = jQuery(Mustache.to_html(tmplHtml, obj))
@@ -91,11 +94,9 @@ NMIS.FacilityPopup = do ->
       width: 500
       height: 300
       resizable: false
-      close: ->
-        FacilitySelector.deselect()
+      close: -> NMIS.FacilitySelector.deselect()
 
     div.addClass opts.addClass  unless not opts.addClass
     div
-  div = undefined
   make
 

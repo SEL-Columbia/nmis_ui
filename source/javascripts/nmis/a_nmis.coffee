@@ -241,6 +241,7 @@ do ->
           "normal"
       facility = false
       facility = val for key, val of NMIS.data() when key is params.id
+
       # facility = _.find(NMIS.data(), (val, key) ->
       #   key is params.id
       # )
@@ -251,7 +252,7 @@ do ->
         NMIS.IconSwitcher.shiftStatus (id, item) ->
           (if item.sector is sector then "normal" else "background")
         active = false
-        dashboard.setLocation NMIS.urlFor(NMIS.Env.extend(facilityId: false))
+        dashboard.setLocation NMIS.urlFor(NMIS.Env.extend(facility: false))
 
     # Externally callable functions:
     activate: activate
@@ -261,8 +262,8 @@ do ->
 do ->
   NMIS.DataLoader = do ->
     fetchLocalStorage = (url) ->
-      p = undefined
-      data = undefined
+      p     =!1
+      data  =!1
       stringData = localStorage.getItem(url)
       if stringData
         data = JSON.parse(stringData)
@@ -308,23 +309,18 @@ do ->
         "z-index": 99
       ).html(elem)
       $(".content").eq(0).prepend wrap
-      _.each opts.sections, (section, i) ->
-        if i isnt 0
-          $("<li />",
-            class: "small spacer"
-          ).html("&nbsp;").appendTo elem
-        _.each section, (arr) ->
-          code = arr[0].split(":")
-          buttonSections[code[0]] = {}  if buttonSections[code[0]] is `undefined`
-          a = $("<a />",
-            href: arr[2]
-            text: arr[1]
-          )
-          buttonSections[code[0]][code[1]] = a
-          $("<li />").html(a).appendTo elem
+      spacer = $("<li>", {class: "small spacer", html: "&nbsp;"})
+      for section, i in opts.sections
+        spacer.clone().appendTo(elem)  if i isnt 0
+        for [id, text, url] in section
+          arr = [id, text, url]
+          [section_code, section_id] = id.split ":"
+          buttonSections[section_code] = {} if buttonSections[section_code] is undefined
+          a = $("<a>", href:url, text:text)
+          buttonSections[section_code][section_id] = a
+          $("<li>", html: a).appendTo(elem)
+      submenu = $("<ul>", class: "submenu").appendTo(elem)
 
-
-      submenu = $("<ul />").addClass("submenu").appendTo(elem)
     getNavLink = (code) ->
       _x = code.split(":")
       section = _x[0]
@@ -526,6 +522,7 @@ do ->
 
       hbuttons.find(".primary").removeClass "primary"
       hbuttons.find(".clicksize." + _size).addClass "primary"
+
     setVisibility = (tf) ->
       css = {}
       unless tf

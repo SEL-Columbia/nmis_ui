@@ -3,7 +3,8 @@ Facilities:
 ###
 launch_facilities = ->
   params = {}
-  params.facilityId = ("" + window.location.search).match(/facility=(\d+)/)[1]  if ("" + window.location.search).match(/facility=(\d+)/)
+
+  params.facility = ("" + window.location.search).match(/facility=(\d+)/)[1]  if ("" + window.location.search).match(/facility=(\d+)/)
   $("#conditional-content").hide()
 
   _.each @params, (param, pname) ->
@@ -97,7 +98,7 @@ launchFacilities = (results, params) ->
       sslug = NMIS.activeSector().slug
       if sslug is @nmis.item.sector.slug or sslug is "overview"
         dashboard.setLocation NMIS.urlFor(_.extend(NMIS.Env(),
-          facilityId: @nmis.id
+          facility: @nmis.id
         ))
     markerMouseover = ->
       sslug = NMIS.activeSector().slug
@@ -108,11 +109,9 @@ launchFacilities = (results, params) ->
       if NMIS.FacilitySelector.isActive()
         NMIS.FacilitySelector.deselect()
         dashboard.setLocation NMIS.urlFor(_.extend(NMIS.Env(),
-          facilityId: false
+          facility: false
         ))
-    ll = _.map(lga.lat_lng.split(","), (x) ->
-      +x
-    )
+    ll = _.map lga.lat_lng.split(","), (x) -> +x
     unless not facilitiesMap
       _.delay (->
         if lga.bounds
@@ -150,12 +149,13 @@ launchFacilities = (results, params) ->
     NMIS.IconSwitcher.setCallback "createMapItem", (item, id, itemList) ->
       if !!item._ll and not @mapItem(id)
         $gm = google.maps
-        iconData = (iconDataForItem = (i) ->
-          i.iconSlug = i.iconType or i.sector.slug
-          td = iconURLData(i)
+        item.iconSlug = item.iconType or item.sector.slug
+        td = iconURLData(item)
+
+        iconData =
           url: td[0]
           size: new $gm.Size(td[1], td[2])
-        )(item)
+
         mI =
           latlng: new $gm.LatLng(item._ll[0], item._ll[1])
           icon: new $gm.MarkerImage(iconData.url, iconData.size)
@@ -198,7 +198,7 @@ launchFacilities = (results, params) ->
     sector: sector
     subsector: sector.getSubsector(params.subsector)
     indicator: sector.getIndicator(params.indicator)
-    facilityId: params.facilityId
+    facility: params.facility
 
   dTableHeight = undefined
   NMIS.Env e
@@ -341,7 +341,7 @@ launchFacilities = (results, params) ->
         ) mm.find(".raph-circle").get(0)
       )()
   resizeDisplayWindowAndFacilityTable()
-  NMIS.FacilitySelector.activate id: e.facilityId  unless not e.facilityId
+  NMIS.FacilitySelector.activate id: e.facility  unless not e.facility
 
 prepare_data_for_pie_graph = (pieWrap, legend, data, _opts) ->
   ###
