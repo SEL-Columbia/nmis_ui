@@ -115,13 +115,12 @@ launchFacilities = (results, params) ->
         ))
     ll = (+x for x in lga.lat_lng.split(","))
     unless not facilitiesMap
-      _.delay (->
+      _rDelay 1, ->
         if lga.bounds
           facilitiesMap.fitBounds lga.bounds
         else
           facilitiesMap.setCenter new google.maps.LatLng(ll[0], ll[1])
         google.maps.event.trigger facilitiesMap, "resize"
-      ), 1
       return
     else
       facilitiesMap = new google.maps.Map(NMIS._wElems.elem0.get(0),
@@ -180,10 +179,9 @@ launchFacilities = (results, params) ->
 
     NMIS.IconSwitcher.createAll()
     lga.bounds = bounds
-    _.delay (->
+    _rDelay 1, ->
       google.maps.event.trigger facilitiesMap, "resize"
       facilitiesMap.fitBounds bounds
-    ), 1
     NMIS.IconSwitcher.setCallback "shiftMapItemStatus", (item, id) ->
       mapItem = @mapItem(id)
       unless not mapItem
@@ -414,3 +412,7 @@ prepare_data_for_pie_graph = (pieWrap, legend, data, _opts) ->
       @label[1].attr "font-weight": 400
   pie.hover hover_on, hover_off
   r
+
+
+# identical to _.delay except switches the order of the parameters
+_rDelay = (i, fn)-> _.delay fn, i

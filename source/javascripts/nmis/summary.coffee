@@ -24,10 +24,9 @@ NMIS.loadSummary = (s) ->
           name: "Nigeria"
         )
         summaryMap.setMapTypeId "ng_base_map"
-      _.delay (->
+      _rDelay 1, ->
         google.maps.event.trigger summaryMap, "resize"
         summaryMap.setCenter new google.maps.LatLng(ll[1], ll[0]), mapZoom
-      ), 1
   if NMIS.MapMgr.isLoaded()
     initSummaryMap()
   else
@@ -139,3 +138,6 @@ create_sector_panel = (sector_id, module, context)->
   else
     div.html template_not_found(module)
   div
+
+# identical to _.delay except switches the order of the parameters
+_rDelay = (i, fn)-> _.delay fn, i
