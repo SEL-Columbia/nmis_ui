@@ -111,7 +111,7 @@ launchFacilities = (results, params) ->
         dashboard.setLocation NMIS.urlFor(_.extend(NMIS.Env(),
           facility: false
         ))
-    ll = _.map lga.lat_lng.split(","), (x) -> +x
+    ll = (+x for x in lga.lat_lng.split(","))
     unless not facilitiesMap
       _.delay (->
         if lga.bounds

@@ -5,9 +5,7 @@ NMIS.loadSummary = (s) ->
   initSummaryMap = ->
     $mapDiv = $(".profile-box .map").eq(0)
     mapDiv = $mapDiv.get(0)
-    ll = _.map(lga.latLng.split(","), (x) ->
-      +x
-    )
+    ll = (+x for x in lga.latLng.split(","))
     mapZoom = 9
     if mapDiv
       unless summaryMap
