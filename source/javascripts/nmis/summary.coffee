@@ -1,3 +1,5 @@
+summaryMap = false
+
 NMIS.loadSummary = (s) ->
   lga_code = "#{s.params.state}/#{s.params.lga}"
   lga = NMIS.getDistrictByUrlCode(lga_code)
@@ -137,5 +139,3 @@ create_sector_panel = (sector_id, module, context)->
   else
     div.html template_not_found(module)
   div
-
-summaryMap = undefined

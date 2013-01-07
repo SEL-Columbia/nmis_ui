@@ -70,6 +70,8 @@ resizeDisplayWindowAndFacilityTable = ->
 ###
 The beast: launchFacilities--
 ###
+facilitiesMap = false
+
 launchFacilities = (results, params) ->
   facilities = results.facilities
   variableData = results.variables
