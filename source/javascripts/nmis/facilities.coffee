@@ -234,33 +234,27 @@ launchFacilities = (results, params) ->
 
     obj =
       facCount: "15"
-      lgaName: "" + lga.label + ", " + lga.group.label
-      overviewSectors: []
-      profileData: _.map(profileData, (d) ->
-        val = ""
-        if d[1] is null or d[1] is `undefined`
-          val = NMIS.DisplayValue.raw("--")[0]
-        else if d[1].value isnt `undefined`
-          val = NMIS.DisplayValue.raw(d[1].value)[0]
+      lgaName: "#{lga.label}, #{lga.group.label}"
+
+    obj.profileData = for [d0, d1] in profileData
+      outval = if d1 is null or d1 is `undefined`
+          NMIS.DisplayValue.raw("--")[0]
+        else if d1.value isnt `undefined`
+          NMIS.DisplayValue.raw(d1.value)[0]
         else
-          val = NMIS.DisplayValue.raw("--")
-        name: d[0]
-        value: val
-      )
+          NMIS.DisplayValue.raw("--")
 
-    _.each NMIS.Sectors.all(), (s) ->
+      name: d0
+      value: outval
+
+    obj.overviewSectors = for s in NMIS.Sectors.all()
       c = 0
-      _.each NMIS.data(), (d) ->
-        c++  if d.sector is s
+      c++  for d in NMIS.data() when d.sector is s
 
-      obj.overviewSectors.push
-        name: s.name
-        slug: s.slug
-        url: NMIS.urlFor(_.extend(NMIS.Env(),
-          sector: s
-          subsector: false
-        ))
-        counts: c
+      name: s.name
+      slug: s.slug
+      url: NMIS.urlFor(_.extend(NMIS.Env(), sector: s, subsector: false))
+      counts: c
 
     NMIS._wElems.elem1content.html _.template($("#facilities-overview").html(), obj)
   else
@@ -280,7 +274,7 @@ launchFacilities = (results, params) ->
       sScrollY: 1000
     ).addClass("bs")
     unless not e.indicator
-      (->
+      do ->
         if e.indicator.iconify_png_url
           NMIS.IconSwitcher.shiftStatus (id, item) ->
             if item.sector is e.sector
@@ -294,14 +288,13 @@ launchFacilities = (results, params) ->
         obj = _.extend({}, e.indicator)
         mm = $ _.template($("#indicator-feature").html(), obj)
         mm.find("a.close").click ->
-          xx = NMIS.urlFor(_.extend({}, e,
-            indicator: false
-          ))
-          dashboard.setLocation xx
+          dashboard.setLocation NMIS.urlFor _.extend({}, e, indicator: false)
           false
 
         mm.prependTo NMIS._wElems.elem1content
-        ((pcWrap) ->
+
+        pcWrap = mm.find(".raph-circle").get(0)
+        do ->
           sector = e.sector
           column = e.indicator
           piechartTrue = _.include(column.click_actions, "piechart_true")
@@ -338,8 +331,6 @@ launchFacilities = (results, params) ->
           unless not pieChartDisplayDefinitions
             tabulations = NMIS.Tabulation.sectorSlug(sector.slug, column.slug, "true false undefined".split(" "))
             prepare_data_for_pie_graph pcWrap, pieChartDisplayDefinitions, tabulations, {}
-        ) mm.find(".raph-circle").get(0)
-      )()
   resizeDisplayWindowAndFacilityTable()
   NMIS.FacilitySelector.activate id: e.facility  unless not e.facility
 
