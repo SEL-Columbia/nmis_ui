@@ -99,9 +99,7 @@ launchFacilities = (results, params) ->
     markerClick = ->
       sslug = NMIS.activeSector().slug
       if sslug is @nmis.item.sector.slug or sslug is "overview"
-        dashboard.setLocation NMIS.urlFor(_.extend(NMIS.Env(),
-          facility: @nmis.id
-        ))
+        dashboard.setLocation NMIS.urlFor _.extend NMIS.Env(), facility: @nmis.id
     markerMouseover = ->
       sslug = NMIS.activeSector().slug
       NMIS.FacilityHover.show this  if @nmis.item.sector.slug is sslug or sslug is "overview"
