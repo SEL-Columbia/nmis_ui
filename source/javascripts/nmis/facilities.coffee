@@ -233,7 +233,6 @@ launchFacilities = (results, params) ->
       "normal"
 
     obj =
-      facCount: "15"
       lgaName: "#{lga.label}, #{lga.group.label}"
 
     obj.profileData = for [d0, d1] in profileData
@@ -247,14 +246,17 @@ launchFacilities = (results, params) ->
       name: d0
       value: outval
 
+    facCount = 0
     obj.overviewSectors = for s in NMIS.Sectors.all()
       c = 0
-      c++  for d in NMIS.data() when d.sector is s
+      c++ for d, item of NMIS.data() when item.sector is s
+      facCount += c
 
       name: s.name
       slug: s.slug
       url: NMIS.urlFor(_.extend(NMIS.Env(), sector: s, subsector: false))
       counts: c
+    obj.facCount = facCount
 
     NMIS._wElems.elem1content.html _.template($("#facilities-overview").html(), obj)
   else
