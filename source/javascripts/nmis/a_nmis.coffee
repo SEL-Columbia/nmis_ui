@@ -413,6 +413,50 @@ do ->
 
     env_accessor
 
+
+NMIS.panels = do ->
+  panels = {}
+  currentPanel = false
+
+  class Panel
+    constructor: (@id)->
+      @_callbacks = {}
+    addCallbacks: (obj={})->
+      @addCallback name, cb  for own name, cb of obj
+      @
+    addCallback: (name, cb)->
+      @_callbacks[name] = []  unless @_callbacks[name]
+      @_callbacks[name].push cb
+      @
+    _triggerCallback: (name)->
+      cb.call window, name, @  for cb in @_callbacks[name] or []
+      @
+
+  getPanel = (id)->
+    panels[id] = new Panel id  if not panels[id]
+    panels[id]
+
+  changePanel = (id)->
+    nextPanel = panels[id]
+    if not nextPanel
+      throw new Error "Panel not found: #{id}"
+    else if nextPanel isnt currentPanel
+      currentPanel._triggerCallback 'close'  if currentPanel
+      nextPanel._triggerCallback 'open'
+      currentPanel = nextPanel
+      panels[id]
+    else
+      false
+
+  ensurePanel = (id)->
+    throw new Error "NMIS.panels.ensurePanel('#{id}') Error: Panel does not exist"  unless panels[id]
+
+  getPanel: getPanel
+  changePanel: changePanel
+  ensurePanel: ensurePanel
+  currentPanelId: ()-> currentPanel?.id
+  allPanels: ()-> (v for k, v of panels)
+
 do ->
   NMIS.DisplayWindow = do ->
     elem = undefined

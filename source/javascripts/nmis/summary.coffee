@@ -46,10 +46,22 @@ class TmpSector
     @slug = s.id
     @name = s.name
 
+do ->
+  ###
+  When "summary" is activated/deactivated, the open/close callbacks are called
+  ###
+  open = ->
+    # log "Opening summary"
+
+  close = ->
+    # log "Closing summary"
+
+  NMIS.panels.getPanel("summary").addCallbacks open: open, close: close
+
 launch_summary = (params, state, lga, query_results={})->
   summary_data = query_results.summary
   summary_sectors = query_results.summary_sectors
-  NMIS.DisplayWindow.setVisibility false
+  NMIS.panels.changePanel "summary"
   NMIS.DisplayWindow.setDWHeight()
   overviewObj =
     name: "Overview"

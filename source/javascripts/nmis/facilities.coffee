@@ -1,16 +1,27 @@
 ###
 Facilities:
 ###
+
+do ->
+  open = ()->
+    NMIS.DisplayWindow.setVisibility true
+
+  close = ()->
+    NMIS.DisplayWindow.setVisibility false
+
+  NMIS.panels.getPanel("facilities").addCallbacks open: open, close: close
+
+
 launch_facilities = ->
   params = {}
 
   params.facility = ("" + window.location.search).match(/facility=(\d+)/)[1]  if ("" + window.location.search).match(/facility=(\d+)/)
   $("#conditional-content").hide()
 
-  _.each @params, (param, pname) ->
-    params[pname] = param.replace("/", "")  if $.type(param) is "string" and param isnt ""
+  for own paramName, val of @params when $.type(val) is "string" and val isnt ""
+    params[paramName] = val.replace "/", ""
 
-  district = NMIS.getDistrictByUrlCode("#{params.state}/#{params.lga}")
+  district = NMIS.getDistrictByUrlCode "#{params.state}/#{params.lga}"
 
   NMIS._currentDistrict = district
   params.sector = `undefined`  if params.sector is "overview"
@@ -27,7 +38,7 @@ NMIS.launch_facilities = launch_facilities
 
 
 prepFacilities = (params) ->
-  NMIS.DisplayWindow.setVisibility true
+  NMIS.panels.changePanel "facilities"
   facilitiesMode =
     name: "Facility Detail"
     slug: "facilities"
