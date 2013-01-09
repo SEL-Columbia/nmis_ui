@@ -41,7 +41,7 @@ do ->
         deferred.resolve()
       else
         deferred.fail()
-    deferred
+    deferred.promise()
 
 do ->
   NMIS.load_districts = (group_list, district_list)->
