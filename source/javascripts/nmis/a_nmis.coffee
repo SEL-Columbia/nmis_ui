@@ -424,7 +424,7 @@ do ->
     hbuttons = undefined
     titleElems = {}
     curSize = undefined
-    resizerSet = undefined
+    resizerSet = false
     resized = undefined
     curTitle = undefined
 
@@ -432,7 +432,7 @@ do ->
       clear()  if opts isnt `undefined`
       unless resizerSet
         resizerSet = true
-        $(window).resize resized
+        $(window).resize _.throttle resized, 1000
       elem = $("<div />").appendTo($(_elem))
       #default options:
       opts = _.extend(
@@ -525,7 +525,8 @@ do ->
 
     setVisibility = (tf) ->
       css = {}
-      unless tf
+      visible = !!tf
+      unless visible
         css =
           left: "1000em"
           display: "none"
@@ -572,14 +573,14 @@ do ->
       padding = 30
       elem1.height() - hbuttons.height() - padding
 
-    resized = _.throttle(->
-      if curSize isnt "full"
+    resized = ->
+      # this function is throttled
+      if visible and curSize isnt "full"
         fh = fullHeight()
         elem.stop true, false
         elem.animate height: fh
         elem0.stop true, false
         elem0.animate height: fh
-    , 1000)
 
     init: init
     clear: clear
