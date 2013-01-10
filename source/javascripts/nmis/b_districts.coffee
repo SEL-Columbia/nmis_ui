@@ -10,6 +10,7 @@ headers = do ->
     else if what is "nav"
       if !nav
         nav = $('.lga-nav').on 'submit', 'form', (evt)->
+          log "val", nav.find('select').val()
           NMIS.select_district nav.find('select').val()
           evt.preventDefault()
           return false
@@ -84,13 +85,14 @@ do ->
     new_select.chosen()
 
 do ->
-  NMIS.select_district = (district_id)->
+  NMIS.select_district = (district_id=false)->
     ###
     this is called on form submit, for example
     ###
     existing = false
-    existing = d for d in NMIS._districts_ when d.id is district_id
-    $.cookie "selected-district", if existing then district_id else false
+    if district_id
+      existing = d for d in NMIS._districts_ when d.id is district_id
+    $.cookie "selected-district", if existing then district_id else ""
     if existing
       NMIS._lgaFacilitiesDataUrl_ = "#{existing.data_root}/facilities.json"
       dashboard.setLocation NMIS.urlFor state: existing.group.slug, lga: existing.slug

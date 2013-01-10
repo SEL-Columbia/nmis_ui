@@ -1,7 +1,7 @@
 ###
 Facilities:
 ###
-launch_facilities = ->
+NMIS.launch_facilities = ->
   params = {}
 
   params.facility = ("" + window.location.search).match(/facility=(\d+)/)[1]  if ("" + window.location.search).match(/facility=(\d+)/)
@@ -22,9 +22,6 @@ launch_facilities = ->
       fetchers[mod] = district.get_data_module(mod).fetch()
 
     $.when_O(fetchers).done (results)-> launchFacilities results, params
-
-NMIS.launch_facilities = launch_facilities
-
 
 prepFacilities = (params) ->
   NMIS.DisplayWindow.setVisibility true
