@@ -92,6 +92,10 @@ NMIS._prepBreadcrumbValues = (e, keys, env) ->
 NMIS.Breadcrumb.init "p.bc",
   levels: []
 
+do ->
+  dashboard.get NMIS.url_root, NMIS.CountryView
+  dashboard.get "#{NMIS.url_root}#/", NMIS.CountryView
+
 dashboard.get "#{NMIS.url_root}#/:state/:lga/facilities/?(#.*)?", NMIS.launch_facilities
 dashboard.get "#{NMIS.url_root}#/:state/:lga/facilities/:sector/?(#.*)?", NMIS.launch_facilities
 dashboard.get "#{NMIS.url_root}#/:state/:lga/facilities/:sector/:subsector/?(#.*)?", NMIS.launch_facilities
