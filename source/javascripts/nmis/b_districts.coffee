@@ -75,10 +75,10 @@ do ->
     NMIS._districts_ = districts
     NMIS._groups_ = groups
 
-    already_selected = $.cookie "selected-district"
-    if already_selected?
-      new_select.val already_selected
-      NMIS.select_district already_selected
+    # already_selected = $.cookie "selected-district"
+    # if already_selected?
+    #   new_select.val already_selected
+    #   NMIS.select_district already_selected
 
     submit_button = headers('nav').find("input[type='submit']").detach()
     headers('nav').find('form div').eq(0).empty().html(new_select).append(submit_button)
@@ -92,7 +92,7 @@ do ->
     existing = false
     if district_id
       existing = d for d in NMIS._districts_ when d.id is district_id
-    $.cookie "selected-district", if existing then district_id else ""
+    # $.cookie "selected-district", if existing then district_id else ""
     if existing
       NMIS._lgaFacilitiesDataUrl_ = "#{existing.data_root}/facilities.json"
       dashboard.setLocation NMIS.urlFor state: existing.group.slug, lga: existing.slug
