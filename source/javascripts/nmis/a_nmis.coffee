@@ -261,25 +261,27 @@ do ->
 
 do ->
   NMIS.DataLoader = do ->
+    ajaxJsonQuery = (url, cache=true)->
+      $.ajax(url: url, dataType: "json", cache: cache)
     fetchLocalStorage = (url) ->
       p     =!1
       data  =!1
       stringData = localStorage.getItem(url)
       if stringData
         data = JSON.parse(stringData)
-        $.getJSON(url).then (d) ->
+        ajaxJsonQuery(url).then (d)->
           localStorage.removeItem url
           localStorage.setItem url, JSON.stringify(d)
 
         $.Deferred().resolve [data]
       else
         p = new $.Deferred()
-        $.getJSON(url).then (d) ->
+        ajaxJsonQuery(url).then (d)->
           localStorage.setItem url, JSON.stringify(d)
           p.resolve [d]
         p.promise()
 
-    fetch = (url) -> $.getJSON url
+    fetch = (url) -> ajaxJsonQuery url, false
     # Until localStorage fecthing works, just use $.getJSON
     fetch: fetch
 
