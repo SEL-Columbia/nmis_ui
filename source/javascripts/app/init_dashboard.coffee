@@ -53,39 +53,24 @@ NMIS._wElems = wElems
 NMIS.LocalNav.init wElems.wrap,
   sections: [[["mode:summary", "LGA Summary", "#"], ["mode:facilities", "Facility Detail", "#"]], [["sector:overview", "Overview", "#"], ["sector:health", "Health", "#"], ["sector:education", "Education", "#"], ["sector:water", "Water", "#"]]]
 
-NMIS.urlFor = (o) ->
-  o.root = "#{NMIS.url_root}#" unless o.root?
-  o.mode = "summary" unless o.mode?
-
-  # If problems, revert back to this code:
-  # o = _.extend(
-  #   #defaults
-  #   root: "#{NMIS.url_root}#"
-  #   mode: "summary"
-  # , _o)
-  return "#{NMIS.url_root}#?error"  if not o.lga or not o.state
-  uu = (_pushAsDefined = (obj, keyList) ->
-    key = undefined
-    i = undefined
-    l = undefined
+do ->
+  pushAsDefined = (o, keyList)->
     arr = []
-    item = undefined
-    i = 0
-    l = keyList.length
-
-    while i < l
-      key = keyList[i]
-      item = obj[key]
+    for key in keyList
+      item = o[key]
       unless not item
-        return ["/error"]  if item is false
         arr.push (if item.slug is `undefined` then item else item.slug)
       else
         return arr
-      i++
     arr
-  )(o, ["root", "state", "lga", "mode", "sector", "subsector", "indicator"]).join("/")
-  uu += "?facility=" + o.facility  unless not o.facility
-  uu
+  NMIS.urlFor = (o) ->
+    o.root = "#{NMIS.url_root}#" unless o.root?
+    o.mode = "summary" unless o.mode?
+    return "#{NMIS.url_root}#?error"  if not o.lga or not o.state
+    klist = ["root", "state", "lga", "mode", "sector", "subsector", "indicator"]
+    builtUrl = pushAsDefined(o, klist).join "/"
+    builtUrl += "?facility=" + o.facility  unless not o.facility
+    builtUrl
 
 NMIS._prepBreadcrumbValues = (e, keys, env) ->
   arr = []
