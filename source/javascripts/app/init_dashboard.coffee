@@ -53,39 +53,24 @@ NMIS._wElems = wElems
 NMIS.LocalNav.init wElems.wrap,
   sections: [[["mode:summary", "LGA Summary", "#"], ["mode:facilities", "Facility Detail", "#"]], [["sector:overview", "Overview", "#"], ["sector:health", "Health", "#"], ["sector:education", "Education", "#"], ["sector:water", "Water", "#"]]]
 
-NMIS.urlFor = (o) ->
-  o.root = "#{NMIS.url_root}#" unless o.root?
-  o.mode = "summary" unless o.mode?
-
-  # If problems, revert back to this code:
-  # o = _.extend(
-  #   #defaults
-  #   root: "#{NMIS.url_root}#"
-  #   mode: "summary"
-  # , _o)
-  return "#{NMIS.url_root}#?error"  if not o.lga or not o.state
-  uu = (_pushAsDefined = (obj, keyList) ->
-    key = undefined
-    i = undefined
-    l = undefined
+do ->
+  pushAsDefined = (o, keyList)->
     arr = []
-    item = undefined
-    i = 0
-    l = keyList.length
-
-    while i < l
-      key = keyList[i]
-      item = obj[key]
+    for key in keyList
+      item = o[key]
       unless not item
-        return ["/error"]  if item is false
         arr.push (if item.slug is `undefined` then item else item.slug)
       else
         return arr
-      i++
     arr
-  )(o, ["root", "state", "lga", "mode", "sector", "subsector", "indicator"]).join("/")
-  uu += "?facility=" + o.facility  unless not o.facility
-  uu
+  NMIS.urlFor = (o) ->
+    o.root = "#{NMIS.url_root}#" unless o.root?
+    o.mode = "summary" unless o.mode?
+    return "#{NMIS.url_root}#?error"  if not o.lga or not o.state
+    klist = ["root", "state", "lga", "mode", "sector", "subsector", "indicator"]
+    builtUrl = pushAsDefined(o, klist).join "/"
+    builtUrl += "?facility=" + o.facility  unless not o.facility
+    builtUrl
 
 NMIS._prepBreadcrumbValues = (e, keys, env) ->
   arr = []
@@ -107,6 +92,10 @@ NMIS._prepBreadcrumbValues = (e, keys, env) ->
 NMIS.Breadcrumb.init "p.bc",
   levels: []
 
+do ->
+  dashboard.get NMIS.url_root, NMIS.CountryView
+  dashboard.get "#{NMIS.url_root}#/", NMIS.CountryView
+
 dashboard.get "#{NMIS.url_root}#/:state/:lga/facilities/?(#.*)?", NMIS.launch_facilities
 dashboard.get "#{NMIS.url_root}#/:state/:lga/facilities/:sector/?(#.*)?", NMIS.launch_facilities
 dashboard.get "#{NMIS.url_root}#/:state/:lga/facilities/:sector/:subsector/?(#.*)?", NMIS.launch_facilities
@@ -117,15 +106,27 @@ dashboard.get "#{NMIS.url_root}#/:state/:lga/summary/:sector/?(#.*)?", NMIS.load
 dashboard.get "#{NMIS.url_root}#/:state/:lga/summary/:sector/:subsector/?(#.*)?", NMIS.loadSummary
 dashboard.get "#{NMIS.url_root}#/:state/:lga/summary/:sector/:subsector/:indicator/?(#.*)?", NMIS.loadSummary
 
+do ->
+  ###
+  If the url has a search string that includes "?data=xyz", then this
+  will assign the data-source cookie to the value and then redirect to
+  the URL without the data-source in it.
+  ###
+  srchStr = "#{window.location.search}"
+  unless -1 is srchStr.indexOf "data="
+    href = "#{window.location.href}"
+    hash = "#{window.location.hash}"
+    [ss, ssData] = srchStr.match /data=(.*)$/
+    $.cookie "data-source", ssData  if ssData
+    newUrl = href.split("?")[0]
+    newUrl += hash  if hash
+    window.location.href = newUrl
+
 data_src = $.cookie "data-source"
 default_data_source_url = "./path_to_generic_data_source/"
-data_src = default_data_source_url unless data_src?
+data_src = default_data_source_url  unless data_src?
 NMIS._data_src_root_url = data_src
 
-@dashboard.get "#{NMIS.url_root}#data=(.*)", ()->
-  data_src = @params.splat[0]
-  $.cookie "data-source", data_src
-  @redirect "#{NMIS.url_root}"
-
 # After document has loaded, load "schema" and when that is complete, run sammy.
-$ -> NMIS.load_schema(data_src).done ()-> dashboard.run()
+$ ->
+  NMIS.load_schema(data_src).done ()-> dashboard.run()

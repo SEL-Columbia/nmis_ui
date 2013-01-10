@@ -9,8 +9,11 @@ headers = do ->
         header
     else if what is "nav"
       if !nav
-        nav = $('.lga-nav').on 'submit', 'form', ()->
+        nav = $('.lga-nav').on 'submit', 'form', (evt)->
+          log "val", nav.find('select').val()
           NMIS.select_district nav.find('select').val()
+          evt.preventDefault()
+          return false
       else
         nav
 
@@ -39,13 +42,14 @@ do ->
         deferred.resolve()
       else
         deferred.fail()
-    deferred
+    deferred.promise()
 
 do ->
   NMIS.load_districts = (group_list, district_list)->
     group_names = []
     groups = []
     districts = []
+
     get_group_by_id = (grp_id)->
       grp_found = false
       grp_found = grp for grp in groups when grp.id is grp_id
@@ -57,14 +61,12 @@ do ->
       d = new NMIS.District district
       d.set_group get_group_by_id d.group
       districts.push d
-    new_select = $ '<select>',
-      id: 'lga-select'
-      title: 'Select a district'
+
+    new_select = $ '<select>', id: 'lga-select', title: 'Select a district'
     for group in groups
-      optgroup = $ '<optgroup>',
-        label: group.name
-      $('<option>', d.html_params).appendTo(optgroup) for d in group.districts
-      optgroup.appendTo new_select
+      optgroup = $ '<optgroup>', label: group.name
+      optgroup.append $ '<option>', d.html_params for d in group.districts
+      new_select.append optgroup
 
     ###
     We will want to hang on to these districts for later, and give them
@@ -73,24 +75,27 @@ do ->
     NMIS._districts_ = districts
     NMIS._groups_ = groups
 
-    select_district = (district_id)->
-      ###
-      this is called on form submit, for example
-      ###
-      existing = false
-      existing = d for d in districts when d.id is district_id
-      $.cookie "selected-district", if existing then district_id else false
-      unless existing?
-        NMIS._lgaFacilitiesDataUrl_ = "#{existing.data_root}/facilities.json"
-
-    already_selected = $.cookie "selected-district"
-    if already_selected?
-      new_select.val already_selected
-      select_district already_selected
+    # already_selected = $.cookie "selected-district"
+    # if already_selected?
+    #   new_select.val already_selected
+    #   NMIS.select_district already_selected
 
     submit_button = headers('nav').find("input[type='submit']").detach()
     headers('nav').find('form div').eq(0).empty().html(new_select).append(submit_button)
     new_select.chosen()
+
+do ->
+  NMIS.select_district = (district_id=false)->
+    ###
+    this is called on form submit, for example
+    ###
+    existing = false
+    if district_id
+      existing = d for d in NMIS._districts_ when d.id is district_id
+    # $.cookie "selected-district", if existing then district_id else ""
+    if existing
+      NMIS._lgaFacilitiesDataUrl_ = "#{existing.data_root}/facilities.json"
+      dashboard.setLocation NMIS.urlFor state: existing.group.slug, lga: existing.slug
 
 class NMIS.District
   constructor: (d)->
