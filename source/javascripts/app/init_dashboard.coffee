@@ -117,15 +117,27 @@ dashboard.get "#{NMIS.url_root}#/:state/:lga/summary/:sector/?(#.*)?", NMIS.load
 dashboard.get "#{NMIS.url_root}#/:state/:lga/summary/:sector/:subsector/?(#.*)?", NMIS.loadSummary
 dashboard.get "#{NMIS.url_root}#/:state/:lga/summary/:sector/:subsector/:indicator/?(#.*)?", NMIS.loadSummary
 
+do ->
+  ###
+  If the url has a search string that includes "?data=xyz", then this
+  will assign the data-source cookie to the value and then redirect to
+  the URL without the data-source in it.
+  ###
+  srchStr = "#{window.location.search}"
+  unless -1 is srchStr.indexOf "data="
+    href = "#{window.location.href}"
+    hash = "#{window.location.hash}"
+    [ss, ssData] = srchStr.match /data=(.*)$/
+    $.cookie "data-source", ssData  if ssData
+    newUrl = href.split("?")[0]
+    newUrl += hash  if hash
+    window.location.href = newUrl
+
 data_src = $.cookie "data-source"
 default_data_source_url = "./path_to_generic_data_source/"
-data_src = default_data_source_url unless data_src?
+data_src = default_data_source_url  unless data_src?
 NMIS._data_src_root_url = data_src
 
-@dashboard.get "#{NMIS.url_root}#data=(.*)", ()->
-  data_src = @params.splat[0]
-  $.cookie "data-source", data_src
-  @redirect "#{NMIS.url_root}"
-
 # After document has loaded, load "schema" and when that is complete, run sammy.
-$ -> NMIS.load_schema(data_src).done ()-> dashboard.run()
+$ ->
+  NMIS.load_schema(data_src).done ()-> dashboard.run()
