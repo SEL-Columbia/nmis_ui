@@ -298,18 +298,14 @@ do ->
       opts = _.extend(
         sections: []
       , _opts)
-      elem = $("<ul />",
-        id: "local-nav"
-        class: "nav"
-      )
-      wrap = $("<div />",
-        class: "row ln-wrap"
-      ).css(
-        position: "absolute"
-        top: 82
-        left: 56
-        "z-index": 99
-      ).html(elem)
+      elem = $ "<ul />", id: "local-nav", class: "nav"
+      wrap = $("<div />", class: "row ln-wrap")
+        .css(
+          position: "absolute"
+          top: 82
+          left: 56
+          "z-index": 99
+        ).html(elem)
       $(".content").eq(0).prepend wrap
       spacer = $("<li>", {class: "small spacer", html: "&nbsp;"})
       for section, i in opts.sections
