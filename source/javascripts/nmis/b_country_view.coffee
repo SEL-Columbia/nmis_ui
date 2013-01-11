@@ -22,6 +22,8 @@ do ->
 
   panelOpen = ()->
     NMIS.LocalNav.hide()
+    NMIS.Breadcrumb.clear()
+    NMIS.Breadcrumb.setLevels [["Country View", "/"]]
     data =
       title: "Nigeria"
       zones: NMIS._zones_

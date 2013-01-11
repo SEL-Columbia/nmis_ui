@@ -85,7 +85,7 @@ NMIS._prepBreadcrumbValues = (e, keys, env) ->
     key = keys[i]
     val = e[key]
     if val isnt `undefined`
-      name = val.name or val.slug or val
+      name = val.name or val.label or val.slug or val
       env[key] = val
       arr.push [name, NMIS.urlFor(env)]
     else

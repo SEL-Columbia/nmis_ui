@@ -418,7 +418,7 @@ do ->
 
     env_accessor.extend = (o)->
       e = if env then env else {}
-      _.extend(e, o)
+      _.extend({}, e, o)
 
     env_accessor
 

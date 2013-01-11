@@ -73,7 +73,7 @@ launch_summary = (params, state, lga, query_results={})->
 
   current_sector = new TmpSector(s) for s in summary_data.view_details when s.id is params.sector
   current_sector = overviewObj unless current_sector
-  _env =
+  NMIS.Env
     mode:
       name: "Summary"
       slug: "summary"
@@ -81,17 +81,15 @@ launch_summary = (params, state, lga, query_results={})->
     lga: lga
     sector: current_sector
 
-  bcValues = NMIS._prepBreadcrumbValues(_env, "state lga mode sector subsector indicator".split(" "),
-    state: state
-    lga: lga
-  )
   NMIS.Breadcrumb.clear()
-  NMIS.Breadcrumb.setLevels bcValues
-  NMIS.LocalNav.markActive ["mode:summary", "sector:" + _env.sector.slug]
+
+  bcKeys = "state lga mode sector subsector indicator".split(" ")
+  NMIS.Breadcrumb.setLevels NMIS._prepBreadcrumbValues NMIS.Env(), bcKeys, state: state, lga: lga
+  NMIS.LocalNav.markActive ["mode:summary", "sector:" + NMIS.Env().sector.slug]
   NMIS.LocalNav.iterate (sectionType, buttonName, a) ->
-    env = _.extend({}, _env)
-    env[sectionType] = buttonName
-    a.attr "href", NMIS.urlFor(env)
+    o = {}
+    o[sectionType] = buttonName
+    a.attr "href", NMIS.urlFor.extendEnv o
   do ->
     ###
     how can we do this better?
@@ -116,7 +114,7 @@ launch_summary = (params, state, lga, query_results={})->
         sector_window.appendTo cc_div
       $('.content').append(cc_div)
   do ->
-    sector = _env.sector
+    sector = NMIS.Env().sector
     cc = $("#conditional-content").hide()
     cc.find(">div").hide()
     cc.find(">div.lga." + sector.slug).show()
