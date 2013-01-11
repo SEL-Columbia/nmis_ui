@@ -610,17 +610,18 @@ do ->
       showTitle key  if curTitle is key
     createHeaderBar = ->
       hbuttons = $("<span />") #.addClass('print-hide-inline');
-      _.each opts.clickSizes, (sizeArr) ->
-        size = sizeArr[0]
-        desc = sizeArr[1]
-        $("<a />").attr("class", "btn small clicksize " + size).text(desc).attr("title", desc).click(->
-          setSize size, false
-        ).appendTo hbuttons
+      _.each opts.clickSizes, ([size, desc]) ->
+        $("<a />").attr("class", "btn small clicksize #{size}")
+            .text(desc)
+            .attr("title", desc)
+            .click(-> setSize(size, false))
+            .appendTo hbuttons
 
       titleElems.bar = $("<h3 />").addClass("bar-title").hide()
-      $("<div />",
-        class: "display-window-bar breadcrumb"
-      ).css(margin: 0).append(titleElems.bar).append hbuttons
+      $("<div />", class: "display-window-bar breadcrumb")
+          .css(margin: 0)
+          .append(titleElems.bar)
+          .append hbuttons
 
     clear = ->
       elem isnt `undefined` and elem.empty()
