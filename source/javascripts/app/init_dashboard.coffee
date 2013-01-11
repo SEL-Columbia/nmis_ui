@@ -21,7 +21,7 @@ URL actions can be triggered by calling:
   @get "#{NMIS.url_root}#/:state/:lga/?", ->
     # when user lands at this base page, they will
     # be redirected to a default section (ie. "summary")
-    dashboard.setLocation "#{NMIS.url_root}#/#{@params.state}/#{@params.lga}/summary/"
+    dashboard.setLocation "#{NMIS.url_root}#/#{@params.state}/#{@params.lga}/summary"
 )
 
 #
@@ -52,6 +52,7 @@ NMIS._wElems = wElems
 
 NMIS.LocalNav.init wElems.wrap,
   sections: [[["mode:summary", "LGA Summary", "#"], ["mode:facilities", "Facility Detail", "#"]], [["sector:overview", "Overview", "#"], ["sector:health", "Health", "#"], ["sector:education", "Education", "#"], ["sector:water", "Water", "#"]]]
+NMIS.LocalNav.hide()
 
 do ->
   pushAsDefined = (o, keyList)->
@@ -63,7 +64,7 @@ do ->
       else
         return arr
     arr
-  NMIS.urlFor = (o) ->
+  urlFor = (o) ->
     o.root = "#{NMIS.url_root}#" unless o.root?
     o.mode = "summary" unless o.mode?
     return "#{NMIS.url_root}#?error"  if not o.lga or not o.state
@@ -71,6 +72,9 @@ do ->
     builtUrl = pushAsDefined(o, klist).join "/"
     builtUrl += "?facility=" + o.facility  unless not o.facility
     builtUrl
+  urlFor.extendEnv = (o)->
+    urlFor NMIS.Env.extend o
+  NMIS.urlFor = urlFor
 
 NMIS._prepBreadcrumbValues = (e, keys, env) ->
   arr = []

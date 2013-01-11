@@ -323,6 +323,13 @@ do ->
           $("<li>", html: a).appendTo(elem)
       submenu = $("<ul>", class: "submenu").appendTo(elem)
 
+    hide = ()->
+      wrap.detach()
+
+    show = ()->
+      if wrap.closest("html").length is 0
+        $(".content").eq(0).prepend wrap
+
     getNavLink = (code) ->
       _x = code.split(":")
       section = _x[0]
@@ -361,6 +368,8 @@ do ->
     init: init
     clear: clear
     iterate: iterate
+    hide: hide
+    show: show
     displaySubmenu: displaySubmenu
     hideSubmenu: hideSubmenu
     markActive: markActive
@@ -411,7 +420,9 @@ do ->
       _.extend {}, env
     set_env = (_env)-> env = _.extend {}, _env
 
-    env_accessor.extend = (o)-> _.extend(get_env(), o)
+    env_accessor.extend = (o)->
+      e = if env then env else {}
+      _.extend(e, o)
 
     env_accessor
 
@@ -430,8 +441,8 @@ NMIS.panels = do ->
       @_callbacks[name] = []  unless @_callbacks[name]
       @_callbacks[name].push cb
       @
-    _triggerCallback: (name)->
-      cb.call window, name, @  for cb in @_callbacks[name] or []
+    _triggerCallback: (name, nextPanel)->
+      cb.call window, name, @, nextPanel  for cb in @_callbacks[name] or []
       @
 
   getPanel = (id)->
@@ -443,8 +454,8 @@ NMIS.panels = do ->
     if not nextPanel
       throw new Error "Panel not found: #{id}"
     else if nextPanel isnt currentPanel
-      currentPanel._triggerCallback 'close'  if currentPanel
-      nextPanel._triggerCallback 'open'
+      currentPanel._triggerCallback 'close', nextPanel  if currentPanel
+      nextPanel._triggerCallback 'open', currentPanel
       currentPanel = nextPanel
       panels[id]
     else
@@ -473,13 +484,17 @@ do ->
     resizerSet = false
     resized = undefined
     curTitle = undefined
+    initted = false
+    contentWrap = false
 
     init = (_elem, _opts) ->
+      initted = true
       clear()  if opts isnt `undefined`
       unless resizerSet
         resizerSet = true
         $(window).resize _.throttle resized, 1000
-      elem = $("<div />").appendTo($(_elem))
+      contentWrap = $ _elem
+      elem = $("<div />").appendTo contentWrap
       #default options:
       opts = _.extend(
         height: 100
@@ -582,6 +597,18 @@ do ->
           display: "block"
       elem0.css css
       elem1.css css
+
+    ensureInitialized = ()-> throw new Error("NMIS.DisplayWindow is not initialized") unless initted
+
+    hide = ()->
+      setVisibility false
+      ensureInitialized()
+      elem.detach()
+    show = ()->
+      setVisibility true
+      ensureInitialized()
+      if elem.closest("html").length is 0
+        contentWrap.append elem
     addTitle = (key, jqElem) ->
       titleElems[key] = jqElem
       showTitle key  if curTitle is key
@@ -635,6 +662,8 @@ do ->
       curSize
 
     setVisibility: setVisibility
+    hide: hide
+    show: show
     addCallback: addCallback
     setDWHeight: setDWHeight
     addTitle: addTitle

@@ -3,13 +3,15 @@ Facilities:
 ###
 
 do ->
-  open = ()->
-    NMIS.DisplayWindow.setVisibility true
+  panelOpen = ()->
+    NMIS.DisplayWindow.show()
+    NMIS.LocalNav.show()
 
-  close = ()->
-    NMIS.DisplayWindow.setVisibility false
+  panelClose = ()->
+    NMIS.DisplayWindow.hide()
+    NMIS.LocalNav.hide()
 
-  NMIS.panels.getPanel("facilities").addCallbacks open: open, close: close
+  NMIS.panels.getPanel("facilities").addCallbacks open: panelOpen, close: panelClose
 
 
 NMIS.launch_facilities = ->
@@ -17,7 +19,6 @@ NMIS.launch_facilities = ->
   params = {}
 
   params.facility = ("" + window.location.search).match(/facility=(\d+)/)[1]  if ("" + window.location.search).match(/facility=(\d+)/)
-  $("#conditional-content").hide()
 
   for own paramName, val of @params when $.type(val) is "string" and val isnt ""
     params[paramName] = val.replace "/", ""

@@ -1,3 +1,19 @@
+do ->
+  ###
+  When "summary" is activated/deactivated, the open/close callbacks are called
+  ###
+  panelOpen = ->
+    NMIS.LocalNav.show()
+    NMIS.DisplayWindow.show()
+    $("#conditional-content").show()
+
+  panelClose = ->
+    NMIS.LocalNav.hide()
+    NMIS.DisplayWindow.hide()
+    $("#conditional-content").hide()
+
+  NMIS.panels.getPanel("summary").addCallbacks open: panelOpen, close: panelClose
+
 summaryMap = false
 
 NMIS.loadSummary = (s) ->
@@ -45,18 +61,6 @@ class TmpSector
   constructor: (s)->
     @slug = s.id
     @name = s.name
-
-do ->
-  ###
-  When "summary" is activated/deactivated, the open/close callbacks are called
-  ###
-  open = ->
-    # log "Opening summary"
-
-  close = ->
-    # log "Closing summary"
-
-  NMIS.panels.getPanel("summary").addCallbacks open: open, close: close
 
 launch_summary = (params, state, lga, query_results={})->
   summary_data = query_results.summary

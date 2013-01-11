@@ -10,8 +10,8 @@ headers = do ->
     else if what is "nav"
       if !nav
         nav = $('.lga-nav').on 'submit', 'form', (evt)->
-          log "val", nav.find('select').val()
-          NMIS.select_district nav.find('select').val()
+          d = NMIS.findDistrictById nav.find('select').val()
+          dashboard.setLocation NMIS.urlFor.extendEnv state: d.group, lga: d
           evt.preventDefault()
           return false
       else
@@ -62,6 +62,23 @@ do ->
       d.set_group get_group_by_id d.group
       districts.push d
 
+    groupsObj = {}
+    groupsObj[g.id] = g  for g in groups
+    group.assignParentGroup groupsObj  for group in groups
+    group.assignLevel() for group in groups
+
+    zones = []
+    states = []
+
+    for g in groups
+      if g.group is undefined
+        zones.push g
+      else
+        states.push g
+
+    NMIS._zones_ = zones.sort (a, b)-> a.label > b.label if b?
+    NMIS._states_ = states.sort (a, b)-> a.label > b.label if b?
+
     new_select = $ '<select>', id: 'lga-select', title: 'Select a district'
     for group in groups
       optgroup = $ '<optgroup>', label: group.name
@@ -85,7 +102,7 @@ do ->
     new_select.chosen()
 
 do ->
-  NMIS.select_district = (district_id=false)->
+  NMIS.findDistrictById = (district_id=false)->
     ###
     this is called on form submit, for example
     ###
@@ -93,9 +110,10 @@ do ->
     if district_id
       existing = d for d in NMIS._districts_ when d.id is district_id
     # $.cookie "selected-district", if existing then district_id else ""
-    if existing
-      NMIS._lgaFacilitiesDataUrl_ = "#{existing.data_root}/facilities.json"
-      dashboard.setLocation NMIS.urlFor state: existing.group.slug, lga: existing.slug
+    # if existing
+    #   NMIS._lgaFacilitiesDataUrl_ = "#{existing.data_root}/facilities.json"
+    #   dashboard.setLocation NMIS.urlFor state: existing.group.slug, lga: existing.slug
+    existing
 
 class NMIS.District
   constructor: (d)->
@@ -110,6 +128,8 @@ class NMIS.District
       value: @id
   module_url: (module_name)->
     @get_data_module(module_name).url
+  defaultSammyUrl: ()->
+    "#{NMIS.url_root}#/#{@group_slug}/#{@slug}/summary"
   sectors_data_loader: ()->
     # if @has_data_module("sectors")
     #   fetcher = NMIS.DataLoader.fetch @module_url("sectors")
@@ -149,11 +169,28 @@ class NMIS.Group
     @districts = []
     @label = details.label
     @id = details.id
+    @groupId = details.group
+    @children = []
   add_district: (d)->
     @districts.push d
+    @children.push d
     @slug = d.group_slug unless @slug?
     @districts = @districts.sort (a, b)-> a.label > b.label if b?
+    @children = @children.sort (a, b)-> a.label > b.label if b?
     true
+  assignParentGroup: (allGroups)->
+    if @groupId and allGroups[@groupId]
+      @group = allGroups[@groupId]
+      @group.children.push @
+  assignLevel: ()->
+    @_level = @ancestors().length - 1
+  ancestors: ()->
+    ps = []
+    g = @
+    while g isnt undefined
+      ps.push g
+      g = g.group
+    ps
 
 class NMIS.ModuleFile
   constructor: (@filename, district)->

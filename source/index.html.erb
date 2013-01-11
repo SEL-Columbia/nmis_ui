@@ -7,6 +7,63 @@ title: MDG Survey Viewer [JS]
 <% end %>
 
 <% content_for :templates do %>
+<script type="text/template" id="country-view-tmpl" data-module="overview_and_map">
+  <div class="page-header">
+    <h1><{= title }></h1>
+  </div>
+
+  <div id="map" class="resizing-map" style="height: 476px; position: relative;">
+    <div class="home-map-nav" style="height: 476px; border: 1px solid rgb(187, 187, 187); padding-left: 685px;">
+      <div class="mn-iiwrap">
+        <div class="mn-iwrap">
+          <div class="layer-nav">
+            <select title="Please select an indicator map..." style="width: 100%;">
+            <!--
+              <optgroup label="MDG #">
+                <option value="layer_id">LayerName</option>
+              </optgroup>
+            -->
+            </select>
+          </div>
+          <h3 class="mdg-display"></h3>
+          <div class="layer-description"></div>
+        </div>
+        <div class="mn-legend"></div>
+      </div>
+    </div>
+    <div class="map-loading-message" style="display: none;">Please be patient while this map loads</div>
+  </div>
+  <div id="zone-navigation">
+    <{ _.each(zones, function(zone){ }>
+    <div class="zl-wrap">
+      <div class="zone-list">
+        <h2 class="zone-title"><{= zone.label }></h2>
+        <ul>
+          <{ _.each(zone.children, function(state){ }>
+            <li>
+              <a href="#" class="state-link" data-lga-count="3">
+                <{= state.label }>
+                <span class="lga-count"> (<{= state.districts.length }>)</span>
+              </a>
+              <ul class="lga-list">
+                <{ _.each(state.districts, function(district){ }>
+                  <li>
+                    <a href="<{= district.defaultSammyUrl() }>">
+                    <{= district.label }>
+                    </a>
+                  </li>
+                <{ }); }>
+              </ul>
+            </li>
+          <{ }); }>
+        </ul>
+      </div>
+    </div>
+    <{ }); }>
+    <div class="clearfix" style="clear:both;"></div>
+  </div>
+</script>
+
 <script type="text/template" class="display-panel" data-module="overview_and_map">
   <h2 class="some-lpadding">
     LGA Overview
