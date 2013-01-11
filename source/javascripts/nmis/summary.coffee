@@ -4,12 +4,10 @@ do ->
   ###
   panelOpen = ->
     NMIS.LocalNav.show()
-    NMIS.DisplayWindow.show()
     $("#conditional-content").show()
 
   panelClose = ->
     NMIS.LocalNav.hide()
-    NMIS.DisplayWindow.hide()
     $("#conditional-content").hide()
 
   NMIS.panels.getPanel("summary").addCallbacks open: panelOpen, close: panelClose
