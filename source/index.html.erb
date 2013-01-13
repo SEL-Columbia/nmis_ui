@@ -13,6 +13,7 @@ title: MDG Survey Viewer [JS]
   </div>
 
   <div id="map" class="resizing-map" style="height: 476px; position: relative;">
+    <div class="home-map"></div>
     <div class="home-map-nav" style="height: 476px; border: 1px solid rgb(187, 187, 187); padding-left: 685px;">
       <div class="mn-iiwrap">
         <div class="mn-iwrap">
@@ -31,7 +32,7 @@ title: MDG Survey Viewer [JS]
         <div class="mn-legend"></div>
       </div>
     </div>
-    <div class="map-loading-message" style="display: none;">Please be patient while this map loads</div>
+    <div class="map-loading-message">Please be patient while this map loads</div>
   </div>
   <div id="zone-navigation">
     <{ _.each(zones, function(zone){ }>
@@ -49,7 +50,7 @@ title: MDG Survey Viewer [JS]
                 <{ _.each(state.districts, function(district){ }>
                   <li>
                     <a href="<{= district.defaultSammyUrl() }>">
-                    <{= district.label }>
+                    <{= district.name }>
                     </a>
                   </li>
                 <{ }); }>

@@ -32,6 +32,9 @@ do ->
     $.getJSON "#{data_src}schema.json", (schema)->
       display_in_header schema
       NMIS.ModuleFile.DEFAULT_MODULES[dname] = new NMIS.ModuleFile(durl) for dname, durl of schema.defaults
+      if schema.map_layers?
+        NMIS._mapLayersModule_ = new NMIS.ModuleFile schema.map_layers
+
       if schema.districts_json?
         districts_module = new NMIS.ModuleFile(schema.districts_json)
         districts_module.fetch().done (dl)->
@@ -48,7 +51,6 @@ do ->
   NMIS.load_districts = (group_list, district_list)->
     group_names = []
     groups = []
-    districts = []
 
     get_group_by_id = (grp_id)->
       grp_found = false
@@ -57,10 +59,10 @@ do ->
 
     groups = (new NMIS.Group(grp_details) for grp_details in group_list)
 
-    for district in district_list
+    districts = for district in district_list
       d = new NMIS.District district
       d.set_group get_group_by_id d.group
-      districts.push d
+      d
 
     groupsObj = {}
     groupsObj[g.id] = g  for g in groups

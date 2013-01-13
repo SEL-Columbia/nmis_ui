@@ -78,7 +78,7 @@ do ->
     elem = false
     fakse = false
     loadCallbacks = []
-    mapLoadFn = -> $.getScript "http://maps.googleapis.com/maps/api/js?sensor=false&callback=#{callbackStr}"
+    mapLoadFn = -> NMIS.loadGoogleMaps()
     addLoadCallback = (cb) -> loadCallbacks.push cb
     isLoaded = -> finished
     clear = -> started = finished = false
