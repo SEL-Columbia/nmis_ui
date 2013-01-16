@@ -220,11 +220,11 @@ launchFacilities = (results, params) ->
     elem: NMIS._wElems.elem0
 
   mapZoom = 8
-  if NMIS.MapMgr.isLoaded()
-    createFacilitiesMap()
-  else
-    NMIS.MapMgr.addLoadCallback createFacilitiesMap
-    NMIS.MapMgr.init()
+  mapLoader = NMIS.loadGoogleMaps()
+  mapLoader.done ()-> createFacilitiesMap()
+
+  # NMIS.MapMgr.init()
+
   if window.dwResizeSet is `undefined`
     window.dwResizeSet = true
     NMIS.DisplayWindow.addCallback "resize", (tf, size) ->
