@@ -43,33 +43,80 @@ do ->
 
   NMIS.panels.getPanel("country_view").addCallbacks open: panelOpen, close: panelClose
 
-_changeLayer = false
-
 NMIS.MainMdgMap = do ->
+  mdgLayers = []
+
   changeLayer = (slug)->
     log "change ", slug
 
-  launchMapInElem = (eselector)->
+  launchCountryMapInElem = (eselector)->
     layerIdsAndNames = []
-    $(eselector).css width: 400, height: 400, position: 'absolute'
-    launcher = NMIS.loadGmapsAndOpenlayers()
-      # defaultLayer: ''
-      # layers: layerIdsAndNames
-      # loadingMessage: 'Please be patient while this map loads'
-      # loadingElem: '.map-loading-message'
-      # layerSwitcher: false
-      # elem: eselector
+    $elem = $(eselector).css width: 680, height: 476, position: 'absolute'
+    launcher = NMIS.loadOpenLayers()
     launcher.done ()->
-      log "LAUNCHER DONE! Scripts loaded"
+      elem = $elem.get(0)
+      mapId = "nmis-ol-country-map"
+      $elem.prop 'id', mapId
+      [reA, reB, reC, reD] = [-4783.9396188051, 463514.13943762, 1707405.4936624, 1625356.9691642]
+      [meA, meB, meC, meD] = [-20037500, -20037500, 20037500, 20037500]
+
+      OpenLayers.ImgPath = "openlayers/default/img/"
+      OpenLayers.IMAGE_RELOAD_ATTEMPTS = 3
+
+      googProj = new OpenLayers.Projection("EPSG:900913")
+      dispProj = new OpenLayers.Projection("EPSG:4326")
+
+      options =
+        projection: googProj
+        displayProjection: dispProj
+        units: "m"
+        maxResolution: 156543.0339
+        restrictedExtent: new OpenLayers.Bounds(reA, reB, reC, reD)
+        maxExtent: new OpenLayers.Bounds(meA, meB, meC, meD)
+
+      centroid =
+        lat: 649256.11813719
+        lng: 738031.10112355
+
+      options.centroid = new OpenLayers.LonLat centroid.lng, centroid.lat
+      zoom = 6
+      options.zoom = zoom
+
+      overlays = [["Boundaries", "nigeria_base"]]
+
+      map = new OpenLayers.Map mapId, options
+      mapserver = ["http://b.tiles.mapbox.com/modilabs/"]
+      mapLayers = {}
+      mapLayerArray = for [layerName, layerId] in overlays
+        mapLayers[layerId] = new OpenLayers.Layer.TMS layerName, mapserver,
+          layername: layerId
+          type: "png"
+          transparent: "true"
+          isBaseLayer: false
+      for mdgL in mdgLayers
+        do ->
+          curMdgL = mdgL
+          mlx = new OpenLayers.Layer.TMS curMdgL.name, mapserver,
+            layername: curMdgL.slug
+            type: "png"
+          mapLayerArray.push mlx
+          curMdgL.onSelect = ()-> map.setBaseLayer mlx
+
+      map.addLayers mapLayerArray
+      map.setBaseLayer mapLayers.nigeria_base
+
+      map.setCenter new OpenLayers.LonLat(options.centroid.lng, options.centroid.lat), zoom
+      map.addControl new OpenLayers.Control.LayerSwitcher()
+
     launcher.fail ()->
       log "LAUNCHER FAIL! Scripts not loaded"
 
   createLayerSwitcher = do ->
     layersWitoutMdg = []
     layersByMdg = {}
-    mdgLayers = []
     mdgs = []
     sb = false
+    layersBySlug = {}
     plsSelectMsg = "Please select an indicator map..."
 
     class MDGLayer
@@ -77,6 +124,7 @@ NMIS.MainMdgMap = do ->
                       @sector_string, @mdg, @slug, @legend_data,
                       @indicator_key, @level_key, @id, @name})->
         mdgLayers.push @
+        layersBySlug[@slug] = @
         mdgs.push @mdg unless @mdg in mdgs
         if @mdg
           layersByMdg[@mdg] = []  unless layersByMdg[@mdg]
@@ -87,7 +135,9 @@ NMIS.MainMdgMap = do ->
       $option: ->
         $ "<option>", value: @slug, text: @name
 
-    selectBoxChange = ()-> changeLayer $(@).val()
+    onSelect: ()->
+    selectBoxChange = ()->
+      layersBySlug[$(@).val()].onSelect()
 
     createSelectBox = ->
       sb = $ "<select>", title: plsSelectMsg, style: "width:100%", change: selectBoxChange
@@ -100,7 +150,7 @@ NMIS.MainMdgMap = do ->
       new MDGLayer mld  for mld in mlData
       selectBoxWrap.html(createSelectBox()).children().chosen()
 
-  launchMapInElem: launchMapInElem
+  launchCountryMapInElem: launchCountryMapInElem
   createLayerSwitcher: createLayerSwitcher
 
 do ->
@@ -111,6 +161,6 @@ do ->
       $(".resizing-map").show()
       mdgLayerSelectBox = $(".layer-nav")
       NMIS.MainMdgMap.createLayerSwitcher mlData, mdgLayerSelectBox
-      NMIS.MainMdgMap.launchMapInElem ".home-map"
+      NMIS.MainMdgMap.launchCountryMapInElem ".home-map", mlData
     ml.fail (msg)->
       $(".resizing-map").hide()

@@ -18,13 +18,7 @@ title: MDG Survey Viewer [JS]
       <div class="mn-iiwrap">
         <div class="mn-iwrap">
           <div class="layer-nav">
-            <select title="Please select an indicator map..." style="width: 100%;">
-            <!--
-              <optgroup label="MDG #">
-                <option value="layer_id">LayerName</option>
-              </optgroup>
-            -->
-            </select>
+            <select title="Please select an indicator map..." style="width: 100%;"></select>
           </div>
           <h3 class="mdg-display"></h3>
           <div class="layer-description"></div>
@@ -35,6 +29,7 @@ title: MDG Survey Viewer [JS]
     <div class="map-loading-message">Please be patient while this map loads</div>
   </div>
   <div id="zone-navigation">
+
     <{ _.each(zones, function(zone){ }>
     <div class="zl-wrap">
       <div class="zone-list">
@@ -43,6 +38,7 @@ title: MDG Survey Viewer [JS]
           <{ _.each(zone.children, function(state){ }>
             <li>
               <a href="#" class="state-link" data-lga-count="3">
+
                 <{= state.label }>
                 <span class="lga-count"> (<{= state.districts.length }>)</span>
               </a>
