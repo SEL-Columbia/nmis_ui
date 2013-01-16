@@ -3308,7 +3308,7 @@ div.indicator-feature div.embedded {
 
 /* line 479, screen.css.scss */
 #zone-navigation ul ul li a:before {
-  content: 'Â»';
+  content: '»';
   color: #bbb; }
 
 /* line 480, screen.css.scss */

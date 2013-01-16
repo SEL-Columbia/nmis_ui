@@ -16,8 +16,15 @@
         }
       } else if (what === "nav") {
         if (!nav) {
-          return nav = $('.lga-nav').on('submit', 'form', function() {
-            return NMIS.select_district(nav.find('select').val());
+          return nav = $('.lga-nav').on('submit', 'form', function(evt) {
+            var d;
+            d = NMIS.findDistrictById(nav.find('select').val());
+            dashboard.setLocation(NMIS.urlFor.extendEnv({
+              state: d.group,
+              lga: d
+            }));
+            evt.preventDefault();
+            return false;
           });
         } else {
           return nav;
@@ -49,6 +56,9 @@
           durl = _ref[dname];
           NMIS.ModuleFile.DEFAULT_MODULES[dname] = new NMIS.ModuleFile(durl);
         }
+        if (schema.map_layers != null) {
+          NMIS._mapLayersModule_ = new NMIS.ModuleFile(schema.map_layers);
+        }
         if (schema.districts_json != null) {
           districts_module = new NMIS.ModuleFile(schema.districts_json);
           return districts_module.fetch().done(function(dl) {
@@ -62,16 +72,15 @@
           return deferred.fail();
         }
       });
-      return deferred;
+      return deferred.promise();
     };
   })();
 
   (function() {
     return NMIS.load_districts = function(group_list, district_list) {
-      var already_selected, d, district, districts, get_group_by_id, group, group_names, groups, grp_details, new_select, optgroup, select_district, submit_button, _i, _j, _k, _len, _len1, _len2, _ref;
+      var d, district, districts, g, get_group_by_id, group, group_names, groups, groupsObj, grp_details, new_select, optgroup, states, submit_button, zones, _i, _j, _k, _l, _len, _len1, _len2, _len3, _len4, _len5, _m, _n, _ref;
       group_names = [];
       groups = [];
-      districts = [];
       get_group_by_id = function(grp_id) {
         var grp, grp_found, _i, _len;
         grp_found = false;
@@ -92,27 +101,65 @@
         }
         return _results;
       })();
-      for (_i = 0, _len = district_list.length; _i < _len; _i++) {
-        district = district_list[_i];
-        d = new NMIS.District(district);
-        d.set_group(get_group_by_id(d.group));
-        districts.push(d);
+      districts = (function() {
+        var _i, _len, _results;
+        _results = [];
+        for (_i = 0, _len = district_list.length; _i < _len; _i++) {
+          district = district_list[_i];
+          d = new NMIS.District(district);
+          d.set_group(get_group_by_id(d.group));
+          _results.push(d);
+        }
+        return _results;
+      })();
+      groupsObj = {};
+      for (_i = 0, _len = groups.length; _i < _len; _i++) {
+        g = groups[_i];
+        groupsObj[g.id] = g;
       }
+      for (_j = 0, _len1 = groups.length; _j < _len1; _j++) {
+        group = groups[_j];
+        group.assignParentGroup(groupsObj);
+      }
+      for (_k = 0, _len2 = groups.length; _k < _len2; _k++) {
+        group = groups[_k];
+        group.assignLevel();
+      }
+      zones = [];
+      states = [];
+      for (_l = 0, _len3 = groups.length; _l < _len3; _l++) {
+        g = groups[_l];
+        if (g.group === void 0) {
+          zones.push(g);
+        } else {
+          states.push(g);
+        }
+      }
+      NMIS._zones_ = zones.sort(function(a, b) {
+        if (b != null) {
+          return a.label > b.label;
+        }
+      });
+      NMIS._states_ = states.sort(function(a, b) {
+        if (b != null) {
+          return a.label > b.label;
+        }
+      });
       new_select = $('<select>', {
         id: 'lga-select',
         title: 'Select a district'
       });
-      for (_j = 0, _len1 = groups.length; _j < _len1; _j++) {
-        group = groups[_j];
+      for (_m = 0, _len4 = groups.length; _m < _len4; _m++) {
+        group = groups[_m];
         optgroup = $('<optgroup>', {
           label: group.name
         });
         _ref = group.districts;
-        for (_k = 0, _len2 = _ref.length; _k < _len2; _k++) {
-          d = _ref[_k];
-          $('<option>', d.html_params).appendTo(optgroup);
+        for (_n = 0, _len5 = _ref.length; _n < _len5; _n++) {
+          d = _ref[_n];
+          optgroup.append($('<option>', d.html_params));
         }
-        optgroup.appendTo(new_select);
+        new_select.append(optgroup);
       }
       /*
           We will want to hang on to these districts for later, and give them
@@ -121,32 +168,33 @@
 
       NMIS._districts_ = districts;
       NMIS._groups_ = groups;
-      select_district = function(district_id) {
-        /*
-              this is called on form submit, for example
-        */
+      submit_button = headers('nav').find("input[type='submit']").detach();
+      headers('nav').find('form div').eq(0).empty().html(new_select).append(submit_button);
+      return new_select.chosen();
+    };
+  })();
 
-        var existing, _l, _len3;
-        existing = false;
-        for (_l = 0, _len3 = districts.length; _l < _len3; _l++) {
-          d = districts[_l];
+  (function() {
+    return NMIS.findDistrictById = function(district_id) {
+      var d, existing, _i, _len, _ref;
+      if (district_id == null) {
+        district_id = false;
+      }
+      /*
+          this is called on form submit, for example
+      */
+
+      existing = false;
+      if (district_id) {
+        _ref = NMIS._districts_;
+        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+          d = _ref[_i];
           if (d.id === district_id) {
             existing = d;
           }
         }
-        $.cookie("selected-district", existing ? district_id : false);
-        if (existing == null) {
-          return NMIS._lgaFacilitiesDataUrl_ = "" + existing.data_root + "/facilities.json";
-        }
-      };
-      already_selected = $.cookie("selected-district");
-      if (already_selected != null) {
-        new_select.val(already_selected);
-        select_district(already_selected);
       }
-      submit_button = headers('nav').find("input[type='submit']").detach();
-      headers('nav').find('form div').eq(0).empty().html(new_select).append(submit_button);
-      return new_select.chosen();
+      return existing;
     };
   })();
 
@@ -155,6 +203,9 @@
     function District(d) {
       var f, _ref;
       _.extend(this, d);
+      if (!this.name) {
+        this.name = this.label;
+      }
       _ref = d.url_code.split("/"), this.group_slug = _ref[0], this.slug = _ref[1];
       if (this.data_modules == null) {
         this.data_modules = [];
@@ -178,6 +229,10 @@
 
     District.prototype.module_url = function(module_name) {
       return this.get_data_module(module_name).url;
+    };
+
+    District.prototype.defaultSammyUrl = function() {
+      return "" + NMIS.url_root + "#/" + this.group_slug + "/" + this.slug + "/summary";
     };
 
     District.prototype.sectors_data_loader = function() {
@@ -251,10 +306,13 @@
       this.districts = [];
       this.label = details.label;
       this.id = details.id;
+      this.groupId = details.group;
+      this.children = [];
     }
 
     Group.prototype.add_district = function(d) {
       this.districts.push(d);
+      this.children.push(d);
       if (this.slug == null) {
         this.slug = d.group_slug;
       }
@@ -263,7 +321,34 @@
           return a.label > b.label;
         }
       });
+      this.children = this.children.sort(function(a, b) {
+        if (b != null) {
+          return a.label > b.label;
+        }
+      });
       return true;
+    };
+
+    Group.prototype.assignParentGroup = function(allGroups) {
+      if (this.groupId && allGroups[this.groupId]) {
+        this.group = allGroups[this.groupId];
+        return this.group.children.push(this);
+      }
+    };
+
+    Group.prototype.assignLevel = function() {
+      return this._level = this.ancestors().length - 1;
+    };
+
+    Group.prototype.ancestors = function() {
+      var g, ps;
+      ps = [];
+      g = this;
+      while (g !== void 0) {
+        ps.push(g);
+        g = g.group;
+      }
+      return ps;
     };
 
     return Group;

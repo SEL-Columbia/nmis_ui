@@ -268,6 +268,7 @@ until they play well together (and I ensure they don't over-depend on other modu
 
 
 (function() {
+  var __hasProp = {}.hasOwnProperty;
 
   (function() {
     var Breadcrumb;
@@ -407,7 +408,7 @@ until they play well together (and I ensure they don't over-depend on other modu
       fakse = false;
       loadCallbacks = [];
       mapLoadFn = function() {
-        return $.getScript("http://maps.googleapis.com/maps/api/js?sensor=false&callback=" + callbackStr);
+        return NMIS.loadGoogleMaps();
       };
       addLoadCallback = function(cb) {
         return loadCallbacks.push(cb);
@@ -658,7 +659,17 @@ until they play well together (and I ensure they don't over-depend on other modu
 
   (function() {
     return NMIS.DataLoader = (function() {
-      var fetch, fetchLocalStorage;
+      var ajaxJsonQuery, fetch, fetchLocalStorage;
+      ajaxJsonQuery = function(url, cache) {
+        if (cache == null) {
+          cache = true;
+        }
+        return $.ajax({
+          url: url,
+          dataType: "json",
+          cache: cache
+        });
+      };
       fetchLocalStorage = function(url) {
         var data, p, stringData;
         p = !1;
@@ -666,14 +677,14 @@ until they play well together (and I ensure they don't over-depend on other modu
         stringData = localStorage.getItem(url);
         if (stringData) {
           data = JSON.parse(stringData);
-          $.getJSON(url).then(function(d) {
+          ajaxJsonQuery(url).then(function(d) {
             localStorage.removeItem(url);
             return localStorage.setItem(url, JSON.stringify(d));
           });
           return $.Deferred().resolve([data]);
         } else {
           p = new $.Deferred();
-          $.getJSON(url).then(function(d) {
+          ajaxJsonQuery(url).then(function(d) {
             localStorage.setItem(url, JSON.stringify(d));
             return p.resolve([d]);
           });
@@ -681,7 +692,7 @@ until they play well together (and I ensure they don't over-depend on other modu
         }
       };
       fetch = function(url) {
-        return $.getJSON(url);
+        return ajaxJsonQuery(url, false);
       };
       return {
         fetch: fetch
@@ -691,7 +702,7 @@ until they play well together (and I ensure they don't over-depend on other modu
 
   (function() {
     return NMIS.LocalNav = (function() {
-      var buttonSections, clear, displaySubmenu, elem, getNavLink, hideSubmenu, init, iterate, markActive, opts, submenu, wrap;
+      var buttonSections, clear, displaySubmenu, elem, getNavLink, hide, hideSubmenu, init, iterate, markActive, opts, show, submenu, wrap;
       elem = void 0;
       wrap = void 0;
       opts = void 0;
@@ -747,6 +758,14 @@ until they play well together (and I ensure they don't over-depend on other modu
           "class": "submenu"
         }).appendTo(elem);
       };
+      hide = function() {
+        return wrap.detach();
+      };
+      show = function() {
+        if (wrap.closest("html").length === 0) {
+          return $(".content").eq(0).prepend(wrap);
+        }
+      };
       getNavLink = function(code) {
         var name, section, _x;
         _x = code.split(":");
@@ -796,6 +815,8 @@ until they play well together (and I ensure they don't over-depend on other modu
         init: init,
         clear: clear,
         iterate: iterate,
+        hide: hide,
+        show: show,
         displaySubmenu: displaySubmenu,
         hideSubmenu: hideSubmenu,
         markActive: markActive
@@ -876,15 +897,108 @@ until they play well together (and I ensure they don't over-depend on other modu
         return env = _.extend({}, _env);
       };
       env_accessor.extend = function(o) {
-        return _.extend(get_env(), o);
+        var e;
+        e = env ? env : {};
+        return _.extend({}, e, o);
       };
       return env_accessor;
     })();
   })();
 
+  NMIS.panels = (function() {
+    var Panel, changePanel, currentPanel, ensurePanel, getPanel, panels;
+    panels = {};
+    currentPanel = false;
+    Panel = (function() {
+
+      function Panel(id) {
+        this.id = id;
+        this._callbacks = {};
+      }
+
+      Panel.prototype.addCallbacks = function(obj) {
+        var cb, name;
+        if (obj == null) {
+          obj = {};
+        }
+        for (name in obj) {
+          if (!__hasProp.call(obj, name)) continue;
+          cb = obj[name];
+          this.addCallback(name, cb);
+        }
+        return this;
+      };
+
+      Panel.prototype.addCallback = function(name, cb) {
+        if (!this._callbacks[name]) {
+          this._callbacks[name] = [];
+        }
+        this._callbacks[name].push(cb);
+        return this;
+      };
+
+      Panel.prototype._triggerCallback = function(name, nextPanel) {
+        var cb, _i, _len, _ref;
+        _ref = this._callbacks[name] || [];
+        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+          cb = _ref[_i];
+          cb.call(window, name, this, nextPanel);
+        }
+        return this;
+      };
+
+      return Panel;
+
+    })();
+    getPanel = function(id) {
+      if (!panels[id]) {
+        panels[id] = new Panel(id);
+      }
+      return panels[id];
+    };
+    changePanel = function(id) {
+      var nextPanel;
+      nextPanel = panels[id];
+      if (!nextPanel) {
+        throw new Error("Panel not found: " + id);
+      } else if (nextPanel !== currentPanel) {
+        if (currentPanel) {
+          currentPanel._triggerCallback('close', nextPanel);
+        }
+        nextPanel._triggerCallback('open', currentPanel);
+        currentPanel = nextPanel;
+        return panels[id];
+      } else {
+        return false;
+      }
+    };
+    ensurePanel = function(id) {
+      if (!panels[id]) {
+        throw new Error("NMIS.panels.ensurePanel('" + id + "') Error: Panel does not exist");
+      }
+    };
+    return {
+      getPanel: getPanel,
+      changePanel: changePanel,
+      ensurePanel: ensurePanel,
+      currentPanelId: function() {
+        return currentPanel != null ? currentPanel.id : void 0;
+      },
+      allPanels: function() {
+        var k, v, _results;
+        _results = [];
+        for (k in panels) {
+          v = panels[k];
+          _results.push(v);
+        }
+        return _results;
+      }
+    };
+  })();
+
   (function() {
     return NMIS.DisplayWindow = (function() {
-      var addCallback, addTitle, clear, createHeaderBar, curSize, curTitle, elem, elem0, elem1, elem1content, elem1contentHeight, fullHeight, getElems, hbuttons, init, opts, resized, resizerSet, setBarHeight, setDWHeight, setSize, setTitle, setVisibility, showTitle, titleElems, visible;
+      var addCallback, addTitle, clear, contentWrap, createHeaderBar, curSize, curTitle, elem, elem0, elem1, elem1content, elem1contentHeight, ensureInitialized, fullHeight, getElems, hbuttons, hide, init, initted, opts, resized, resizerSet, setBarHeight, setDWHeight, setSize, setTitle, setVisibility, show, showTitle, titleElems, visible;
       elem = void 0;
       elem1 = void 0;
       elem0 = void 0;
@@ -894,18 +1008,22 @@ until they play well together (and I ensure they don't over-depend on other modu
       hbuttons = void 0;
       titleElems = {};
       curSize = void 0;
-      resizerSet = void 0;
+      resizerSet = false;
       resized = void 0;
       curTitle = void 0;
+      initted = false;
+      contentWrap = false;
       init = function(_elem, _opts) {
+        initted = true;
         if (opts !== undefined) {
           clear();
         }
         if (!resizerSet) {
           resizerSet = true;
-          $(window).resize(resized);
+          $(window).resize(_.throttle(resized, 1000));
         }
-        elem = $("<div />").appendTo($(_elem));
+        contentWrap = $(_elem);
+        elem = $("<div />").appendTo(contentWrap);
         opts = _.extend({
           height: 100,
           clickSizes: [["full", "Table Only"], ["middle", "Split"], ["minimized", "Map Only"]],
@@ -1019,7 +1137,8 @@ until they play well together (and I ensure they don't over-depend on other modu
       setVisibility = function(tf) {
         var css;
         css = {};
-        if (!tf) {
+        visible = !!tf;
+        if (!visible) {
           css = {
             left: "1000em",
             display: "none"
@@ -1033,6 +1152,23 @@ until they play well together (and I ensure they don't over-depend on other modu
         elem0.css(css);
         return elem1.css(css);
       };
+      ensureInitialized = function() {
+        if (!initted) {
+          throw new Error("NMIS.DisplayWindow is not initialized");
+        }
+      };
+      hide = function() {
+        setVisibility(false);
+        ensureInitialized();
+        return elem.detach();
+      };
+      show = function() {
+        setVisibility(true);
+        ensureInitialized();
+        if (elem.closest("html").length === 0) {
+          return contentWrap.append(elem);
+        }
+      };
       addTitle = function(key, jqElem) {
         titleElems[key] = jqElem;
         if (curTitle === key) {
@@ -1041,10 +1177,9 @@ until they play well together (and I ensure they don't over-depend on other modu
       };
       createHeaderBar = function() {
         hbuttons = $("<span />");
-        _.each(opts.clickSizes, function(sizeArr) {
+        _.each(opts.clickSizes, function(_arg) {
           var desc, size;
-          size = sizeArr[0];
-          desc = sizeArr[1];
+          size = _arg[0], desc = _arg[1];
           return $("<a />").attr("class", "btn small clicksize " + size).text(desc).attr("title", desc).click(function() {
             return setSize(size, false);
           }).appendTo(hbuttons);
@@ -1081,9 +1216,9 @@ until they play well together (and I ensure they don't over-depend on other modu
         padding = 30;
         return elem1.height() - hbuttons.height() - padding;
       };
-      resized = _.throttle(function() {
+      resized = function() {
         var fh;
-        if (curSize !== "full") {
+        if (visible && curSize !== "full") {
           fh = fullHeight();
           elem.stop(true, false);
           elem.animate({
@@ -1094,7 +1229,7 @@ until they play well together (and I ensure they don't over-depend on other modu
             height: fh
           });
         }
-      }, 1000);
+      };
       return {
         init: init,
         clear: clear,
@@ -1103,6 +1238,8 @@ until they play well together (and I ensure they don't over-depend on other modu
           return curSize;
         },
         setVisibility: setVisibility,
+        hide: hide,
+        show: show,
         addCallback: addCallback,
         setDWHeight: setDWHeight,
         addTitle: addTitle,
@@ -1112,6 +1249,262 @@ until they play well together (and I ensure they don't over-depend on other modu
         getElems: getElems
       };
     })();
+  })();
+
+}).call(this);
+(function() {
+  var loadMapLayers,
+    __indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; };
+
+  loadMapLayers = function() {
+    var dfd;
+    if (NMIS._mapLayersModule_ != null) {
+      return NMIS._mapLayersModule_.fetch();
+    } else {
+      dfd = $.Deferred();
+      dfd.reject("map_layers not found");
+      return dfd.promise();
+    }
+  };
+
+  (function() {
+    var activateNavigation, countryViewPanel, cvp, panelClose, panelOpen;
+    activateNavigation = function(wrap) {
+      var navId;
+      navId = "#zone-navigation";
+      if (!wrap.hasClass("zone-nav-activated")) {
+        wrap.on("click", "" + navId + " a.state-link", function(evt) {
+          var isShowing, ul;
+          ul = $(this).parents("li").eq(0).find("ul");
+          isShowing = ul.hasClass("showing");
+          wrap.find("" + navId + " .showing").removeClass("showing");
+          if (!isShowing) {
+            ul.addClass("showing");
+          }
+          return false;
+        });
+      }
+      return wrap.addClass("zone-nav-activated");
+    };
+    cvp = false;
+    countryViewPanel = function() {
+      var wrap;
+      wrap = $(".content");
+      if (!cvp) {
+        cvp = $("<div>", {
+          "class": "country-view"
+        });
+        activateNavigation(wrap);
+      }
+      if (cvp.closest("html").length === 0) {
+        cvp.appendTo(".content");
+      }
+      return cvp;
+    };
+    panelOpen = function() {
+      var data;
+      NMIS.LocalNav.hide();
+      NMIS.Breadcrumb.clear();
+      NMIS.Breadcrumb.setLevels([["Country View", "/"]]);
+      data = {
+        title: "Nigeria",
+        zones: NMIS._zones_
+      };
+      return countryViewPanel().html($._template("#country-view-tmpl", data));
+    };
+    panelClose = function() {
+      return countryViewPanel().detach();
+    };
+    return NMIS.panels.getPanel("country_view").addCallbacks({
+      open: panelOpen,
+      close: panelClose
+    });
+  })();
+
+  NMIS.MainMdgMap = (function() {
+    var changeLayer, createLayerSwitcher, launchCountryMapInElem, mdgLayers;
+    mdgLayers = [];
+    changeLayer = function(slug) {
+      return log("change ", slug);
+    };
+    launchCountryMapInElem = function(eselector) {
+      var $elem, launcher, layerIdsAndNames;
+      layerIdsAndNames = [];
+      $elem = $(eselector).css({
+        width: 680,
+        height: 476,
+        position: 'absolute'
+      });
+      launcher = NMIS.loadOpenLayers();
+      launcher.done(function() {
+        var centroid, dispProj, elem, googProj, layerId, layerName, map, mapId, mapLayerArray, mapLayers, mapserver, mdgL, meA, meB, meC, meD, options, overlays, reA, reB, reC, reD, zoom, _fn, _i, _len, _ref, _ref1;
+        $(".map-loading-message").hide();
+        elem = $elem.get(0);
+        mapId = "nmis-ol-country-map";
+        $elem.prop('id', mapId);
+        _ref = [-4783.9396188051, 463514.13943762, 1707405.4936624, 1625356.9691642], reA = _ref[0], reB = _ref[1], reC = _ref[2], reD = _ref[3];
+        _ref1 = [-20037500, -20037500, 20037500, 20037500], meA = _ref1[0], meB = _ref1[1], meC = _ref1[2], meD = _ref1[3];
+        OpenLayers.ImgPath = "openlayers/default/img/";
+        OpenLayers.IMAGE_RELOAD_ATTEMPTS = 0;
+        googProj = new OpenLayers.Projection("EPSG:900913");
+        dispProj = new OpenLayers.Projection("EPSG:4326");
+        options = {
+          projection: googProj,
+          displayProjection: dispProj,
+          units: "m",
+          maxResolution: 156543.0339,
+          restrictedExtent: new OpenLayers.Bounds(reA, reB, reC, reD),
+          maxExtent: new OpenLayers.Bounds(meA, meB, meC, meD)
+        };
+        centroid = {
+          lat: 649256.11813719,
+          lng: 738031.10112355
+        };
+        options.centroid = new OpenLayers.LonLat(centroid.lng, centroid.lat);
+        zoom = 6;
+        options.zoom = zoom;
+        overlays = [["Boundaries", "nigeria_base"]];
+        map = new OpenLayers.Map(mapId, options);
+        mapserver = ["http://b.tiles.mapbox.com/modilabs/"];
+        mapLayers = {};
+        mapLayerArray = (function() {
+          var _i, _len, _ref2, _results;
+          _results = [];
+          for (_i = 0, _len = overlays.length; _i < _len; _i++) {
+            _ref2 = overlays[_i], layerName = _ref2[0], layerId = _ref2[1];
+            _results.push(mapLayers[layerId] = new OpenLayers.Layer.TMS(layerName, mapserver, {
+              layername: layerId,
+              type: "png",
+              transparent: "true",
+              isBaseLayer: false
+            }));
+          }
+          return _results;
+        })();
+        _fn = function() {
+          var curMdgL, mlx;
+          curMdgL = mdgL;
+          mlx = new OpenLayers.Layer.TMS(curMdgL.name, mapserver, {
+            layername: curMdgL.slug,
+            type: "png"
+          });
+          mapLayerArray.push(mlx);
+          return curMdgL.onSelect = function() {
+            return map.setBaseLayer(mlx);
+          };
+        };
+        for (_i = 0, _len = mdgLayers.length; _i < _len; _i++) {
+          mdgL = mdgLayers[_i];
+          _fn();
+        }
+        map.addLayers(mapLayerArray);
+        map.setBaseLayer(mapLayers.nigeria_base);
+        map.setCenter(new OpenLayers.LonLat(options.centroid.lng, options.centroid.lat), zoom);
+        return map.addControl(new OpenLayers.Control.LayerSwitcher());
+      });
+      return launcher.fail(function() {
+        return log("LAUNCHER FAIL! Scripts not loaded");
+      });
+    };
+    createLayerSwitcher = (function() {
+      var MDGLayer, createSelectBox, layersByMdg, layersBySlug, layersWitoutMdg, mdgs, plsSelectMsg, sb, selectBoxChange;
+      layersWitoutMdg = [];
+      layersByMdg = {};
+      mdgs = [];
+      sb = false;
+      layersBySlug = {};
+      plsSelectMsg = "Please select an indicator map...";
+      MDGLayer = (function() {
+
+        function MDGLayer(_arg) {
+          var _ref;
+          this.data_source = _arg.data_source, this.description = _arg.description, this.display_order = _arg.display_order, this.sector_string = _arg.sector_string, this.mdg = _arg.mdg, this.slug = _arg.slug, this.legend_data = _arg.legend_data, this.indicator_key = _arg.indicator_key, this.level_key = _arg.level_key, this.id = _arg.id, this.name = _arg.name;
+          mdgLayers.push(this);
+          layersBySlug[this.slug] = this;
+          if (_ref = this.mdg, __indexOf.call(mdgs, _ref) < 0) {
+            mdgs.push(this.mdg);
+          }
+          if (this.mdg) {
+            if (!layersByMdg[this.mdg]) {
+              layersByMdg[this.mdg] = [];
+            }
+            layersByMdg[this.mdg].push(this);
+          } else {
+            layersWitoutMdg.push(this);
+          }
+        }
+
+        MDGLayer.prototype.$option = function() {
+          return $("<option>", {
+            value: this.slug,
+            text: this.name
+          });
+        };
+
+        return MDGLayer;
+
+      })();
+      ({
+        onSelect: function() {}
+      });
+      selectBoxChange = function() {
+        return layersBySlug[$(this).val()].onSelect();
+      };
+      createSelectBox = function() {
+        var layer, mdg, og, _i, _j, _len, _len1, _ref, _ref1;
+        sb = $("<select>", {
+          title: plsSelectMsg,
+          style: "width:100%",
+          change: selectBoxChange
+        });
+        _ref = mdgs.sort();
+        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+          mdg = _ref[_i];
+          if (!(mdg != null)) {
+            continue;
+          }
+          sb.append(og = $("<optgroup>", {
+            label: "MDG " + mdg
+          }));
+          _ref1 = layersByMdg[mdg];
+          for (_j = 0, _len1 = _ref1.length; _j < _len1; _j++) {
+            layer = _ref1[_j];
+            og.append(layer.$option());
+          }
+        }
+        return sb;
+      };
+      return function(mlData, selectBoxWrap) {
+        var mld, _i, _len;
+        for (_i = 0, _len = mlData.length; _i < _len; _i++) {
+          mld = mlData[_i];
+          new MDGLayer(mld);
+        }
+        return selectBoxWrap.html(createSelectBox()).children().chosen();
+      };
+    })();
+    return {
+      launchCountryMapInElem: launchCountryMapInElem,
+      createLayerSwitcher: createLayerSwitcher
+    };
+  })();
+
+  (function() {
+    return NMIS.CountryView = function() {
+      var ml;
+      NMIS.panels.changePanel("country_view");
+      ml = loadMapLayers();
+      ml.done(function(mlData) {
+        var mdgLayerSelectBox;
+        $(".resizing-map").show();
+        mdgLayerSelectBox = $(".layer-nav");
+        NMIS.MainMdgMap.createLayerSwitcher(mlData, mdgLayerSelectBox);
+        return NMIS.MainMdgMap.launchCountryMapInElem(".home-map", mlData);
+      });
+      return ml.fail(function(msg) {
+        return $(".resizing-map").hide();
+      });
+    };
   })();
 
 }).call(this);
@@ -1133,8 +1526,15 @@ until they play well together (and I ensure they don't over-depend on other modu
         }
       } else if (what === "nav") {
         if (!nav) {
-          return nav = $('.lga-nav').on('submit', 'form', function() {
-            return NMIS.select_district(nav.find('select').val());
+          return nav = $('.lga-nav').on('submit', 'form', function(evt) {
+            var d;
+            d = NMIS.findDistrictById(nav.find('select').val());
+            dashboard.setLocation(NMIS.urlFor.extendEnv({
+              state: d.group,
+              lga: d
+            }));
+            evt.preventDefault();
+            return false;
           });
         } else {
           return nav;
@@ -1166,6 +1566,9 @@ until they play well together (and I ensure they don't over-depend on other modu
           durl = _ref[dname];
           NMIS.ModuleFile.DEFAULT_MODULES[dname] = new NMIS.ModuleFile(durl);
         }
+        if (schema.map_layers != null) {
+          NMIS._mapLayersModule_ = new NMIS.ModuleFile(schema.map_layers);
+        }
         if (schema.districts_json != null) {
           districts_module = new NMIS.ModuleFile(schema.districts_json);
           return districts_module.fetch().done(function(dl) {
@@ -1179,16 +1582,15 @@ until they play well together (and I ensure they don't over-depend on other modu
           return deferred.fail();
         }
       });
-      return deferred;
+      return deferred.promise();
     };
   })();
 
   (function() {
     return NMIS.load_districts = function(group_list, district_list) {
-      var already_selected, d, district, districts, get_group_by_id, group, group_names, groups, grp_details, new_select, optgroup, select_district, submit_button, _i, _j, _k, _len, _len1, _len2, _ref;
+      var d, district, districts, g, get_group_by_id, group, group_names, groups, groupsObj, grp_details, new_select, optgroup, states, submit_button, zones, _i, _j, _k, _l, _len, _len1, _len2, _len3, _len4, _len5, _m, _n, _ref;
       group_names = [];
       groups = [];
-      districts = [];
       get_group_by_id = function(grp_id) {
         var grp, grp_found, _i, _len;
         grp_found = false;
@@ -1209,27 +1611,65 @@ until they play well together (and I ensure they don't over-depend on other modu
         }
         return _results;
       })();
-      for (_i = 0, _len = district_list.length; _i < _len; _i++) {
-        district = district_list[_i];
-        d = new NMIS.District(district);
-        d.set_group(get_group_by_id(d.group));
-        districts.push(d);
+      districts = (function() {
+        var _i, _len, _results;
+        _results = [];
+        for (_i = 0, _len = district_list.length; _i < _len; _i++) {
+          district = district_list[_i];
+          d = new NMIS.District(district);
+          d.set_group(get_group_by_id(d.group));
+          _results.push(d);
+        }
+        return _results;
+      })();
+      groupsObj = {};
+      for (_i = 0, _len = groups.length; _i < _len; _i++) {
+        g = groups[_i];
+        groupsObj[g.id] = g;
       }
+      for (_j = 0, _len1 = groups.length; _j < _len1; _j++) {
+        group = groups[_j];
+        group.assignParentGroup(groupsObj);
+      }
+      for (_k = 0, _len2 = groups.length; _k < _len2; _k++) {
+        group = groups[_k];
+        group.assignLevel();
+      }
+      zones = [];
+      states = [];
+      for (_l = 0, _len3 = groups.length; _l < _len3; _l++) {
+        g = groups[_l];
+        if (g.group === void 0) {
+          zones.push(g);
+        } else {
+          states.push(g);
+        }
+      }
+      NMIS._zones_ = zones.sort(function(a, b) {
+        if (b != null) {
+          return a.label > b.label;
+        }
+      });
+      NMIS._states_ = states.sort(function(a, b) {
+        if (b != null) {
+          return a.label > b.label;
+        }
+      });
       new_select = $('<select>', {
         id: 'lga-select',
         title: 'Select a district'
       });
-      for (_j = 0, _len1 = groups.length; _j < _len1; _j++) {
-        group = groups[_j];
+      for (_m = 0, _len4 = groups.length; _m < _len4; _m++) {
+        group = groups[_m];
         optgroup = $('<optgroup>', {
           label: group.name
         });
         _ref = group.districts;
-        for (_k = 0, _len2 = _ref.length; _k < _len2; _k++) {
-          d = _ref[_k];
-          $('<option>', d.html_params).appendTo(optgroup);
+        for (_n = 0, _len5 = _ref.length; _n < _len5; _n++) {
+          d = _ref[_n];
+          optgroup.append($('<option>', d.html_params));
         }
-        optgroup.appendTo(new_select);
+        new_select.append(optgroup);
       }
       /*
           We will want to hang on to these districts for later, and give them
@@ -1238,32 +1678,33 @@ until they play well together (and I ensure they don't over-depend on other modu
 
       NMIS._districts_ = districts;
       NMIS._groups_ = groups;
-      select_district = function(district_id) {
-        /*
-              this is called on form submit, for example
-        */
+      submit_button = headers('nav').find("input[type='submit']").detach();
+      headers('nav').find('form div').eq(0).empty().html(new_select).append(submit_button);
+      return new_select.chosen();
+    };
+  })();
 
-        var existing, _l, _len3;
-        existing = false;
-        for (_l = 0, _len3 = districts.length; _l < _len3; _l++) {
-          d = districts[_l];
+  (function() {
+    return NMIS.findDistrictById = function(district_id) {
+      var d, existing, _i, _len, _ref;
+      if (district_id == null) {
+        district_id = false;
+      }
+      /*
+          this is called on form submit, for example
+      */
+
+      existing = false;
+      if (district_id) {
+        _ref = NMIS._districts_;
+        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+          d = _ref[_i];
           if (d.id === district_id) {
             existing = d;
           }
         }
-        $.cookie("selected-district", existing ? district_id : false);
-        if (existing == null) {
-          return NMIS._lgaFacilitiesDataUrl_ = "" + existing.data_root + "/facilities.json";
-        }
-      };
-      already_selected = $.cookie("selected-district");
-      if (already_selected != null) {
-        new_select.val(already_selected);
-        select_district(already_selected);
       }
-      submit_button = headers('nav').find("input[type='submit']").detach();
-      headers('nav').find('form div').eq(0).empty().html(new_select).append(submit_button);
-      return new_select.chosen();
+      return existing;
     };
   })();
 
@@ -1272,6 +1713,9 @@ until they play well together (and I ensure they don't over-depend on other modu
     function District(d) {
       var f, _ref;
       _.extend(this, d);
+      if (!this.name) {
+        this.name = this.label;
+      }
       _ref = d.url_code.split("/"), this.group_slug = _ref[0], this.slug = _ref[1];
       if (this.data_modules == null) {
         this.data_modules = [];
@@ -1295,6 +1739,10 @@ until they play well together (and I ensure they don't over-depend on other modu
 
     District.prototype.module_url = function(module_name) {
       return this.get_data_module(module_name).url;
+    };
+
+    District.prototype.defaultSammyUrl = function() {
+      return "" + NMIS.url_root + "#/" + this.group_slug + "/" + this.slug + "/summary";
     };
 
     District.prototype.sectors_data_loader = function() {
@@ -1368,10 +1816,13 @@ until they play well together (and I ensure they don't over-depend on other modu
       this.districts = [];
       this.label = details.label;
       this.id = details.id;
+      this.groupId = details.group;
+      this.children = [];
     }
 
     Group.prototype.add_district = function(d) {
       this.districts.push(d);
+      this.children.push(d);
       if (this.slug == null) {
         this.slug = d.group_slug;
       }
@@ -1380,7 +1831,34 @@ until they play well together (and I ensure they don't over-depend on other modu
           return a.label > b.label;
         }
       });
+      this.children = this.children.sort(function(a, b) {
+        if (b != null) {
+          return a.label > b.label;
+        }
+      });
       return true;
+    };
+
+    Group.prototype.assignParentGroup = function(allGroups) {
+      if (this.groupId && allGroups[this.groupId]) {
+        this.group = allGroups[this.groupId];
+        return this.group.children.push(this);
+      }
+    };
+
+    Group.prototype.assignLevel = function() {
+      return this._level = this.ancestors().length - 1;
+    };
+
+    Group.prototype.ancestors = function() {
+      var g, ps;
+      ps = [];
+      g = this;
+      while (g !== void 0) {
+        ps.push(g);
+        g = g.group;
+      }
+      return ps;
     };
 
     return Group;
@@ -1921,6 +2399,201 @@ until they play well together (and I ensure they don't over-depend on other modu
   };
 
 }).call(this);
+(function() {
+
+  NMIS.loadGoogleMaps = (function() {
+    var googleMapsDfd, loadStarted;
+    loadStarted = false;
+    googleMapsDfd = $.Deferred();
+    window.googleMapsLoaded = function() {
+      if ((typeof google !== "undefined" && google !== null ? google.maps : void 0) != null) {
+        return googleMapsDfd.resolve(google.maps);
+      } else {
+        return googleMapsDfd.reject({}, "error", "Failed to load Google Maps");
+      }
+    };
+    return function() {
+      var s;
+      if (!loadStarted) {
+        loadStarted = true;
+        s = document.createElement("script");
+        s.src = "http://maps.googleapis.com/maps/api/js?sensor=false&callback=googleMapsLoaded";
+        document.body.appendChild(s);
+      }
+      return googleMapsDfd.promise();
+    };
+  })();
+
+  NMIS.loadOpenLayers = function(url) {
+    if (url == null) {
+      url = "javascripts/OpenLayers.js";
+    }
+    return $.ajax({
+      url: url,
+      dataType: "script",
+      cache: false
+    });
+  };
+
+  NMIS.loadGmapsAndOpenlayers = (function() {
+    var launchDfd, scriptsStarted;
+    launchDfd = $.Deferred();
+    scriptsStarted = false;
+    return function() {
+      var gmLoad;
+      if (!scriptsStarted) {
+        scriptsStarted = true;
+        gmLoad = NMIS.loadGoogleMaps();
+        gmLoad.done(function(gmaps) {
+          var olLoad;
+          olLoad = NMIS.loadOpenLayers();
+          olLoad.done(function(ol) {
+            return launchDfd.resolve();
+          });
+          return olLoad.fail(function(o, err, message) {
+            return launchDfd.reject(o, err, message);
+          });
+        });
+        gmLoad.fail(function(o, err, message) {
+          return launchDfd.reject(o, err, message);
+        });
+      }
+      return launchDfd.promise();
+    };
+  })();
+
+  NMIS.launchOpenLayers = (function() {
+    var context, defaultOpts, launch, launchDfd, loadingMessageElement, mapElem, opts, scriptsAreLoaded, scriptsFinished, scriptsStarted;
+    launchDfd = $.Deferred();
+    scriptsStarted = false;
+    scriptsFinished = false;
+    mapElem = void 0;
+    opts = void 0;
+    context = {};
+    loadingMessageElement = false;
+    defaultOpts = {
+      elem: "#map",
+      centroid: {
+        lat: 0.000068698255561324,
+        lng: 0.000083908685869343
+      },
+      olImgPath: "/static/openlayers/default/img/",
+      tileUrl: "http://b.tiles.mapbox.com/modilabs/",
+      layers: [["Nigeria", "nigeria_base"]],
+      overlays: [],
+      defaultLayer: "google",
+      layerSwitcher: true,
+      loadingElem: false,
+      loadingMessage: "Please be patient while this map loads...",
+      zoom: 6,
+      maxExtent: [-20037500, -20037500, 20037500, 20037500],
+      restrictedExtent: [-4783.9396188051, 463514.13943762, 1707405.4936624, 1625356.9691642]
+    };
+    scriptsAreLoaded = function() {
+      var googleMap, googleSat, ifDefined, mapId, mapLayerArray, mapserver, ob, options, re;
+      ifDefined = function(str) {
+        if (str === "" || str === undefined) {
+          return undefined;
+        } else {
+          return str;
+        }
+      };
+      if (!!loadingMessageElement) {
+        loadingMessageElement.hide();
+      }
+      OpenLayers.IMAGE_RELOAD_ATTEMPTS = 3;
+      OpenLayers.ImgPath = opts.olImgPath;
+      ob = opts.maxExtent;
+      re = opts.restrictedExtent;
+      options = {
+        projection: new OpenLayers.Projection("EPSG:900913"),
+        displayProjection: new OpenLayers.Projection("EPSG:4326"),
+        units: "m",
+        maxResolution: 156543.0339,
+        restrictedExtent: new OpenLayers.Bounds(re[0], re[1], re[2], re[3]),
+        maxExtent: new OpenLayers.Bounds(ob[0], ob[1], ob[2], ob[3])
+      };
+      mapId = mapElem.get(0).id;
+      mapserver = opts.tileUrl;
+      mapLayerArray = [];
+      context.mapLayers = {};
+      $.each(opts.overlays, function(k, ldata) {
+        var ml;
+        ml = new OpenLayers.Layer.TMS(ldata[0], [mapserver], {
+          layername: ldata[1],
+          type: "png",
+          transparent: "true",
+          isBaseLayer: false
+        });
+        mapLayerArray.push(ml);
+        return context.mapLayers[ldata[1]] = ml;
+      });
+      $.each(opts.layers, function(k, ldata) {
+        var ml;
+        ml = new OpenLayers.Layer.TMS(ldata[0], [mapserver], {
+          layername: ldata[1],
+          type: "png"
+        });
+        mapLayerArray.push(ml);
+        return context.mapLayers[ldata[1]] = ml;
+      });
+      context.waxLayerDict = {};
+      context.activeWax;
+      if (!mapId) {
+        mapId = mapElem.get(0).id = "-openlayers-map-elem";
+      }
+      context.map = new OpenLayers.Map(mapId, options);
+      window.__map = context.map;
+      googleSat = new OpenLayers.Layer.Google("Google", {
+        type: "satellite"
+      });
+      googleMap = new OpenLayers.Layer.Google("Roads", {
+        type: "roadmap"
+      });
+      mapLayerArray.push(googleSat, googleMap);
+      context.map.addLayers(mapLayerArray);
+      if (opts.defaultLayer === "google") {
+        context.map.setBaseLayer(googleSat);
+      }
+      if (opts.layerSwitcher) {
+        context.map.addControl(new OpenLayers.Control.LayerSwitcher());
+      }
+      return scriptsFinished = true;
+    };
+    return launch = function(_opts) {
+      var gmLoad;
+      if (opts === undefined) {
+        opts = $.extend({}, defaultOpts, _opts);
+      }
+      if (mapElem === undefined) {
+        mapElem = $(opts.elem);
+      }
+      if (!!opts.loadingElem && !!opts.loadingMessage) {
+        loadingMessageElement = $(opts.loadingElem).text(opts.loadingMessage).show();
+      }
+      if (!scriptsStarted) {
+        scriptsStarted = true;
+        gmLoad = NMIS.loadGoogleMaps();
+        gmLoad.done(function(gmaps) {
+          var olLoad;
+          olLoad = NMIS.loadOpenLayers();
+          olLoad.done(function(ol) {
+            scriptsAreLoaded();
+            return launchDfd.resolve();
+          });
+          return olLoad.fail(function(o, err, message) {
+            return launchDfd.reject(o, err, message);
+          });
+        });
+        gmLoad.fail(function(o, err, message) {
+          return launchDfd.reject(o, err, message);
+        });
+      }
+      return launchDfd.promise();
+    };
+  })();
+
+}).call(this);
 
 /*
 Facilities:
@@ -1928,32 +2601,51 @@ Facilities:
 
 
 (function() {
-  var launchFacilities, launch_facilities, prepFacilities, prepare_data_for_pie_graph, resizeDisplayWindowAndFacilityTable;
+  var facilitiesMap, launchFacilities, prepFacilities, prepare_data_for_pie_graph, resizeDisplayWindowAndFacilityTable, _rDelay,
+    __hasProp = {}.hasOwnProperty;
 
-  launch_facilities = function() {
-    var district, params;
+  (function() {
+    var panelClose, panelOpen;
+    panelOpen = function() {
+      NMIS.DisplayWindow.show();
+      return NMIS.LocalNav.show();
+    };
+    panelClose = function() {
+      NMIS.DisplayWindow.hide();
+      return NMIS.LocalNav.hide();
+    };
+    return NMIS.panels.getPanel("facilities").addCallbacks({
+      open: panelOpen,
+      close: panelClose
+    });
+  })();
+
+  NMIS.launch_facilities = function() {
+    var district, paramName, params, val, _ref;
     params = {};
     if (("" + window.location.search).match(/facility=(\d+)/)) {
       params.facility = ("" + window.location.search).match(/facility=(\d+)/)[1];
     }
-    $("#conditional-content").hide();
-    _.each(this.params, function(param, pname) {
-      if ($.type(param) === "string" && param !== "") {
-        return params[pname] = param.replace("/", "");
+    _ref = this.params;
+    for (paramName in _ref) {
+      if (!__hasProp.call(_ref, paramName)) continue;
+      val = _ref[paramName];
+      if ($.type(val) === "string" && val !== "") {
+        params[paramName] = val.replace("/", "");
       }
-    });
+    }
     district = NMIS.getDistrictByUrlCode("" + params.state + "/" + params.lga);
     NMIS._currentDistrict = district;
     if (params.sector === "overview") {
       params.sector = undefined;
     }
     return district.sectors_data_loader().done(function() {
-      var fetchers, mod, _i, _len, _ref;
+      var fetchers, mod, _i, _len, _ref1;
       prepFacilities(params);
       fetchers = {};
-      _ref = ["facilities", "variables", "profile_data"];
-      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-        mod = _ref[_i];
+      _ref1 = ["facilities", "variables", "profile_data"];
+      for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
+        mod = _ref1[_i];
         fetchers[mod] = district.get_data_module(mod).fetch();
       }
       return $.when_O(fetchers).done(function(results) {
@@ -1962,11 +2654,9 @@ Facilities:
     });
   };
 
-  NMIS.launch_facilities = launch_facilities;
-
   prepFacilities = function(params) {
     var bcValues, e, facilitiesMode, lga, state;
-    NMIS.DisplayWindow.setVisibility(true);
+    NMIS.panels.changePanel("facilities");
     facilitiesMode = {
       name: "Facility Detail",
       slug: "facilities"
@@ -2015,15 +2705,17 @@ Facilities:
   */
 
 
+  facilitiesMap = false;
+
   launchFacilities = function(results, params) {
-    var MapMgr_opts, createFacilitiesMap, dTableHeight, displayTitle, e, facilities, lga, mapZoom, obj, profileData, sector, sectors, state, tableElem, twrap, variableData;
+    var MapMgr_opts, c, createFacilitiesMap, d, d0, d1, dTableHeight, displayTitle, e, facCount, facilities, item, lga, mapLoader, mapZoom, obj, outval, profileData, s, sector, sectors, state, tableElem, twrap, variableData;
     facilities = results.facilities;
     variableData = results.variables;
     profileData = results.profile_data.profile_data;
     lga = NMIS._currentDistrict;
     state = NMIS._currentDistrict.group;
     createFacilitiesMap = function() {
-      var bounds, facilitiesMap, iconURLData, ll, mapClick, markerClick, markerMouseout, markerMouseover;
+      var bounds, iconURLData, ll, mapClick, markerClick, markerMouseout, markerMouseover, x;
       iconURLData = function(item) {
         var sectorIconURL, slug, status;
         sectorIconURL = function(slug, status) {
@@ -2071,18 +2763,25 @@ Facilities:
           })));
         }
       };
-      ll = _.map(lga.lat_lng.split(","), function(x) {
-        return +x;
-      });
+      ll = (function() {
+        var _i, _len, _ref, _results;
+        _ref = lga.lat_lng.split(",");
+        _results = [];
+        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+          x = _ref[_i];
+          _results.push(+x);
+        }
+        return _results;
+      })();
       if (!!facilitiesMap) {
-        _.delay((function() {
+        _rDelay(1, function() {
           if (lga.bounds) {
             facilitiesMap.fitBounds(lga.bounds);
           } else {
             facilitiesMap.setCenter(new google.maps.LatLng(ll[0], ll[1]));
           }
           return google.maps.event.trigger(facilitiesMap, "resize");
-        }), 1);
+        });
         return;
       } else {
         facilitiesMap = new google.maps.Map(NMIS._wElems.elem0.get(0), {
@@ -2143,10 +2842,10 @@ Facilities:
       });
       NMIS.IconSwitcher.createAll();
       lga.bounds = bounds;
-      _.delay((function() {
+      _rDelay(1, function() {
         google.maps.event.trigger(facilitiesMap, "resize");
         return facilitiesMap.fitBounds(bounds);
-      }), 1);
+      });
       return NMIS.IconSwitcher.setCallback("shiftMapItemStatus", function(item, id) {
         var icon, mapItem;
         mapItem = this.mapItem(id);
@@ -2180,12 +2879,10 @@ Facilities:
       elem: NMIS._wElems.elem0
     };
     mapZoom = 8;
-    if (NMIS.MapMgr.isLoaded()) {
-      createFacilitiesMap();
-    } else {
-      NMIS.MapMgr.addLoadCallback(createFacilitiesMap);
-      NMIS.MapMgr.init();
-    }
+    mapLoader = NMIS.loadGoogleMaps();
+    mapLoader.done(function() {
+      return createFacilitiesMap();
+    });
     if (window.dwResizeSet === undefined) {
       window.dwResizeSet = true;
       NMIS.DisplayWindow.addCallback("resize", function(tf, size) {
@@ -2203,43 +2900,50 @@ Facilities:
         return "normal";
       });
       obj = {
-        facCount: "15",
-        lgaName: "" + lga.label + ", " + lga.group.label,
-        overviewSectors: [],
-        profileData: _.map(profileData, function(d) {
-          var val;
-          val = "";
-          if (d[1] === null || d[1] === undefined) {
-            val = NMIS.DisplayValue.raw("--")[0];
-          } else if (d[1].value !== undefined) {
-            val = NMIS.DisplayValue.raw(d[1].value)[0];
-          } else {
-            val = NMIS.DisplayValue.raw("--");
-          }
-          return {
-            name: d[0],
-            value: val
-          };
-        })
+        lgaName: "" + lga.label + ", " + lga.group.label
       };
-      _.each(NMIS.Sectors.all(), function(s) {
-        var c;
-        c = 0;
-        _.each(NMIS.data(), function(d) {
-          if (d.sector === s) {
-            return c++;
+      obj.profileData = (function() {
+        var _i, _len, _ref, _results;
+        _results = [];
+        for (_i = 0, _len = profileData.length; _i < _len; _i++) {
+          _ref = profileData[_i], d0 = _ref[0], d1 = _ref[1];
+          outval = d1 === null || d1 === undefined ? NMIS.DisplayValue.raw("--")[0] : d1.value !== undefined ? NMIS.DisplayValue.raw(d1.value)[0] : NMIS.DisplayValue.raw("--");
+          _results.push({
+            name: d0,
+            value: outval
+          });
+        }
+        return _results;
+      })();
+      facCount = 0;
+      obj.overviewSectors = (function() {
+        var _i, _len, _ref, _ref1, _results;
+        _ref = NMIS.Sectors.all();
+        _results = [];
+        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+          s = _ref[_i];
+          c = 0;
+          _ref1 = NMIS.data();
+          for (d in _ref1) {
+            item = _ref1[d];
+            if (item.sector === s) {
+              c++;
+            }
           }
-        });
-        return obj.overviewSectors.push({
-          name: s.name,
-          slug: s.slug,
-          url: NMIS.urlFor(_.extend(NMIS.Env(), {
-            sector: s,
-            subsector: false
-          })),
-          counts: c
-        });
-      });
+          facCount += c;
+          _results.push({
+            name: s.name,
+            slug: s.slug,
+            url: NMIS.urlFor(_.extend(NMIS.Env(), {
+              sector: s,
+              subsector: false
+            })),
+            counts: c
+          });
+        }
+        return _results;
+      })();
+      obj.facCount = facCount;
       NMIS._wElems.elem1content.html(_.template($("#facilities-overview").html(), obj));
     } else {
       if (!!e.subsectorUndefined || !NMIS.FacilitySelector.isActive()) {
@@ -2264,7 +2968,7 @@ Facilities:
       }).addClass("bs");
       if (!!e.indicator) {
         (function() {
-          var mm;
+          var mm, pcWrap;
           if (e.indicator.iconify_png_url) {
             NMIS.IconSwitcher.shiftStatus(function(id, item) {
               if (item.sector === e.sector) {
@@ -2282,15 +2986,14 @@ Facilities:
           obj = _.extend({}, e.indicator);
           mm = $(_.template($("#indicator-feature").html(), obj));
           mm.find("a.close").click(function() {
-            var xx;
-            xx = NMIS.urlFor(_.extend({}, e, {
+            dashboard.setLocation(NMIS.urlFor(_.extend({}, e, {
               indicator: false
-            }));
-            dashboard.setLocation(xx);
+            })));
             return false;
           });
           mm.prependTo(NMIS._wElems.elem1content);
-          return (function(pcWrap) {
+          pcWrap = mm.find(".raph-circle").get(0);
+          return (function() {
             var column, pieChartDisplayDefinitions, piechartFalse, piechartTrue, tabulations;
             sector = e.sector;
             column = e.indicator;
@@ -2334,7 +3037,7 @@ Facilities:
               tabulations = NMIS.Tabulation.sectorSlug(sector.slug, column.slug, "true false undefined".split(" "));
               return prepare_data_for_pie_graph(pcWrap, pieChartDisplayDefinitions, tabulations, {});
             }
-          })(mm.find(".raph-circle").get(0));
+          })();
         })();
       }
     }
@@ -2432,6 +3135,10 @@ Facilities:
     };
     pie.hover(hover_on, hover_off);
     return r;
+  };
+
+  _rDelay = function(i, fn) {
+    return _.delay(fn, i);
   };
 
 }).call(this);
@@ -2583,51 +3290,38 @@ Facilities:
 
 }).call(this);
 (function() {
-  var DisplayPanel, TmpSector, UnderscoreTemplateDisplayPanel, create_sector_panel, establish_template_display_panels, launch_summary, summaryMap, template_not_found, __display_panels, _tdps,
+  var DisplayPanel, TmpSector, UnderscoreTemplateDisplayPanel, create_sector_panel, establish_template_display_panels, launch_summary, summaryMap, template_not_found, __display_panels, _rDelay, _tdps,
     __hasProp = {}.hasOwnProperty,
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
+  (function() {
+    /*
+      When "summary" is activated/deactivated, the open/close callbacks are called
+    */
+
+    var panelClose, panelOpen;
+    panelOpen = function() {
+      NMIS.LocalNav.show();
+      return $("#conditional-content").show();
+    };
+    panelClose = function() {
+      NMIS.LocalNav.hide();
+      return $("#conditional-content").hide();
+    };
+    return NMIS.panels.getPanel("summary").addCallbacks({
+      open: panelOpen,
+      close: panelClose
+    });
+  })();
+
+  summaryMap = false;
+
   NMIS.loadSummary = function(s) {
-    var fetchers, initSummaryMap, lga, lga_code, state;
+    var fetchers, lga, lga_code, mapLoader, state;
     lga_code = "" + s.params.state + "/" + s.params.lga;
     lga = NMIS.getDistrictByUrlCode(lga_code);
     state = lga.group;
-    initSummaryMap = function() {
-      var $mapDiv, ll, mapDiv, mapZoom, summaryMap;
-      $mapDiv = $(".profile-box .map").eq(0);
-      mapDiv = $mapDiv.get(0);
-      ll = _.map(lga.latLng.split(","), function(x) {
-        return +x;
-      });
-      mapZoom = 9;
-      if (mapDiv) {
-        if (!summaryMap) {
-          summaryMap = new google.maps.Map(mapDiv, {
-            zoom: mapZoom,
-            center: new google.maps.LatLng(ll[1], ll[0]),
-            streetViewControl: false,
-            panControl: false,
-            mapTypeControl: false,
-            mapTypeId: google.maps.MapTypeId.HYBRID
-          });
-          summaryMap.mapTypes.set("ng_base_map", NMIS.MapMgr.mapboxLayer({
-            tileset: "nigeria_base",
-            name: "Nigeria"
-          }));
-          summaryMap.setMapTypeId("ng_base_map");
-        }
-        return _.delay((function() {
-          google.maps.event.trigger(summaryMap, "resize");
-          return summaryMap.setCenter(new google.maps.LatLng(ll[1], ll[0]), mapZoom);
-        }), 1);
-      }
-    };
-    if (NMIS.MapMgr.isLoaded()) {
-      initSummaryMap();
-    } else {
-      NMIS.MapMgr.addLoadCallback(initSummaryMap);
-      NMIS.MapMgr.init();
-    }
+    mapLoader = NMIS.loadGoogleMaps();
     fetchers = {};
     if (lga.has_data_module("summary")) {
       fetchers.summary = NMIS.DataLoader.fetch(lga.module_url("summary"));
@@ -2636,7 +3330,44 @@ Facilities:
       fetchers.summary_sectors = NMIS.DataLoader.fetch(lga.module_url("summary_sectors"));
     }
     return $.when_O(fetchers).done(function(results) {
-      return launch_summary(s.params, state, lga, results);
+      launch_summary(s.params, state, lga, results);
+      return mapLoader.done(function() {
+        var $mapDiv, ll, mapDiv, mapZoom, x;
+        $mapDiv = $(".profile-box .map").eq(0);
+        mapDiv = $mapDiv.get(0);
+        ll = (function() {
+          var _i, _len, _ref, _results;
+          _ref = lga.latLng.split(",");
+          _results = [];
+          for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+            x = _ref[_i];
+            _results.push(+x);
+          }
+          return _results;
+        })();
+        mapZoom = 9;
+        if (mapDiv) {
+          if (!summaryMap) {
+            summaryMap = new google.maps.Map(mapDiv, {
+              zoom: mapZoom,
+              center: new google.maps.LatLng(ll[1], ll[0]),
+              streetViewControl: false,
+              panControl: false,
+              mapTypeControl: false,
+              mapTypeId: google.maps.MapTypeId.HYBRID
+            });
+            summaryMap.mapTypes.set("ng_base_map", NMIS.MapMgr.mapboxLayer({
+              tileset: "nigeria_base",
+              name: "Nigeria"
+            }));
+            summaryMap.setMapTypeId("ng_base_map");
+          }
+          return _rDelay(1, function() {
+            google.maps.event.trigger(summaryMap, "resize");
+            return summaryMap.setCenter(new google.maps.LatLng(ll[1], ll[0]), mapZoom);
+          });
+        }
+      });
     });
   };
 
@@ -2652,13 +3383,13 @@ Facilities:
   })();
 
   launch_summary = function(params, state, lga, query_results) {
-    var bcValues, current_sector, overviewObj, s, summary_data, summary_sectors, _env, _i, _len, _ref;
+    var bcKeys, current_sector, overviewObj, s, summary_data, summary_sectors, _i, _len, _ref;
     if (query_results == null) {
       query_results = {};
     }
     summary_data = query_results.summary;
     summary_sectors = query_results.summary_sectors;
-    NMIS.DisplayWindow.setVisibility(false);
+    NMIS.panels.changePanel("summary");
     NMIS.DisplayWindow.setDWHeight();
     overviewObj = {
       name: "Overview",
@@ -2674,7 +3405,7 @@ Facilities:
     if (!current_sector) {
       current_sector = overviewObj;
     }
-    _env = {
+    NMIS.Env({
       mode: {
         name: "Summary",
         slug: "summary"
@@ -2682,19 +3413,19 @@ Facilities:
       state: state,
       lga: lga,
       sector: current_sector
-    };
-    bcValues = NMIS._prepBreadcrumbValues(_env, "state lga mode sector subsector indicator".split(" "), {
-      state: state,
-      lga: lga
     });
     NMIS.Breadcrumb.clear();
-    NMIS.Breadcrumb.setLevels(bcValues);
-    NMIS.LocalNav.markActive(["mode:summary", "sector:" + _env.sector.slug]);
+    bcKeys = "state lga mode sector subsector indicator".split(" ");
+    NMIS.Breadcrumb.setLevels(NMIS._prepBreadcrumbValues(NMIS.Env(), bcKeys, {
+      state: state,
+      lga: lga
+    }));
+    NMIS.LocalNav.markActive(["mode:summary", "sector:" + NMIS.Env().sector.slug]);
     NMIS.LocalNav.iterate(function(sectionType, buttonName, a) {
-      var env;
-      env = _.extend({}, _env);
-      env[sectionType] = buttonName;
-      return a.attr("href", NMIS.urlFor(env));
+      var o;
+      o = {};
+      o[sectionType] = buttonName;
+      return a.attr("href", NMIS.urlFor.extendEnv(o));
     });
     (function() {
       /*
@@ -2737,7 +3468,7 @@ Facilities:
     })();
     return (function() {
       var cc, sector;
-      sector = _env.sector;
+      sector = NMIS.Env().sector;
       cc = $("#conditional-content").hide();
       cc.find(">div").hide();
       cc.find(">div.lga." + sector.slug).show();
@@ -2808,6 +3539,8 @@ Facilities:
     return div;
   };
 
-  summaryMap = void 0;
+  _rDelay = function(i, fn) {
+    return _.delay(fn, i);
+  };
 
 }).call(this);

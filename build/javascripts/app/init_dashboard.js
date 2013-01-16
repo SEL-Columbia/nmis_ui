@@ -25,7 +25,7 @@
 
   this.dashboard = $.sammy("body", function() {
     return this.get("" + NMIS.url_root + "#/:state/:lga/?", function() {
-      return dashboard.setLocation("" + NMIS.url_root + "#/" + this.params.state + "/" + this.params.lga + "/summary/");
+      return dashboard.setLocation("" + NMIS.url_root + "#/" + this.params.state + "/" + this.params.lga + "/summary");
     });
   });
 
@@ -49,46 +49,47 @@
     sections: [[["mode:summary", "LGA Summary", "#"], ["mode:facilities", "Facility Detail", "#"]], [["sector:overview", "Overview", "#"], ["sector:health", "Health", "#"], ["sector:education", "Education", "#"], ["sector:water", "Water", "#"]]]
   });
 
-  NMIS.urlFor = function(o) {
-    var uu, _pushAsDefined;
-    if (o.root == null) {
-      o.root = "" + NMIS.url_root + "#";
-    }
-    if (o.mode == null) {
-      o.mode = "summary";
-    }
-    if (!o.lga || !o.state) {
-      return "" + NMIS.url_root + "#?error";
-    }
-    uu = (_pushAsDefined = function(obj, keyList) {
-      var arr, i, item, key, l;
-      key = void 0;
-      i = void 0;
-      l = void 0;
+  NMIS.LocalNav.hide();
+
+  (function() {
+    var pushAsDefined, urlFor;
+    pushAsDefined = function(o, keyList) {
+      var arr, item, key, _i, _len;
       arr = [];
-      item = void 0;
-      i = 0;
-      l = keyList.length;
-      while (i < l) {
-        key = keyList[i];
-        item = obj[key];
+      for (_i = 0, _len = keyList.length; _i < _len; _i++) {
+        key = keyList[_i];
+        item = o[key];
         if (!!item) {
-          if (item === false) {
-            return ["/error"];
-          }
           arr.push((item.slug === undefined ? item : item.slug));
         } else {
           return arr;
         }
-        i++;
       }
       return arr;
-    })(o, ["root", "state", "lga", "mode", "sector", "subsector", "indicator"]).join("/");
-    if (!!o.facility) {
-      uu += "?facility=" + o.facility;
-    }
-    return uu;
-  };
+    };
+    urlFor = function(o) {
+      var builtUrl, klist;
+      if (o.root == null) {
+        o.root = "" + NMIS.url_root + "#";
+      }
+      if (o.mode == null) {
+        o.mode = "summary";
+      }
+      if (!o.lga || !o.state) {
+        return "" + NMIS.url_root + "#?error";
+      }
+      klist = ["root", "state", "lga", "mode", "sector", "subsector", "indicator"];
+      builtUrl = pushAsDefined(o, klist).join("/");
+      if (!!o.facility) {
+        builtUrl += "?facility=" + o.facility;
+      }
+      return builtUrl;
+    };
+    urlFor.extendEnv = function(o) {
+      return urlFor(NMIS.Env.extend(o));
+    };
+    return NMIS.urlFor = urlFor;
+  })();
 
   NMIS._prepBreadcrumbValues = function(e, keys, env) {
     var arr, i, key, l, name, val;
@@ -99,7 +100,7 @@
       key = keys[i];
       val = e[key];
       if (val !== undefined) {
-        name = val.name || val.slug || val;
+        name = val.name || val.label || val.slug || val;
         env[key] = val;
         arr.push([name, NMIS.urlFor(env)]);
       } else {
@@ -113,6 +114,11 @@
   NMIS.Breadcrumb.init("p.bc", {
     levels: []
   });
+
+  (function() {
+    dashboard.get(NMIS.url_root, NMIS.CountryView);
+    return dashboard.get("" + NMIS.url_root + "#/", NMIS.CountryView);
+  })();
 
   dashboard.get("" + NMIS.url_root + "#/:state/:lga/facilities/?(#.*)?", NMIS.launch_facilities);
 
@@ -130,6 +136,30 @@
 
   dashboard.get("" + NMIS.url_root + "#/:state/:lga/summary/:sector/:subsector/:indicator/?(#.*)?", NMIS.loadSummary);
 
+  (function() {
+    /*
+      If the url has a search string that includes "?data=xyz", then this
+      will assign the data-source cookie to the value and then redirect to
+      the URL without the data-source in it.
+    */
+
+    var hash, href, newUrl, srchStr, ss, ssData, _ref;
+    srchStr = "" + window.location.search;
+    if (-1 !== srchStr.indexOf("data=")) {
+      href = "" + window.location.href;
+      hash = "" + window.location.hash;
+      _ref = srchStr.match(/data=(.*)$/), ss = _ref[0], ssData = _ref[1];
+      if (ssData) {
+        $.cookie("data-source", ssData);
+      }
+      newUrl = href.split("?")[0];
+      if (hash) {
+        newUrl += hash;
+      }
+      return window.location.href = newUrl;
+    }
+  })();
+
   data_src = $.cookie("data-source");
 
   default_data_source_url = "./path_to_generic_data_source/";
@@ -139,12 +169,6 @@
   }
 
   NMIS._data_src_root_url = data_src;
-
-  this.dashboard.get("" + NMIS.url_root + "#data=(.*)", function() {
-    data_src = this.params.splat[0];
-    $.cookie("data-source", data_src);
-    return this.redirect("" + NMIS.url_root);
-  });
 
   $(function() {
     return NMIS.load_schema(data_src).done(function() {

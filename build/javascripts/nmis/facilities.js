@@ -5,32 +5,51 @@ Facilities:
 
 
 (function() {
-  var launchFacilities, launch_facilities, prepFacilities, prepare_data_for_pie_graph, resizeDisplayWindowAndFacilityTable;
+  var facilitiesMap, launchFacilities, prepFacilities, prepare_data_for_pie_graph, resizeDisplayWindowAndFacilityTable, _rDelay,
+    __hasProp = {}.hasOwnProperty;
 
-  launch_facilities = function() {
-    var district, params;
+  (function() {
+    var panelClose, panelOpen;
+    panelOpen = function() {
+      NMIS.DisplayWindow.show();
+      return NMIS.LocalNav.show();
+    };
+    panelClose = function() {
+      NMIS.DisplayWindow.hide();
+      return NMIS.LocalNav.hide();
+    };
+    return NMIS.panels.getPanel("facilities").addCallbacks({
+      open: panelOpen,
+      close: panelClose
+    });
+  })();
+
+  NMIS.launch_facilities = function() {
+    var district, paramName, params, val, _ref;
     params = {};
     if (("" + window.location.search).match(/facility=(\d+)/)) {
       params.facility = ("" + window.location.search).match(/facility=(\d+)/)[1];
     }
-    $("#conditional-content").hide();
-    _.each(this.params, function(param, pname) {
-      if ($.type(param) === "string" && param !== "") {
-        return params[pname] = param.replace("/", "");
+    _ref = this.params;
+    for (paramName in _ref) {
+      if (!__hasProp.call(_ref, paramName)) continue;
+      val = _ref[paramName];
+      if ($.type(val) === "string" && val !== "") {
+        params[paramName] = val.replace("/", "");
       }
-    });
+    }
     district = NMIS.getDistrictByUrlCode("" + params.state + "/" + params.lga);
     NMIS._currentDistrict = district;
     if (params.sector === "overview") {
       params.sector = undefined;
     }
     return district.sectors_data_loader().done(function() {
-      var fetchers, mod, _i, _len, _ref;
+      var fetchers, mod, _i, _len, _ref1;
       prepFacilities(params);
       fetchers = {};
-      _ref = ["facilities", "variables", "profile_data"];
-      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-        mod = _ref[_i];
+      _ref1 = ["facilities", "variables", "profile_data"];
+      for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
+        mod = _ref1[_i];
         fetchers[mod] = district.get_data_module(mod).fetch();
       }
       return $.when_O(fetchers).done(function(results) {
@@ -39,11 +58,9 @@ Facilities:
     });
   };
 
-  NMIS.launch_facilities = launch_facilities;
-
   prepFacilities = function(params) {
     var bcValues, e, facilitiesMode, lga, state;
-    NMIS.DisplayWindow.setVisibility(true);
+    NMIS.panels.changePanel("facilities");
     facilitiesMode = {
       name: "Facility Detail",
       slug: "facilities"
@@ -92,15 +109,17 @@ Facilities:
   */
 
 
+  facilitiesMap = false;
+
   launchFacilities = function(results, params) {
-    var MapMgr_opts, createFacilitiesMap, dTableHeight, displayTitle, e, facilities, lga, mapZoom, obj, profileData, sector, sectors, state, tableElem, twrap, variableData;
+    var MapMgr_opts, c, createFacilitiesMap, d, d0, d1, dTableHeight, displayTitle, e, facCount, facilities, item, lga, mapLoader, mapZoom, obj, outval, profileData, s, sector, sectors, state, tableElem, twrap, variableData;
     facilities = results.facilities;
     variableData = results.variables;
     profileData = results.profile_data.profile_data;
     lga = NMIS._currentDistrict;
     state = NMIS._currentDistrict.group;
     createFacilitiesMap = function() {
-      var bounds, facilitiesMap, iconURLData, ll, mapClick, markerClick, markerMouseout, markerMouseover;
+      var bounds, iconURLData, ll, mapClick, markerClick, markerMouseout, markerMouseover, x;
       iconURLData = function(item) {
         var sectorIconURL, slug, status;
         sectorIconURL = function(slug, status) {
@@ -148,18 +167,25 @@ Facilities:
           })));
         }
       };
-      ll = _.map(lga.lat_lng.split(","), function(x) {
-        return +x;
-      });
+      ll = (function() {
+        var _i, _len, _ref, _results;
+        _ref = lga.lat_lng.split(",");
+        _results = [];
+        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+          x = _ref[_i];
+          _results.push(+x);
+        }
+        return _results;
+      })();
       if (!!facilitiesMap) {
-        _.delay((function() {
+        _rDelay(1, function() {
           if (lga.bounds) {
             facilitiesMap.fitBounds(lga.bounds);
           } else {
             facilitiesMap.setCenter(new google.maps.LatLng(ll[0], ll[1]));
           }
           return google.maps.event.trigger(facilitiesMap, "resize");
-        }), 1);
+        });
         return;
       } else {
         facilitiesMap = new google.maps.Map(NMIS._wElems.elem0.get(0), {
@@ -220,10 +246,10 @@ Facilities:
       });
       NMIS.IconSwitcher.createAll();
       lga.bounds = bounds;
-      _.delay((function() {
+      _rDelay(1, function() {
         google.maps.event.trigger(facilitiesMap, "resize");
         return facilitiesMap.fitBounds(bounds);
-      }), 1);
+      });
       return NMIS.IconSwitcher.setCallback("shiftMapItemStatus", function(item, id) {
         var icon, mapItem;
         mapItem = this.mapItem(id);
@@ -257,12 +283,10 @@ Facilities:
       elem: NMIS._wElems.elem0
     };
     mapZoom = 8;
-    if (NMIS.MapMgr.isLoaded()) {
-      createFacilitiesMap();
-    } else {
-      NMIS.MapMgr.addLoadCallback(createFacilitiesMap);
-      NMIS.MapMgr.init();
-    }
+    mapLoader = NMIS.loadGoogleMaps();
+    mapLoader.done(function() {
+      return createFacilitiesMap();
+    });
     if (window.dwResizeSet === undefined) {
       window.dwResizeSet = true;
       NMIS.DisplayWindow.addCallback("resize", function(tf, size) {
@@ -280,43 +304,50 @@ Facilities:
         return "normal";
       });
       obj = {
-        facCount: "15",
-        lgaName: "" + lga.label + ", " + lga.group.label,
-        overviewSectors: [],
-        profileData: _.map(profileData, function(d) {
-          var val;
-          val = "";
-          if (d[1] === null || d[1] === undefined) {
-            val = NMIS.DisplayValue.raw("--")[0];
-          } else if (d[1].value !== undefined) {
-            val = NMIS.DisplayValue.raw(d[1].value)[0];
-          } else {
-            val = NMIS.DisplayValue.raw("--");
-          }
-          return {
-            name: d[0],
-            value: val
-          };
-        })
+        lgaName: "" + lga.label + ", " + lga.group.label
       };
-      _.each(NMIS.Sectors.all(), function(s) {
-        var c;
-        c = 0;
-        _.each(NMIS.data(), function(d) {
-          if (d.sector === s) {
-            return c++;
+      obj.profileData = (function() {
+        var _i, _len, _ref, _results;
+        _results = [];
+        for (_i = 0, _len = profileData.length; _i < _len; _i++) {
+          _ref = profileData[_i], d0 = _ref[0], d1 = _ref[1];
+          outval = d1 === null || d1 === undefined ? NMIS.DisplayValue.raw("--")[0] : d1.value !== undefined ? NMIS.DisplayValue.raw(d1.value)[0] : NMIS.DisplayValue.raw("--");
+          _results.push({
+            name: d0,
+            value: outval
+          });
+        }
+        return _results;
+      })();
+      facCount = 0;
+      obj.overviewSectors = (function() {
+        var _i, _len, _ref, _ref1, _results;
+        _ref = NMIS.Sectors.all();
+        _results = [];
+        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+          s = _ref[_i];
+          c = 0;
+          _ref1 = NMIS.data();
+          for (d in _ref1) {
+            item = _ref1[d];
+            if (item.sector === s) {
+              c++;
+            }
           }
-        });
-        return obj.overviewSectors.push({
-          name: s.name,
-          slug: s.slug,
-          url: NMIS.urlFor(_.extend(NMIS.Env(), {
-            sector: s,
-            subsector: false
-          })),
-          counts: c
-        });
-      });
+          facCount += c;
+          _results.push({
+            name: s.name,
+            slug: s.slug,
+            url: NMIS.urlFor(_.extend(NMIS.Env(), {
+              sector: s,
+              subsector: false
+            })),
+            counts: c
+          });
+        }
+        return _results;
+      })();
+      obj.facCount = facCount;
       NMIS._wElems.elem1content.html(_.template($("#facilities-overview").html(), obj));
     } else {
       if (!!e.subsectorUndefined || !NMIS.FacilitySelector.isActive()) {
@@ -341,7 +372,7 @@ Facilities:
       }).addClass("bs");
       if (!!e.indicator) {
         (function() {
-          var mm;
+          var mm, pcWrap;
           if (e.indicator.iconify_png_url) {
             NMIS.IconSwitcher.shiftStatus(function(id, item) {
               if (item.sector === e.sector) {
@@ -359,15 +390,14 @@ Facilities:
           obj = _.extend({}, e.indicator);
           mm = $(_.template($("#indicator-feature").html(), obj));
           mm.find("a.close").click(function() {
-            var xx;
-            xx = NMIS.urlFor(_.extend({}, e, {
+            dashboard.setLocation(NMIS.urlFor(_.extend({}, e, {
               indicator: false
-            }));
-            dashboard.setLocation(xx);
+            })));
             return false;
           });
           mm.prependTo(NMIS._wElems.elem1content);
-          return (function(pcWrap) {
+          pcWrap = mm.find(".raph-circle").get(0);
+          return (function() {
             var column, pieChartDisplayDefinitions, piechartFalse, piechartTrue, tabulations;
             sector = e.sector;
             column = e.indicator;
@@ -411,7 +441,7 @@ Facilities:
               tabulations = NMIS.Tabulation.sectorSlug(sector.slug, column.slug, "true false undefined".split(" "));
               return prepare_data_for_pie_graph(pcWrap, pieChartDisplayDefinitions, tabulations, {});
             }
-          })(mm.find(".raph-circle").get(0));
+          })();
         })();
       }
     }
@@ -509,6 +539,10 @@ Facilities:
     };
     pie.hover(hover_on, hover_off);
     return r;
+  };
+
+  _rDelay = function(i, fn) {
+    return _.delay(fn, i);
   };
 
 }).call(this);

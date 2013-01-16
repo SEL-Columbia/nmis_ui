@@ -7,6 +7,7 @@ until they play well together (and I ensure they don't over-depend on other modu
 
 
 (function() {
+  var __hasProp = {}.hasOwnProperty;
 
   (function() {
     var Breadcrumb;
@@ -146,7 +147,7 @@ until they play well together (and I ensure they don't over-depend on other modu
       fakse = false;
       loadCallbacks = [];
       mapLoadFn = function() {
-        return $.getScript("http://maps.googleapis.com/maps/api/js?sensor=false&callback=" + callbackStr);
+        return NMIS.loadGoogleMaps();
       };
       addLoadCallback = function(cb) {
         return loadCallbacks.push(cb);
@@ -397,7 +398,17 @@ until they play well together (and I ensure they don't over-depend on other modu
 
   (function() {
     return NMIS.DataLoader = (function() {
-      var fetch, fetchLocalStorage;
+      var ajaxJsonQuery, fetch, fetchLocalStorage;
+      ajaxJsonQuery = function(url, cache) {
+        if (cache == null) {
+          cache = true;
+        }
+        return $.ajax({
+          url: url,
+          dataType: "json",
+          cache: cache
+        });
+      };
       fetchLocalStorage = function(url) {
         var data, p, stringData;
         p = !1;
@@ -405,14 +416,14 @@ until they play well together (and I ensure they don't over-depend on other modu
         stringData = localStorage.getItem(url);
         if (stringData) {
           data = JSON.parse(stringData);
-          $.getJSON(url).then(function(d) {
+          ajaxJsonQuery(url).then(function(d) {
             localStorage.removeItem(url);
             return localStorage.setItem(url, JSON.stringify(d));
           });
           return $.Deferred().resolve([data]);
         } else {
           p = new $.Deferred();
-          $.getJSON(url).then(function(d) {
+          ajaxJsonQuery(url).then(function(d) {
             localStorage.setItem(url, JSON.stringify(d));
             return p.resolve([d]);
           });
@@ -420,7 +431,7 @@ until they play well together (and I ensure they don't over-depend on other modu
         }
       };
       fetch = function(url) {
-        return $.getJSON(url);
+        return ajaxJsonQuery(url, false);
       };
       return {
         fetch: fetch
@@ -430,7 +441,7 @@ until they play well together (and I ensure they don't over-depend on other modu
 
   (function() {
     return NMIS.LocalNav = (function() {
-      var buttonSections, clear, displaySubmenu, elem, getNavLink, hideSubmenu, init, iterate, markActive, opts, submenu, wrap;
+      var buttonSections, clear, displaySubmenu, elem, getNavLink, hide, hideSubmenu, init, iterate, markActive, opts, show, submenu, wrap;
       elem = void 0;
       wrap = void 0;
       opts = void 0;
@@ -486,6 +497,14 @@ until they play well together (and I ensure they don't over-depend on other modu
           "class": "submenu"
         }).appendTo(elem);
       };
+      hide = function() {
+        return wrap.detach();
+      };
+      show = function() {
+        if (wrap.closest("html").length === 0) {
+          return $(".content").eq(0).prepend(wrap);
+        }
+      };
       getNavLink = function(code) {
         var name, section, _x;
         _x = code.split(":");
@@ -535,6 +554,8 @@ until they play well together (and I ensure they don't over-depend on other modu
         init: init,
         clear: clear,
         iterate: iterate,
+        hide: hide,
+        show: show,
         displaySubmenu: displaySubmenu,
         hideSubmenu: hideSubmenu,
         markActive: markActive
@@ -615,15 +636,108 @@ until they play well together (and I ensure they don't over-depend on other modu
         return env = _.extend({}, _env);
       };
       env_accessor.extend = function(o) {
-        return _.extend(get_env(), o);
+        var e;
+        e = env ? env : {};
+        return _.extend({}, e, o);
       };
       return env_accessor;
     })();
   })();
 
+  NMIS.panels = (function() {
+    var Panel, changePanel, currentPanel, ensurePanel, getPanel, panels;
+    panels = {};
+    currentPanel = false;
+    Panel = (function() {
+
+      function Panel(id) {
+        this.id = id;
+        this._callbacks = {};
+      }
+
+      Panel.prototype.addCallbacks = function(obj) {
+        var cb, name;
+        if (obj == null) {
+          obj = {};
+        }
+        for (name in obj) {
+          if (!__hasProp.call(obj, name)) continue;
+          cb = obj[name];
+          this.addCallback(name, cb);
+        }
+        return this;
+      };
+
+      Panel.prototype.addCallback = function(name, cb) {
+        if (!this._callbacks[name]) {
+          this._callbacks[name] = [];
+        }
+        this._callbacks[name].push(cb);
+        return this;
+      };
+
+      Panel.prototype._triggerCallback = function(name, nextPanel) {
+        var cb, _i, _len, _ref;
+        _ref = this._callbacks[name] || [];
+        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+          cb = _ref[_i];
+          cb.call(window, name, this, nextPanel);
+        }
+        return this;
+      };
+
+      return Panel;
+
+    })();
+    getPanel = function(id) {
+      if (!panels[id]) {
+        panels[id] = new Panel(id);
+      }
+      return panels[id];
+    };
+    changePanel = function(id) {
+      var nextPanel;
+      nextPanel = panels[id];
+      if (!nextPanel) {
+        throw new Error("Panel not found: " + id);
+      } else if (nextPanel !== currentPanel) {
+        if (currentPanel) {
+          currentPanel._triggerCallback('close', nextPanel);
+        }
+        nextPanel._triggerCallback('open', currentPanel);
+        currentPanel = nextPanel;
+        return panels[id];
+      } else {
+        return false;
+      }
+    };
+    ensurePanel = function(id) {
+      if (!panels[id]) {
+        throw new Error("NMIS.panels.ensurePanel('" + id + "') Error: Panel does not exist");
+      }
+    };
+    return {
+      getPanel: getPanel,
+      changePanel: changePanel,
+      ensurePanel: ensurePanel,
+      currentPanelId: function() {
+        return currentPanel != null ? currentPanel.id : void 0;
+      },
+      allPanels: function() {
+        var k, v, _results;
+        _results = [];
+        for (k in panels) {
+          v = panels[k];
+          _results.push(v);
+        }
+        return _results;
+      }
+    };
+  })();
+
   (function() {
     return NMIS.DisplayWindow = (function() {
-      var addCallback, addTitle, clear, createHeaderBar, curSize, curTitle, elem, elem0, elem1, elem1content, elem1contentHeight, fullHeight, getElems, hbuttons, init, opts, resized, resizerSet, setBarHeight, setDWHeight, setSize, setTitle, setVisibility, showTitle, titleElems, visible;
+      var addCallback, addTitle, clear, contentWrap, createHeaderBar, curSize, curTitle, elem, elem0, elem1, elem1content, elem1contentHeight, ensureInitialized, fullHeight, getElems, hbuttons, hide, init, initted, opts, resized, resizerSet, setBarHeight, setDWHeight, setSize, setTitle, setVisibility, show, showTitle, titleElems, visible;
       elem = void 0;
       elem1 = void 0;
       elem0 = void 0;
@@ -633,18 +747,22 @@ until they play well together (and I ensure they don't over-depend on other modu
       hbuttons = void 0;
       titleElems = {};
       curSize = void 0;
-      resizerSet = void 0;
+      resizerSet = false;
       resized = void 0;
       curTitle = void 0;
+      initted = false;
+      contentWrap = false;
       init = function(_elem, _opts) {
+        initted = true;
         if (opts !== undefined) {
           clear();
         }
         if (!resizerSet) {
           resizerSet = true;
-          $(window).resize(resized);
+          $(window).resize(_.throttle(resized, 1000));
         }
-        elem = $("<div />").appendTo($(_elem));
+        contentWrap = $(_elem);
+        elem = $("<div />").appendTo(contentWrap);
         opts = _.extend({
           height: 100,
           clickSizes: [["full", "Table Only"], ["middle", "Split"], ["minimized", "Map Only"]],
@@ -758,7 +876,8 @@ until they play well together (and I ensure they don't over-depend on other modu
       setVisibility = function(tf) {
         var css;
         css = {};
-        if (!tf) {
+        visible = !!tf;
+        if (!visible) {
           css = {
             left: "1000em",
             display: "none"
@@ -772,6 +891,23 @@ until they play well together (and I ensure they don't over-depend on other modu
         elem0.css(css);
         return elem1.css(css);
       };
+      ensureInitialized = function() {
+        if (!initted) {
+          throw new Error("NMIS.DisplayWindow is not initialized");
+        }
+      };
+      hide = function() {
+        setVisibility(false);
+        ensureInitialized();
+        return elem.detach();
+      };
+      show = function() {
+        setVisibility(true);
+        ensureInitialized();
+        if (elem.closest("html").length === 0) {
+          return contentWrap.append(elem);
+        }
+      };
       addTitle = function(key, jqElem) {
         titleElems[key] = jqElem;
         if (curTitle === key) {
@@ -780,10 +916,9 @@ until they play well together (and I ensure they don't over-depend on other modu
       };
       createHeaderBar = function() {
         hbuttons = $("<span />");
-        _.each(opts.clickSizes, function(sizeArr) {
+        _.each(opts.clickSizes, function(_arg) {
           var desc, size;
-          size = sizeArr[0];
-          desc = sizeArr[1];
+          size = _arg[0], desc = _arg[1];
           return $("<a />").attr("class", "btn small clicksize " + size).text(desc).attr("title", desc).click(function() {
             return setSize(size, false);
           }).appendTo(hbuttons);
@@ -820,9 +955,9 @@ until they play well together (and I ensure they don't over-depend on other modu
         padding = 30;
         return elem1.height() - hbuttons.height() - padding;
       };
-      resized = _.throttle(function() {
+      resized = function() {
         var fh;
-        if (curSize !== "full") {
+        if (visible && curSize !== "full") {
           fh = fullHeight();
           elem.stop(true, false);
           elem.animate({
@@ -833,7 +968,7 @@ until they play well together (and I ensure they don't over-depend on other modu
             height: fh
           });
         }
-      }, 1000);
+      };
       return {
         init: init,
         clear: clear,
@@ -842,6 +977,8 @@ until they play well together (and I ensure they don't over-depend on other modu
           return curSize;
         },
         setVisibility: setVisibility,
+        hide: hide,
+        show: show,
         addCallback: addCallback,
         setDWHeight: setDWHeight,
         addTitle: addTitle,

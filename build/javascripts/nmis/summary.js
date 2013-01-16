@@ -1,49 +1,36 @@
 (function() {
-  var DisplayPanel, TmpSector, UnderscoreTemplateDisplayPanel, create_sector_panel, establish_template_display_panels, launch_summary, summaryMap, template_not_found, __display_panels, _tdps,
+  var DisplayPanel, TmpSector, UnderscoreTemplateDisplayPanel, create_sector_panel, establish_template_display_panels, launch_summary, summaryMap, template_not_found, __display_panels, _rDelay, _tdps,
     __hasProp = {}.hasOwnProperty,
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
+  (function() {
+    /*
+      When "summary" is activated/deactivated, the open/close callbacks are called
+    */
+
+    var panelClose, panelOpen;
+    panelOpen = function() {
+      NMIS.LocalNav.show();
+      return $("#conditional-content").show();
+    };
+    panelClose = function() {
+      NMIS.LocalNav.hide();
+      return $("#conditional-content").hide();
+    };
+    return NMIS.panels.getPanel("summary").addCallbacks({
+      open: panelOpen,
+      close: panelClose
+    });
+  })();
+
+  summaryMap = false;
+
   NMIS.loadSummary = function(s) {
-    var fetchers, initSummaryMap, lga, lga_code, state;
+    var fetchers, lga, lga_code, mapLoader, state;
     lga_code = "" + s.params.state + "/" + s.params.lga;
     lga = NMIS.getDistrictByUrlCode(lga_code);
     state = lga.group;
-    initSummaryMap = function() {
-      var $mapDiv, ll, mapDiv, mapZoom, summaryMap;
-      $mapDiv = $(".profile-box .map").eq(0);
-      mapDiv = $mapDiv.get(0);
-      ll = _.map(lga.latLng.split(","), function(x) {
-        return +x;
-      });
-      mapZoom = 9;
-      if (mapDiv) {
-        if (!summaryMap) {
-          summaryMap = new google.maps.Map(mapDiv, {
-            zoom: mapZoom,
-            center: new google.maps.LatLng(ll[1], ll[0]),
-            streetViewControl: false,
-            panControl: false,
-            mapTypeControl: false,
-            mapTypeId: google.maps.MapTypeId.HYBRID
-          });
-          summaryMap.mapTypes.set("ng_base_map", NMIS.MapMgr.mapboxLayer({
-            tileset: "nigeria_base",
-            name: "Nigeria"
-          }));
-          summaryMap.setMapTypeId("ng_base_map");
-        }
-        return _.delay((function() {
-          google.maps.event.trigger(summaryMap, "resize");
-          return summaryMap.setCenter(new google.maps.LatLng(ll[1], ll[0]), mapZoom);
-        }), 1);
-      }
-    };
-    if (NMIS.MapMgr.isLoaded()) {
-      initSummaryMap();
-    } else {
-      NMIS.MapMgr.addLoadCallback(initSummaryMap);
-      NMIS.MapMgr.init();
-    }
+    mapLoader = NMIS.loadGoogleMaps();
     fetchers = {};
     if (lga.has_data_module("summary")) {
       fetchers.summary = NMIS.DataLoader.fetch(lga.module_url("summary"));
@@ -52,7 +39,44 @@
       fetchers.summary_sectors = NMIS.DataLoader.fetch(lga.module_url("summary_sectors"));
     }
     return $.when_O(fetchers).done(function(results) {
-      return launch_summary(s.params, state, lga, results);
+      launch_summary(s.params, state, lga, results);
+      return mapLoader.done(function() {
+        var $mapDiv, ll, mapDiv, mapZoom, x;
+        $mapDiv = $(".profile-box .map").eq(0);
+        mapDiv = $mapDiv.get(0);
+        ll = (function() {
+          var _i, _len, _ref, _results;
+          _ref = lga.latLng.split(",");
+          _results = [];
+          for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+            x = _ref[_i];
+            _results.push(+x);
+          }
+          return _results;
+        })();
+        mapZoom = 9;
+        if (mapDiv) {
+          if (!summaryMap) {
+            summaryMap = new google.maps.Map(mapDiv, {
+              zoom: mapZoom,
+              center: new google.maps.LatLng(ll[1], ll[0]),
+              streetViewControl: false,
+              panControl: false,
+              mapTypeControl: false,
+              mapTypeId: google.maps.MapTypeId.HYBRID
+            });
+            summaryMap.mapTypes.set("ng_base_map", NMIS.MapMgr.mapboxLayer({
+              tileset: "nigeria_base",
+              name: "Nigeria"
+            }));
+            summaryMap.setMapTypeId("ng_base_map");
+          }
+          return _rDelay(1, function() {
+            google.maps.event.trigger(summaryMap, "resize");
+            return summaryMap.setCenter(new google.maps.LatLng(ll[1], ll[0]), mapZoom);
+          });
+        }
+      });
     });
   };
 
@@ -68,13 +92,13 @@
   })();
 
   launch_summary = function(params, state, lga, query_results) {
-    var bcValues, current_sector, overviewObj, s, summary_data, summary_sectors, _env, _i, _len, _ref;
+    var bcKeys, current_sector, overviewObj, s, summary_data, summary_sectors, _i, _len, _ref;
     if (query_results == null) {
       query_results = {};
     }
     summary_data = query_results.summary;
     summary_sectors = query_results.summary_sectors;
-    NMIS.DisplayWindow.setVisibility(false);
+    NMIS.panels.changePanel("summary");
     NMIS.DisplayWindow.setDWHeight();
     overviewObj = {
       name: "Overview",
@@ -90,7 +114,7 @@
     if (!current_sector) {
       current_sector = overviewObj;
     }
-    _env = {
+    NMIS.Env({
       mode: {
         name: "Summary",
         slug: "summary"
@@ -98,19 +122,19 @@
       state: state,
       lga: lga,
       sector: current_sector
-    };
-    bcValues = NMIS._prepBreadcrumbValues(_env, "state lga mode sector subsector indicator".split(" "), {
-      state: state,
-      lga: lga
     });
     NMIS.Breadcrumb.clear();
-    NMIS.Breadcrumb.setLevels(bcValues);
-    NMIS.LocalNav.markActive(["mode:summary", "sector:" + _env.sector.slug]);
+    bcKeys = "state lga mode sector subsector indicator".split(" ");
+    NMIS.Breadcrumb.setLevels(NMIS._prepBreadcrumbValues(NMIS.Env(), bcKeys, {
+      state: state,
+      lga: lga
+    }));
+    NMIS.LocalNav.markActive(["mode:summary", "sector:" + NMIS.Env().sector.slug]);
     NMIS.LocalNav.iterate(function(sectionType, buttonName, a) {
-      var env;
-      env = _.extend({}, _env);
-      env[sectionType] = buttonName;
-      return a.attr("href", NMIS.urlFor(env));
+      var o;
+      o = {};
+      o[sectionType] = buttonName;
+      return a.attr("href", NMIS.urlFor.extendEnv(o));
     });
     (function() {
       /*
@@ -153,7 +177,7 @@
     })();
     return (function() {
       var cc, sector;
-      sector = _env.sector;
+      sector = NMIS.Env().sector;
       cc = $("#conditional-content").hide();
       cc.find(">div").hide();
       cc.find(">div.lga." + sector.slug).show();
@@ -224,6 +248,8 @@
     return div;
   };
 
-  summaryMap = void 0;
+  _rDelay = function(i, fn) {
+    return _.delay(fn, i);
+  };
 
 }).call(this);
