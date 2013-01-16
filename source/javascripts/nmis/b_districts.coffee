@@ -120,6 +120,7 @@ do ->
 class NMIS.District
   constructor: (d)->
     _.extend @, d
+    @name = @label unless @name
     [@group_slug, @slug] = d.url_code.split("/")
     # change everything over to @lat_lng at a later time?
     @data_modules = [] unless @data_modules?

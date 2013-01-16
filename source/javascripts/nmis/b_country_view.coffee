@@ -54,6 +54,7 @@ NMIS.MainMdgMap = do ->
     $elem = $(eselector).css width: 680, height: 476, position: 'absolute'
     launcher = NMIS.loadOpenLayers()
     launcher.done ()->
+      $(".map-loading-message").hide()
       elem = $elem.get(0)
       mapId = "nmis-ol-country-map"
       $elem.prop 'id', mapId
