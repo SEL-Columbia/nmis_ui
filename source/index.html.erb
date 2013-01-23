@@ -72,7 +72,7 @@ title: MDG Survey Viewer [JS]
   	<div class="profile-box">
   		<div class="profile-box-inner">
         <table data-table-contents="lga-overview">
-        <{ _.each(relevant_data, function(rowId){ }>
+        <{ _.each(relevant_data.ids, function(rowId){ }>
           <tr>
             <td>
               <{= lookupName(rowId) }>

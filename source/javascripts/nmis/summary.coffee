@@ -26,10 +26,6 @@ NMIS.loadSummary = (s) ->
   googleMapsLoad = NMIS.loadGoogleMaps()
 
   # todo datamod
-  if lga.has_data_module("presentation/summary")
-    # todo datamod
-    fetchers.summary = NMIS.DataLoader.fetch(lga.module_url("presentation/summary"))
-  # todo datamod
   if lga.has_data_module("presentation/summary_sectors")
     # todo datamod
     fetchers.summary_sectors = NMIS.DataLoader.fetch(lga.module_url("presentation/summary_sectors"))
@@ -73,16 +69,16 @@ class TmpSector
     @name = s.name
 
 launch_summary = (params, state, lga, query_results={})->
-  summary_data = query_results.summary
   summary_sectors_results = query_results.summary_sectors
   summary_sectors = summary_sectors_results.sectors
+  relevant_data = summary_sectors_results.relevant_data
   NMIS.panels.changePanel "summary"
   NMIS.DisplayWindow.setDWHeight()
   overviewObj =
     name: "Overview"
     slug: "overview"
 
-  view_details = summary_data.view_details
+  view_details = summary_sectors_results.view_details
   current_sector = new TmpSector(s) for s in view_details when s.id is params.sector
   current_sector = overviewObj unless current_sector
   NMIS.Env
@@ -109,7 +105,6 @@ launch_summary = (params, state, lga, query_results={})->
     content_div = $('.content')
     if content_div.find('#conditional-content').length == 0
       context = {}
-      context.summary_data = summary_data
       context.summary_sectors = summary_sectors
       context.lga = lga
       cc_div = $ '<div>', id: 'conditional-content'
@@ -125,8 +120,7 @@ launch_summary = (params, state, lga, query_results={})->
           sectorPanel = do ->
             spanStr = (content="&mdash;", cls="")-> "<span class='#{cls}' style='text-transform:none'>#{content}</span>"
             establish_template_display_panels()
-            # lga = context.lga
-            context.relevant_data = context.summary_data.data?[sector_id]?[module]
+            context.relevant_data = relevant_data[sector_id]?[module]
             div = $('<div>')
             context.lookupName = (id)->
               if id
@@ -182,36 +176,6 @@ establish_template_display_panels = ()->
       module = $this.data('module')
       __display_panels[module] = new UnderscoreTemplateDisplayPanel(module, $this)
     _tdps = true
-
-# create_sector_panel = (sector_id, module, context)->
-#   spanStr = (content="&mdash;", cls="")-> "<span class='#{cls}' style='text-transform:none'>#{content}</span>"
-#   establish_template_display_panels()
-#   lga = context.lga
-#   context.relevant_data = context.summary_data.data?[sector_id]?[module]
-#   div = $('<div>')
-#   context.lookupName = (id)->
-#     if id
-#       vrb = NMIS.variables.find id
-#       if vrb
-#         spanStr vrb.name, "variable-name"
-#       else
-#         spanStr id, "label label-important important"
-#     else
-#       "No variable id"
-#   context.lookupValue = (id, defaultValue=null)->
-#     record = lga.lookupRecord(id)
-#     if record
-#       spanStr record.value, "found"
-#     else if id
-#       spanStr spanStr("No val: #{id}", "label important label-important"), "missing missing-value", "Missing value for id: #{id}"
-#     else
-#       spanStr "&cross;", "missing missing-id", "Missing ID"
-#   if __display_panels[module]?
-#     panel = __display_panels[module]
-#     panel.build div, context
-#   else
-#     div.html template_not_found(module)
-#   div
 
 # identical to _.delay except switches the order of the parameters
 _rDelay = (i, fn)-> _.delay fn, i
