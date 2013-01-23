@@ -21,10 +21,18 @@ NMIS.loadSummary = (s) ->
   mapLoader = NMIS.loadGoogleMaps()
 
   fetchers = {}
-  if lga.has_data_module("summary")
-    fetchers.summary = NMIS.DataLoader.fetch(lga.module_url("summary"))
-  if lga.has_data_module("summary_sectors")
-    fetchers.summary_sectors = NMIS.DataLoader.fetch(lga.module_url("summary_sectors"))
+  # todo datamod
+  if lga.has_data_module("presentation/summary")
+    # todo datamod
+    fetchers.summary = NMIS.DataLoader.fetch(lga.module_url("presentation/summary"))
+  # todo datamod
+  if lga.has_data_module("presentation/summary_sectors")
+    # todo datamod
+    fetchers.summary_sectors = NMIS.DataLoader.fetch(lga.module_url("presentation/summary_sectors"))
+
+  # todo datamod
+  fetchers.lga_data = lga.loadData()  if lga.has_data_module("data/lga_data")
+  fetchers.variables = lga.loadVariables()
 
   $.when_O(fetchers).done (results)->
     launch_summary s.params, state, lga, results
@@ -139,8 +147,46 @@ establish_template_display_panels = ()->
 
 create_sector_panel = (sector_id, module, context)->
   establish_template_display_panels()
+  lga = context.lga
   context.relevant_data = context.summary_data.data?[sector_id]?[module]
   div = $('<div>')
+  context.lookupName = (id)->
+    if id
+      vrb = NMIS.variables.find id
+      if vrb
+        """
+        <span class="variable-name">
+          #{vrb.name}
+        </span>
+        """
+      else
+        """
+        <span class="label label-important important" style="text-transform:none">
+          #{id}
+        </span>
+        """
+    else
+      "No variable id"
+  context.lookupValue = (id, defaultValue=null)->
+    record = lga.lookupRecord(id)
+    if record
+      """
+      <span class="found">
+        #{record.value}
+      </span>
+      """
+    else if id
+      """
+      <span class="missing missing-value" title="Missing value for id: '#{id}'">
+        <span class="label important label-important">No val: #{id}</span>
+      </span>
+      """
+    else
+      """
+      <span class="missing missing-id" title="Missing id.">
+        &cross;
+      </span>
+      """
   if __display_panels[module]?
     panel = __display_panels[module]
     panel.build div, context

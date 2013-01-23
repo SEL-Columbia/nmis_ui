@@ -117,6 +117,12 @@ do ->
     #   dashboard.setLocation NMIS.urlFor state: existing.group.slug, lga: existing.slug
     existing
 
+class NMIS.DataRecord
+  constructor: (@lga, obj)->
+    @value = obj.value
+    @source = obj.source
+    @id = obj.id
+
 class NMIS.District
   constructor: (d)->
     _.extend @, d
@@ -137,7 +143,8 @@ class NMIS.District
     # if @has_data_module("sectors")
     #   fetcher = NMIS.DataLoader.fetch @module_url("sectors")
     # else
-    fetcher = @get_data_module("sectors").fetch()
+    # todo datamod
+    fetcher = @get_data_module("variables/sectors").fetch()
     fetcher.done (s)->
       NMIS.loadSectors s.sectors,
         default:
@@ -146,18 +153,45 @@ class NMIS.District
     fetcher
 
   get_data_module: (module)->
-    match = m for m in @module_files when m.name is module
-    unless match?
-      # log "GETTING DEFAULT #{module}", DEFAULT_MODULES, module in DEFAULT_MODULES
-      match = NMIS.ModuleFile.DEFAULT_MODULES[module]
-    throw new Error("Module not found: #{module}") unless match?
-    match
+    log module
+    false
+    # match = m for m in @module_files when m.name is module
+    # unless match?
+    #   # log "GETTING DEFAULT #{module}", DEFAULT_MODULES, module in DEFAULT_MODULES
+    #   match = NMIS.ModuleFile.DEFAULT_MODULES[module]
+    # throw new Error("Module not found: #{module}") unless match?
+    # match
 
   has_data_module: (module)->
     try
       !!@get_data_module module
     catch e
       false
+
+  loadData: ()->
+    dfd = $.Deferred()
+    # todo datamod/data
+    loader = NMIS.DataLoader.fetch @module_url("data/lga_data") #
+    loader.done (results)=>
+      @lga_data = for d in results.data
+        new NMIS.DataRecord @, d
+
+      dfd.resolve @lga_data
+    dfd.promise()
+
+  loadVariables: ()->
+    dfd = $.Deferred()
+    # todo datamod/variables
+    NMIS.DataLoader.fetch(@module_url("variables/variables")).done (results)=>
+      NMIS.variables.clear()
+      NMIS.variables.load results
+      dfd.resolve NMIS.variables
+    dfd.promise()
+
+  lookupRecord: (id)->
+    matches = []
+    matches.push datum  for datum in @lga_data when datum.id is id
+    matches[0]
 
   set_group: (@group)-> @group.add_district @
 
