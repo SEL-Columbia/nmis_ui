@@ -29,14 +29,14 @@ do ->
   NMIS.load_schema = (data_src)->
     schema_url = "#{data_src}schema.json"
     deferred = new $.Deferred
-    $.getJSON "#{data_src}schema.json", (schema)->
+    $.getJSON schema_url, (schema)->
       display_in_header schema
-      NMIS.ModuleFile.DEFAULT_MODULES[dname] = new NMIS.ModuleFile(durl) for dname, durl of schema.defaults
+      ModuleFile.DEFAULT_MODULES = (new ModuleFile(durl) for dname, durl of schema.defaults)
       if schema.map_layers?
-        NMIS._mapLayersModule_ = new NMIS.ModuleFile schema.map_layers
+        NMIS._mapLayersModule_ = new ModuleFile schema.map_layers
 
       if schema.districts_json?
-        districts_module = new NMIS.ModuleFile(schema.districts_json)
+        districts_module = new ModuleFile(schema.districts_json)
         districts_module.fetch().done (dl)->
           NMIS.load_districts dl.groups, dl.districts
           deferred.resolve()
@@ -123,6 +123,17 @@ class NMIS.DataRecord
     @source = obj.source
     @id = obj.id
 
+class NoOpFetch
+  constructor: (@id)->
+  fetch: ()->
+    dfd = new $.Deferred()
+    cb = ()->
+      msg = "#{@id} messed up."
+      dfd.reject(msg)
+    window.setTimeout cb, 500
+    dfd.fail ()=> console.error("failure: #{@id}")
+    dfd.promise()
+
 class NMIS.District
   constructor: (d)->
     _.extend @, d
@@ -130,7 +141,7 @@ class NMIS.District
     [@group_slug, @slug] = d.url_code.split("/")
     # change everything over to @lat_lng at a later time?
     @data_modules = [] unless @data_modules?
-    @module_files = (new NMIS.ModuleFile(f, @) for f in @data_modules)
+    @module_files = (new ModuleFile(f, @) for f in @data_modules)
     @latLng = @lat_lng
     @html_params =
       text: @label
@@ -144,7 +155,9 @@ class NMIS.District
     #   fetcher = NMIS.DataLoader.fetch @module_url("sectors")
     # else
     # todo datamod
-    fetcher = @get_data_module("variables/sectors").fetch()
+    
+    _fetcher = @get_data_module("variables/sectors")
+    fetcher = _fetcher.fetch()
     fetcher.done (s)->
       NMIS.loadSectors s.sectors,
         default:
@@ -153,12 +166,11 @@ class NMIS.District
     fetcher
 
   get_data_module: (module)->
-    log module
-    false
+    new NoOpFetch(module)
     # match = m for m in @module_files when m.name is module
     # unless match?
     #   # log "GETTING DEFAULT #{module}", DEFAULT_MODULES, module in DEFAULT_MODULES
-    #   match = NMIS.ModuleFile.DEFAULT_MODULES[module]
+    #   match = ModuleFile.DEFAULT_MODULES[module]
     # throw new Error("Module not found: #{module}") unless match?
     # match
 
@@ -229,8 +241,10 @@ class NMIS.Group
       g = g.group
     ps
 
-class NMIS.ModuleFile
+class ModuleFile
+  @DEFAULT_MODULES = {}
   constructor: (@filename, district)->
+    log @filename , district
     try
       [devnull, @name, @file_type] = @filename.match(/(.*)\.(json|csv)/)
     catch e
@@ -239,5 +253,3 @@ class NMIS.ModuleFile
     mid_url = if district? then "#{district.data_root}/" else ""
     @url = "#{NMIS._data_src_root_url}#{mid_url}#{@filename}"
   fetch: ()-> NMIS.DataLoader.fetch @url
-
-NMIS.ModuleFile.DEFAULT_MODULES = {}
