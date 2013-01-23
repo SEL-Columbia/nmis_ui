@@ -27,32 +27,7 @@ do ->
     headers('header').find("span").text(s.id)
 
   ### NMIS.load_districts should be moved here. ###
-
-  NMIS.load_schema = (data_src)->
-    schema_url = "#{data_src}schema.json"
-    deferred = new $.Deferred
-    getSchema = $.ajax(url: schema_url, dataType: "json", cache: false)
-    getSchema.done (schema)->
-      display_in_header schema
-      ModuleFile.DEFAULT_MODULES = (new ModuleFile(durl) for dname, durl of schema.defaults)
-
-      if schema.districts? and schema.groups?
-        NMIS.load_districts schema.groups, schema.districts
-        deferred.resolve()
-      else
-        districts_module = do ->
-          for mf in ModuleFile.DEFAULT_MODULES when mf.name is "geo/districts"
-            return mf
-        districts_module.fetch().done ({groups, districts})->
-          NMIS.load_districts groups, districts
-          deferred.resolve()
-        # if !districts_module
-        #   deferred.fail()
-    deferred.done ->("Resolving!")
-    deferred.promise()
-
-do ->
-  NMIS.load_districts = (group_list, district_list)->
+  load_districts = (group_list, district_list)->
     group_names = []
     groups = []
 
@@ -106,6 +81,29 @@ do ->
     submit_button = headers('nav').find("input[type='submit']").detach()
     headers('nav').find('form div').eq(0).empty().html(new_select).append(submit_button)
     new_select.chosen()
+
+  NMIS.load_schema = (data_src)->
+    schema_url = "#{data_src}schema.json"
+    deferred = new $.Deferred
+    getSchema = $.ajax(url: schema_url, dataType: "json", cache: false)
+    getSchema.done (schema)->
+      display_in_header schema
+      ModuleFile.DEFAULT_MODULES = (new ModuleFile(durl) for dname, durl of schema.defaults)
+
+      if schema.districts? and schema.groups?
+        load_districts schema.groups, schema.districts
+        deferred.resolve()
+      else
+        districts_module = do ->
+          for mf in ModuleFile.DEFAULT_MODULES when mf.name is "geo/districts"
+            return mf
+        districts_module.fetch().done ({groups, districts})->
+          load_districts groups, districts
+          deferred.resolve()
+        # if !districts_module
+        #   deferred.fail()
+    deferred.done ->("Resolving!")
+    deferred.promise()
 
 do ->
   NMIS.findDistrictById = (district_id=false)->
