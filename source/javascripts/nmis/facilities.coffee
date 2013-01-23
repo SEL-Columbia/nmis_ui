@@ -31,7 +31,7 @@ NMIS.launch_facilities = ->
     prepFacilities params
 
     fetchers = {}
-    for mod in ["facilities", "variables", "profile_data"]
+    for mod in ["data/facilities", "variable/variables", "data/lga_data"]
       fetchers[mod] = district.get_data_module(mod).fetch()
 
     $.when_O(fetchers).done (results)-> launchFacilities results, params

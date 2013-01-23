@@ -26,25 +26,29 @@ do ->
     brand.empty().append(logo).append(title)
     headers('header').find("span").text(s.id)
 
+  ### NMIS.load_districts should be moved here. ###
+
   NMIS.load_schema = (data_src)->
     schema_url = "#{data_src}schema.json"
     deferred = new $.Deferred
-    $.getJSON schema_url, (schema)->
+    getSchema = $.ajax(url: schema_url, dataType: "json", cache: false)
+    getSchema.done (schema)->
       display_in_header schema
       ModuleFile.DEFAULT_MODULES = (new ModuleFile(durl) for dname, durl of schema.defaults)
-      if schema.map_layers?
-        NMIS._mapLayersModule_ = new ModuleFile schema.map_layers
 
-      if schema.districts_json?
-        districts_module = new ModuleFile(schema.districts_json)
-        districts_module.fetch().done (dl)->
-          NMIS.load_districts dl.groups, dl.districts
-          deferred.resolve()
-      else if schema.districts? and schema.groups?
+      if schema.districts? and schema.groups?
         NMIS.load_districts schema.groups, schema.districts
         deferred.resolve()
       else
-        deferred.fail()
+        districts_module = do ->
+          for mf in ModuleFile.DEFAULT_MODULES when mf.name is "geo/districts"
+            return mf
+        districts_module.fetch().done ({groups, districts})->
+          NMIS.load_districts groups, districts
+          deferred.resolve()
+        # if !districts_module
+        #   deferred.fail()
+    deferred.done ->("Resolving!")
     deferred.promise()
 
 do ->
@@ -140,8 +144,8 @@ class NMIS.District
     @name = @label unless @name
     [@group_slug, @slug] = d.url_code.split("/")
     # change everything over to @lat_lng at a later time?
-    @data_modules = [] unless @data_modules?
-    @module_files = (new ModuleFile(f, @) for f in @data_modules)
+    @files = [] unless @files?
+    @module_files = (new ModuleFile(f, @) for f in @files)
     @latLng = @lat_lng
     @html_params =
       text: @label
@@ -156,7 +160,7 @@ class NMIS.District
     # else
     # todo datamod
     
-    _fetcher = @get_data_module("variables/sectors")
+    _fetcher = @get_data_module("presentation/sectors")
     fetcher = _fetcher.fetch()
     fetcher.done (s)->
       NMIS.loadSectors s.sectors,
@@ -166,7 +170,9 @@ class NMIS.District
     fetcher
 
   get_data_module: (module)->
-    new NoOpFetch(module)
+    for mf in @module_files when mf.name is module
+      return mf
+    # new NoOpFetch(module)
     # match = m for m in @module_files when m.name is module
     # unless match?
     #   # log "GETTING DEFAULT #{module}", DEFAULT_MODULES, module in DEFAULT_MODULES
