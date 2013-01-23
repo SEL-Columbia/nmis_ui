@@ -1509,7 +1509,7 @@ until they play well together (and I ensure they don't over-depend on other modu
 
 }).call(this);
 (function() {
-  var headers;
+  var ModuleFile, NoOpFetch, headers;
 
   headers = (function() {
     var header, nav;
@@ -1544,7 +1544,7 @@ until they play well together (and I ensure they don't over-depend on other modu
   })();
 
   (function() {
-    var display_in_header;
+    var display_in_header, load_districts;
     display_in_header = function(s) {
       var brand, logo, title;
       title = s.title;
@@ -1554,40 +1554,10 @@ until they play well together (and I ensure they don't over-depend on other modu
       brand.empty().append(logo).append(title);
       return headers('header').find("span").text(s.id);
     };
-    return NMIS.load_schema = function(data_src) {
-      var deferred, schema_url;
-      schema_url = "" + data_src + "schema.json";
-      deferred = new $.Deferred;
-      $.getJSON("" + data_src + "schema.json", function(schema) {
-        var districts_module, dname, durl, _ref;
-        display_in_header(schema);
-        _ref = schema.defaults;
-        for (dname in _ref) {
-          durl = _ref[dname];
-          NMIS.ModuleFile.DEFAULT_MODULES[dname] = new NMIS.ModuleFile(durl);
-        }
-        if (schema.map_layers != null) {
-          NMIS._mapLayersModule_ = new NMIS.ModuleFile(schema.map_layers);
-        }
-        if (schema.districts_json != null) {
-          districts_module = new NMIS.ModuleFile(schema.districts_json);
-          return districts_module.fetch().done(function(dl) {
-            NMIS.load_districts(dl.groups, dl.districts);
-            return deferred.resolve();
-          });
-        } else if ((schema.districts != null) && (schema.groups != null)) {
-          NMIS.load_districts(schema.groups, schema.districts);
-          return deferred.resolve();
-        } else {
-          return deferred.fail();
-        }
-      });
-      return deferred.promise();
-    };
-  })();
+    /* NMIS.load_districts should be moved here.
+    */
 
-  (function() {
-    return NMIS.load_districts = function(group_list, district_list) {
+    load_districts = function(group_list, district_list) {
       var d, district, districts, g, get_group_by_id, group, group_names, groups, groupsObj, grp_details, new_select, optgroup, states, submit_button, zones, _i, _j, _k, _l, _len, _len1, _len2, _len3, _len4, _len5, _m, _n, _ref;
       group_names = [];
       groups = [];
@@ -1682,6 +1652,55 @@ until they play well together (and I ensure they don't over-depend on other modu
       headers('nav').find('form div').eq(0).empty().html(new_select).append(submit_button);
       return new_select.chosen();
     };
+    return NMIS.load_schema = function(data_src) {
+      var deferred, getSchema, schema_url;
+      schema_url = "" + data_src + "schema.json";
+      deferred = new $.Deferred;
+      getSchema = $.ajax({
+        url: schema_url,
+        dataType: "json",
+        cache: false
+      });
+      getSchema.done(function(schema) {
+        var districts_module, dname, durl;
+        display_in_header(schema);
+        ModuleFile.DEFAULT_MODULES = (function() {
+          var _ref, _results;
+          _ref = schema.defaults;
+          _results = [];
+          for (dname in _ref) {
+            durl = _ref[dname];
+            _results.push(new ModuleFile(durl));
+          }
+          return _results;
+        })();
+        if ((schema.districts != null) && (schema.groups != null)) {
+          load_districts(schema.groups, schema.districts);
+          return deferred.resolve();
+        } else {
+          districts_module = (function() {
+            var mf, _i, _len, _ref;
+            _ref = ModuleFile.DEFAULT_MODULES;
+            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+              mf = _ref[_i];
+              if (mf.name === "geo/districts") {
+                return mf;
+              }
+            }
+          })();
+          return districts_module.fetch().done(function(_arg) {
+            var districts, groups;
+            groups = _arg.groups, districts = _arg.districts;
+            load_districts(groups, districts);
+            return deferred.resolve();
+          });
+        }
+      });
+      deferred.done(function() {
+        return "Resolving!";
+      });
+      return deferred.promise();
+    };
   })();
 
   (function() {
@@ -1708,6 +1727,45 @@ until they play well together (and I ensure they don't over-depend on other modu
     };
   })();
 
+  NMIS.DataRecord = (function() {
+
+    function DataRecord(lga, obj) {
+      this.lga = lga;
+      this.value = obj.value;
+      this.source = obj.source;
+      this.id = obj.id;
+    }
+
+    return DataRecord;
+
+  })();
+
+  NoOpFetch = (function() {
+
+    function NoOpFetch(id) {
+      this.id = id;
+    }
+
+    NoOpFetch.prototype.fetch = function() {
+      var cb, dfd,
+        _this = this;
+      dfd = new $.Deferred();
+      cb = function() {
+        var msg;
+        msg = "" + this.id + " messed up.";
+        return dfd.reject(msg);
+      };
+      window.setTimeout(cb, 500);
+      dfd.fail(function() {
+        return console.error("failure: " + _this.id);
+      });
+      return dfd.promise();
+    };
+
+    return NoOpFetch;
+
+  })();
+
   NMIS.District = (function() {
 
     function District(d) {
@@ -1717,16 +1775,16 @@ until they play well together (and I ensure they don't over-depend on other modu
         this.name = this.label;
       }
       _ref = d.url_code.split("/"), this.group_slug = _ref[0], this.slug = _ref[1];
-      if (this.data_modules == null) {
-        this.data_modules = [];
+      if (this.files == null) {
+        this.files = [];
       }
       this.module_files = (function() {
         var _i, _len, _ref1, _results;
-        _ref1 = this.data_modules;
+        _ref1 = this.files;
         _results = [];
         for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
           f = _ref1[_i];
-          _results.push(new NMIS.ModuleFile(f, this));
+          _results.push(new ModuleFile(f, this));
         }
         return _results;
       }).call(this);
@@ -1746,8 +1804,9 @@ until they play well together (and I ensure they don't over-depend on other modu
     };
 
     District.prototype.sectors_data_loader = function() {
-      var fetcher;
-      fetcher = this.get_data_module("sectors").fetch();
+      var fetcher, _fetcher;
+      _fetcher = this.get_data_module("presentation/sectors");
+      fetcher = _fetcher.fetch();
       fetcher.done(function(s) {
         return NMIS.loadSectors(s.sectors, {
           "default": {
@@ -1760,21 +1819,22 @@ until they play well together (and I ensure they don't over-depend on other modu
     };
 
     District.prototype.get_data_module = function(module) {
-      var m, match, _i, _len, _ref;
+      var mf, _i, _j, _len, _len1, _ref, _ref1;
       _ref = this.module_files;
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-        m = _ref[_i];
-        if (m.name === module) {
-          match = m;
+        mf = _ref[_i];
+        if (mf.name === module) {
+          return mf;
         }
       }
-      if (match == null) {
-        match = NMIS.ModuleFile.DEFAULT_MODULES[module];
+      _ref1 = ModuleFile.DEFAULT_MODULES;
+      for (_j = 0, _len1 = _ref1.length; _j < _len1; _j++) {
+        mf = _ref1[_j];
+        if (mf.name === module) {
+          return mf;
+        }
       }
-      if (match == null) {
-        throw new Error("Module not found: " + module);
-      }
-      return match;
+      throw new Error("Module not found: " + module);
     };
 
     District.prototype.has_data_module = function(module) {
@@ -1783,6 +1843,53 @@ until they play well together (and I ensure they don't over-depend on other modu
       } catch (e) {
         return false;
       }
+    };
+
+    District.prototype.loadData = function() {
+      var dfd, loader,
+        _this = this;
+      dfd = $.Deferred();
+      loader = NMIS.DataLoader.fetch(this.module_url("data/lga_data"));
+      loader.done(function(results) {
+        var d;
+        _this.lga_data = (function() {
+          var _i, _len, _ref, _results;
+          _ref = results.data;
+          _results = [];
+          for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+            d = _ref[_i];
+            _results.push(new NMIS.DataRecord(this, d));
+          }
+          return _results;
+        }).call(_this);
+        return dfd.resolve(_this.lga_data);
+      });
+      return dfd.promise();
+    };
+
+    District.prototype.loadVariables = function() {
+      var dfd,
+        _this = this;
+      dfd = $.Deferred();
+      NMIS.DataLoader.fetch(this.module_url("variables/variables")).done(function(results) {
+        NMIS.variables.clear();
+        NMIS.variables.load(results);
+        return dfd.resolve(NMIS.variables);
+      });
+      return dfd.promise();
+    };
+
+    District.prototype.lookupRecord = function(id) {
+      var datum, matches, _i, _len, _ref;
+      matches = [];
+      _ref = this.lga_data;
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        datum = _ref[_i];
+        if (datum.id === id) {
+          matches.push(datum);
+        }
+      }
+      return matches[0];
     };
 
     District.prototype.set_group = function(group) {
@@ -1865,7 +1972,9 @@ until they play well together (and I ensure they don't over-depend on other modu
 
   })();
 
-  NMIS.ModuleFile = (function() {
+  ModuleFile = (function() {
+
+    ModuleFile.DEFAULT_MODULES = {};
 
     function ModuleFile(filename, district) {
       var devnull, mid_url, _ref;
@@ -1882,6 +1991,13 @@ until they play well together (and I ensure they don't over-depend on other modu
       this.url = "" + NMIS._data_src_root_url + mid_url + this.filename;
     }
 
+    ModuleFile.prototype.sanitizedId = function() {
+      if (!this._sanitizedId) {
+        this._sanitizedId = ("" + this.name).toLowerCase().replace(/\W/, "_").replace(/__/g, "_");
+      }
+      return this._sanitizedId;
+    };
+
     ModuleFile.prototype.fetch = function() {
       return NMIS.DataLoader.fetch(this.url);
     };
@@ -1889,8 +2005,6 @@ until they play well together (and I ensure they don't over-depend on other modu
     return ModuleFile;
 
   })();
-
-  NMIS.ModuleFile.DEFAULT_MODULES = {};
 
 }).call(this);
 (function() {
@@ -2594,6 +2708,53 @@ until they play well together (and I ensure they don't over-depend on other modu
   })();
 
 }).call(this);
+(function() {
+  var Variable, variablesById;
+
+  variablesById = {};
+
+  Variable = (function() {
+
+    function Variable(v) {
+      var id;
+      id = v.id || v.slug;
+      this.id = id;
+      this.name = v.name;
+    }
+
+    return Variable;
+
+  })();
+
+  NMIS.variables = (function() {
+    var clear, find, load;
+    clear = function() {};
+    load = function(variables) {
+      var list, v, vrb, _i, _len, _results;
+      list = variables.list;
+      _results = [];
+      for (_i = 0, _len = list.length; _i < _len; _i++) {
+        v = list[_i];
+        vrb = new Variable(v);
+        if (vrb.id) {
+          _results.push(variablesById[vrb.id] = vrb);
+        } else {
+          _results.push(void 0);
+        }
+      }
+      return _results;
+    };
+    find = function(id) {
+      return variablesById[id];
+    };
+    return {
+      load: load,
+      clear: clear,
+      find: find
+    };
+  })();
+
+}).call(this);
 
 /*
 Facilities:
@@ -2640,14 +2801,19 @@ Facilities:
       params.sector = undefined;
     }
     return district.sectors_data_loader().done(function() {
-      var fetchers, mod, _i, _len, _ref1;
+      var dmod, fetchers, mod, _i, _len, _ref1;
       prepFacilities(params);
       fetchers = {};
-      _ref1 = ["facilities", "variables", "profile_data"];
+      _ref1 = ["variables/variables", "presentation/facilities", "data/facilities", "data/lga_data"];
       for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
         mod = _ref1[_i];
-        fetchers[mod] = district.get_data_module(mod).fetch();
+        dmod = district.get_data_module(mod);
+        fetchers[dmod.sanitizedId()] = dmod.fetch();
       }
+      if (district.has_data_module("data/lga_data")) {
+        fetchers.lga_data = district.loadData();
+      }
+      fetchers.variableList = district.loadVariables();
       return $.when_O(fetchers).done(function(results) {
         return launchFacilities(results, params);
       });
@@ -2708,10 +2874,11 @@ Facilities:
   facilitiesMap = false;
 
   launchFacilities = function(results, params) {
-    var MapMgr_opts, c, createFacilitiesMap, d, d0, d1, dTableHeight, displayTitle, e, facCount, facilities, item, lga, mapLoader, mapZoom, obj, outval, profileData, s, sector, sectors, state, tableElem, twrap, variableData;
-    facilities = results.facilities;
-    variableData = results.variables;
-    profileData = results.profile_data.profile_data;
+    var MapMgr_opts, c, createFacilitiesMap, d, dTableHeight, displayTitle, e, facCount, facPresentation, facilities, item, lga, mapLoader, mapZoom, obj, profileVariables, s, sector, state, tableElem, twrap, variableData;
+    facilities = results.data_facilities;
+    variableData = results.variables_variables;
+    facPresentation = results.presentation_facilities;
+    profileVariables = facPresentation.profile_indicator_ids;
     lga = NMIS._currentDistrict;
     state = NMIS._currentDistrict.group;
     createFacilitiesMap = function() {
@@ -2856,7 +3023,6 @@ Facilities:
         }
       });
     };
-    sectors = variableData.sectors;
     sector = NMIS.Sectors.pluck(params.sector);
     e = {
       state: state,
@@ -2903,17 +3069,22 @@ Facilities:
         lgaName: "" + lga.label + ", " + lga.group.label
       };
       obj.profileData = (function() {
-        var _i, _len, _ref, _results;
-        _results = [];
-        for (_i = 0, _len = profileData.length; _i < _len; _i++) {
-          _ref = profileData[_i], d0 = _ref[0], d1 = _ref[1];
-          outval = d1 === null || d1 === undefined ? NMIS.DisplayValue.raw("--")[0] : d1.value !== undefined ? NMIS.DisplayValue.raw(d1.value)[0] : NMIS.DisplayValue.raw("--");
-          _results.push({
-            name: d0,
-            value: outval
-          });
-        }
-        return _results;
+        var outp, value, variable, vv;
+        outp = (function() {
+          var _i, _len, _results;
+          _results = [];
+          for (_i = 0, _len = profileVariables.length; _i < _len; _i++) {
+            vv = profileVariables[_i];
+            variable = NMIS.variables.find(vv);
+            value = lga.lookupRecord(vv);
+            _results.push({
+              name: variable != null ? variable.name : void 0,
+              value: value != null ? value.value : void 0
+            });
+          }
+          return _results;
+        })();
+        return outp;
       })();
       facCount = 0;
       obj.overviewSectors = (function() {
@@ -3290,7 +3461,7 @@ Facilities:
 
 }).call(this);
 (function() {
-  var DisplayPanel, TmpSector, UnderscoreTemplateDisplayPanel, create_sector_panel, establish_template_display_panels, launch_summary, summaryMap, template_not_found, __display_panels, _rDelay, _tdps,
+  var DisplayPanel, TmpSector, UnderscoreTemplateDisplayPanel, establish_template_display_panels, launch_summary, summaryMap, template_not_found, __display_panels, _rDelay, _tdps,
     __hasProp = {}.hasOwnProperty,
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
@@ -3317,58 +3488,63 @@ Facilities:
   summaryMap = false;
 
   NMIS.loadSummary = function(s) {
-    var fetchers, lga, lga_code, mapLoader, state;
+    var fetchers, fetchersDone, googleMapsLoad, launchGoogleMapSummaryView, lga, lga_code, state;
     lga_code = "" + s.params.state + "/" + s.params.lga;
     lga = NMIS.getDistrictByUrlCode(lga_code);
     state = lga.group;
-    mapLoader = NMIS.loadGoogleMaps();
     fetchers = {};
-    if (lga.has_data_module("summary")) {
-      fetchers.summary = NMIS.DataLoader.fetch(lga.module_url("summary"));
+    googleMapsLoad = NMIS.loadGoogleMaps();
+    if (lga.has_data_module("presentation/summary_sectors")) {
+      fetchers.summary_sectors = NMIS.DataLoader.fetch(lga.module_url("presentation/summary_sectors"));
     }
-    if (lga.has_data_module("summary_sectors")) {
-      fetchers.summary_sectors = NMIS.DataLoader.fetch(lga.module_url("summary_sectors"));
+    if (lga.has_data_module("data/lga_data")) {
+      fetchers.lga_data = lga.loadData();
     }
-    return $.when_O(fetchers).done(function(results) {
-      launch_summary(s.params, state, lga, results);
-      return mapLoader.done(function() {
-        var $mapDiv, ll, mapDiv, mapZoom, x;
-        $mapDiv = $(".profile-box .map").eq(0);
-        mapDiv = $mapDiv.get(0);
-        ll = (function() {
-          var _i, _len, _ref, _results;
-          _ref = lga.latLng.split(",");
-          _results = [];
-          for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-            x = _ref[_i];
-            _results.push(+x);
-          }
-          return _results;
-        })();
-        mapZoom = 9;
-        if (mapDiv) {
-          if (!summaryMap) {
-            summaryMap = new google.maps.Map(mapDiv, {
-              zoom: mapZoom,
-              center: new google.maps.LatLng(ll[1], ll[0]),
-              streetViewControl: false,
-              panControl: false,
-              mapTypeControl: false,
-              mapTypeId: google.maps.MapTypeId.HYBRID
-            });
-            summaryMap.mapTypes.set("ng_base_map", NMIS.MapMgr.mapboxLayer({
-              tileset: "nigeria_base",
-              name: "Nigeria"
-            }));
-            summaryMap.setMapTypeId("ng_base_map");
-          }
+    fetchers.variables = lga.loadVariables();
+    fetchersDone = $.when_O(fetchers);
+    fetchersDone.done(function(results) {
+      googleMapsLoad.done(function() {
+        return launchGoogleMapSummaryView(lga);
+      });
+      return launch_summary(s.params, state, lga, results);
+    });
+    return launchGoogleMapSummaryView = function(lga) {
+      var $mapDiv, ll, mapDiv, mapZoom, x;
+      $mapDiv = $(".profile-box .map").eq(0);
+      mapDiv = $mapDiv.get(0);
+      ll = (function() {
+        var _i, _len, _ref, _results;
+        _ref = lga.latLng.split(",");
+        _results = [];
+        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+          x = _ref[_i];
+          _results.push(+x);
+        }
+        return _results;
+      })();
+      mapZoom = 9;
+      if (mapDiv) {
+        if (!summaryMap) {
+          summaryMap = new google.maps.Map(mapDiv, {
+            zoom: mapZoom,
+            center: new google.maps.LatLng(ll[1], ll[0]),
+            streetViewControl: false,
+            panControl: false,
+            mapTypeControl: false,
+            mapTypeId: google.maps.MapTypeId.HYBRID
+          });
+          summaryMap.mapTypes.set("ng_base_map", NMIS.MapMgr.mapboxLayer({
+            tileset: "nigeria_base",
+            name: "Nigeria"
+          }));
+          summaryMap.setMapTypeId("ng_base_map");
           return _rDelay(1, function() {
             google.maps.event.trigger(summaryMap, "resize");
             return summaryMap.setCenter(new google.maps.LatLng(ll[1], ll[0]), mapZoom);
           });
         }
-      });
-    });
+      }
+    };
   };
 
   TmpSector = (function() {
@@ -3383,21 +3559,22 @@ Facilities:
   })();
 
   launch_summary = function(params, state, lga, query_results) {
-    var bcKeys, current_sector, overviewObj, s, summary_data, summary_sectors, _i, _len, _ref;
+    var bcKeys, current_sector, overviewObj, relevant_data, s, summary_sectors, summary_sectors_results, view_details, _i, _len;
     if (query_results == null) {
       query_results = {};
     }
-    summary_data = query_results.summary;
-    summary_sectors = query_results.summary_sectors;
+    summary_sectors_results = query_results.summary_sectors;
+    summary_sectors = summary_sectors_results.sectors;
+    relevant_data = summary_sectors_results.relevant_data;
     NMIS.panels.changePanel("summary");
     NMIS.DisplayWindow.setDWHeight();
     overviewObj = {
       name: "Overview",
       slug: "overview"
     };
-    _ref = summary_data.view_details;
-    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-      s = _ref[_i];
+    view_details = summary_sectors_results.view_details;
+    for (_i = 0, _len = view_details.length; _i < _len; _i++) {
+      s = view_details[_i];
       if (s.id === params.sector) {
         current_sector = new TmpSector(s);
       }
@@ -3432,19 +3609,17 @@ Facilities:
           how can we do this better?
       */
 
-      var cc_div, content_div, context, module, sector_id, sector_view_panel, sector_window, sector_window_inner_wrap, _j, _k, _len1, _len2, _ref1, _ref2;
+      var cc_div, content_div, context, module, sectorPanel, sector_id, sector_view_panel, sector_window, sector_window_inner_wrap, _j, _k, _len1, _len2, _ref;
       content_div = $('.content');
       if (content_div.find('#conditional-content').length === 0) {
         context = {};
-        context.summary_data = summary_data;
         context.summary_sectors = summary_sectors;
         context.lga = lga;
         cc_div = $('<div>', {
           id: 'conditional-content'
         });
-        _ref1 = summary_data.view_details;
-        for (_j = 0, _len1 = _ref1.length; _j < _len1; _j++) {
-          sector_view_panel = _ref1[_j];
+        for (_j = 0, _len1 = view_details.length; _j < _len1; _j++) {
+          sector_view_panel = view_details[_j];
           sector_window = $("<div>", {
             "class": "lga"
           });
@@ -3456,10 +3631,59 @@ Facilities:
           sector_window.addClass(sector_id);
           context.summary_sector = context.summary_sectors[sector_id];
           context.view_panel = sector_view_panel;
-          _ref2 = sector_view_panel.modules;
-          for (_k = 0, _len2 = _ref2.length; _k < _len2; _k++) {
-            module = _ref2[_k];
-            sector_window_inner_wrap.append(create_sector_panel(sector_id, module, context));
+          _ref = sector_view_panel.modules;
+          for (_k = 0, _len2 = _ref.length; _k < _len2; _k++) {
+            module = _ref[_k];
+            sectorPanel = (function() {
+              var div, panel, spanStr, _ref1;
+              spanStr = function(content, cls) {
+                if (content == null) {
+                  content = "&mdash;";
+                }
+                if (cls == null) {
+                  cls = "";
+                }
+                return "<span class='" + cls + "' style='text-transform:none'>" + content + "</span>";
+              };
+              establish_template_display_panels();
+              context.relevant_data = (_ref1 = relevant_data[sector_id]) != null ? _ref1[module] : void 0;
+              div = $('<div>');
+              context.lookupName = function(id) {
+                var vrb;
+                if (id) {
+                  vrb = NMIS.variables.find(id);
+                  if (vrb) {
+                    return spanStr(vrb.name, "variable-name");
+                  } else {
+                    return spanStr(id, "label label-important important");
+                  }
+                } else {
+                  return "No variable id";
+                }
+              };
+              context.lookupValue = function(id, defaultValue) {
+                var record;
+                if (defaultValue == null) {
+                  defaultValue = null;
+                }
+                record = lga.lookupRecord(id);
+                if (record) {
+                  return spanStr(record.value, "found");
+                } else if (id) {
+                  return spanStr(spanStr("No val: " + id, "label important label-important"), "missing missing-value", "Missing value for id: " + id);
+                } else {
+                  return spanStr("&cross;", "missing missing-id", "Missing ID");
+                }
+              };
+              if (__display_panels[module] != null) {
+                panel = __display_panels[module];
+                panel.build(div, context);
+              } else {
+                div.html(template_not_found(module));
+              }
+              return div;
+            })();
+            sector_window_inner_wrap.append(sectorPanel);
           }
           sector_window.appendTo(cc_div);
         }
@@ -3523,20 +3747,6 @@ Facilities:
       });
       return _tdps = true;
     }
-  };
-
-  create_sector_panel = function(sector_id, module, context) {
-    var div, panel, _ref, _ref1;
-    establish_template_display_panels();
-    context.relevant_data = (_ref = context.summary_data.data) != null ? (_ref1 = _ref[sector_id]) != null ? _ref1[module] : void 0 : void 0;
-    div = $('<div>');
-    if (__display_panels[module] != null) {
-      panel = __display_panels[module];
-      panel.build(div, context);
-    } else {
-      div.html(template_not_found(module));
-    }
-    return div;
   };
 
   _rDelay = function(i, fn) {

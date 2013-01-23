@@ -25,7 +25,12 @@
 
   this.dashboard = $.sammy("body", function() {
     return this.get("" + NMIS.url_root + "#/:state/:lga/?", function() {
-      return dashboard.setLocation("" + NMIS.url_root + "#/" + this.params.state + "/" + this.params.lga + "/summary");
+      var redirect,
+        _this = this;
+      redirect = function() {
+        return dashboard.setLocation("" + NMIS.url_root + "#/" + _this.params.state + "/" + _this.params.lga + "/summary");
+      };
+      return _.delay(redirect, 500);
     });
   });
 
@@ -120,21 +125,19 @@
     return dashboard.get("" + NMIS.url_root + "#/", NMIS.CountryView);
   })();
 
-  dashboard.get("" + NMIS.url_root + "#/:state/:lga/facilities/?(#.*)?", NMIS.launch_facilities);
+  (function() {
+    dashboard.get("" + NMIS.url_root + "#/:state/:lga/facilities/?(#.*)?", NMIS.launch_facilities);
+    dashboard.get("" + NMIS.url_root + "#/:state/:lga/facilities/:sector/?(#.*)?", NMIS.launch_facilities);
+    dashboard.get("" + NMIS.url_root + "#/:state/:lga/facilities/:sector/:subsector/?(#.*)?", NMIS.launch_facilities);
+    return dashboard.get("" + NMIS.url_root + "#/:state/:lga/facilities/:sector/:subsector/:indicator/?(#.*)?", NMIS.launch_facilities);
+  })();
 
-  dashboard.get("" + NMIS.url_root + "#/:state/:lga/facilities/:sector/?(#.*)?", NMIS.launch_facilities);
-
-  dashboard.get("" + NMIS.url_root + "#/:state/:lga/facilities/:sector/:subsector/?(#.*)?", NMIS.launch_facilities);
-
-  dashboard.get("" + NMIS.url_root + "#/:state/:lga/facilities/:sector/:subsector/:indicator/?(#.*)?", NMIS.launch_facilities);
-
-  dashboard.get("" + NMIS.url_root + "#/:state/:lga/summary/?(#.*)?", NMIS.loadSummary);
-
-  dashboard.get("" + NMIS.url_root + "#/:state/:lga/summary/:sector/?(#.*)?", NMIS.loadSummary);
-
-  dashboard.get("" + NMIS.url_root + "#/:state/:lga/summary/:sector/:subsector/?(#.*)?", NMIS.loadSummary);
-
-  dashboard.get("" + NMIS.url_root + "#/:state/:lga/summary/:sector/:subsector/:indicator/?(#.*)?", NMIS.loadSummary);
+  (function() {
+    dashboard.get("" + NMIS.url_root + "#/:state/:lga/summary/?(#.*)?", NMIS.loadSummary);
+    dashboard.get("" + NMIS.url_root + "#/:state/:lga/summary/:sector/?(#.*)?", NMIS.loadSummary);
+    dashboard.get("" + NMIS.url_root + "#/:state/:lga/summary/:sector/:subsector/?(#.*)?", NMIS.loadSummary);
+    return dashboard.get("" + NMIS.url_root + "#/:state/:lga/summary/:sector/:subsector/:indicator/?(#.*)?", NMIS.loadSummary);
+  })();
 
   (function() {
     /*

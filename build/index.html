@@ -272,17 +272,15 @@
   	<div class="profile-box">
   		<div class="profile-box-inner">
         <table data-table-contents="lga-overview">
-        <{ _.each(relevant_data, function(row){ }>
-          <{ if(row[1] !== undefined) { }>
-            <tr>
-              <td>
-                <{= row[0] }>
-              </td>
-              <td>
-                <{= row[1] }>
-              </td>
-            </tr>
-          <{ } }>
+        <{ _.each(relevant_data.ids, function(rowId){ }>
+          <tr>
+            <td>
+              <{= lookupName(rowId) }>
+            </td>
+            <td>
+              <{= lookupValue(rowId) }>
+            </td>
+          </tr>
         <{ }); }>
         </table>
       </div>
@@ -308,18 +306,16 @@
               Current
             </th>
           </tr>
-          <{ _.each(igrp.rows, function(row){ }>
-            <{ if(row.value !== undefined) { }>
-              <tr>
-                <td class="empty-first empty bb"></td>
-                <td class="indicator-name bb">
-                  <{= row.name }>
-                </td>
-                <td class="indvalue bb">
-                  <{= row.value }>
-                </td>
-              </tr>
-            <{ } }>
+          <{ _.each(igrp.idRows, function(rowId){ }>
+            <tr>
+              <td class="empty-first empty bb"></td>
+              <td class="indicator-name bb">
+                <{= lookupName(rowId) }>
+              </td>
+              <td class="indvalue bb">
+                <{= lookupValue(rowId) }>
+              </td>
+            </tr>
           <{ }); }>
         <{ }); }>
       </tbody>
@@ -328,9 +324,7 @@
 </div>
 </script>
 <script type="text/template" class="display-panel" data-module="sector_gap">
-<div>
-Gap
-</div>
+<div><em>Gap</em></div>
 </script>
 
 <script type="text/template" class="display-panel" data-module="overview_facility_overview">
@@ -352,17 +346,15 @@ Gap
   		</h3>
       <table class="mdg-table">
         <tbody>
-          <{ _.each(col.rows, function(row){ }>
-            <{ if(row[1] !== undefined) { }>
-              <tr>
-                <td>
-                  <{= row[0] }>
-                </td>
-                <td>
-                  <{= row[1] }>
-                </td>
-              </tr>
-            <{ } }>
+          <{ _.each(col.rows, function(rowId){ }>
+            <tr>
+              <td>
+                <{= lookupName(rowId) }>
+              </td>
+              <td>
+                <{= lookupValue(rowId) }>
+              </td>
+            </tr>
           <{ }); }>
         </tbody>
       </table>
@@ -393,18 +385,19 @@ Gap
                 <{= mdg_group.header }>
               </td>
             </tr>
-            <{ _.each(mdg_group.rows, function(row){ }>
+            <{ _.each(mdg_group.rows, function(rowId){ }>
             <tr>
             <td class="empty" colspan="2"></td>
             <td>
-              <{= row.name }>
-              <{ if(row.source) { }>
+              <{= lookupName(rowId) }>
+              <{ if(false) { }>
                 <br>
-                <em class="source"><{= row.source }></em>
+                lookupSource...
+                <em class="source"><{= rowId.source }></em>
               <{ } }>
             </td>
             <td class="data">
-              <{= row.value }>
+              <{= lookupValue(rowId) }>
             </td>
             </tr>
             <{ }); }>

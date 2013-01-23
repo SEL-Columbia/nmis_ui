@@ -44,14 +44,19 @@ Facilities:
       params.sector = undefined;
     }
     return district.sectors_data_loader().done(function() {
-      var fetchers, mod, _i, _len, _ref1;
+      var dmod, fetchers, mod, _i, _len, _ref1;
       prepFacilities(params);
       fetchers = {};
-      _ref1 = ["facilities", "variables", "profile_data"];
+      _ref1 = ["variables/variables", "presentation/facilities", "data/facilities", "data/lga_data"];
       for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
         mod = _ref1[_i];
-        fetchers[mod] = district.get_data_module(mod).fetch();
+        dmod = district.get_data_module(mod);
+        fetchers[dmod.sanitizedId()] = dmod.fetch();
       }
+      if (district.has_data_module("data/lga_data")) {
+        fetchers.lga_data = district.loadData();
+      }
+      fetchers.variableList = district.loadVariables();
       return $.when_O(fetchers).done(function(results) {
         return launchFacilities(results, params);
       });
@@ -112,10 +117,11 @@ Facilities:
   facilitiesMap = false;
 
   launchFacilities = function(results, params) {
-    var MapMgr_opts, c, createFacilitiesMap, d, d0, d1, dTableHeight, displayTitle, e, facCount, facilities, item, lga, mapLoader, mapZoom, obj, outval, profileData, s, sector, sectors, state, tableElem, twrap, variableData;
-    facilities = results.facilities;
-    variableData = results.variables;
-    profileData = results.profile_data.profile_data;
+    var MapMgr_opts, c, createFacilitiesMap, d, dTableHeight, displayTitle, e, facCount, facPresentation, facilities, item, lga, mapLoader, mapZoom, obj, profileVariables, s, sector, state, tableElem, twrap, variableData;
+    facilities = results.data_facilities;
+    variableData = results.variables_variables;
+    facPresentation = results.presentation_facilities;
+    profileVariables = facPresentation.profile_indicator_ids;
     lga = NMIS._currentDistrict;
     state = NMIS._currentDistrict.group;
     createFacilitiesMap = function() {
@@ -260,7 +266,6 @@ Facilities:
         }
       });
     };
-    sectors = variableData.sectors;
     sector = NMIS.Sectors.pluck(params.sector);
     e = {
       state: state,
@@ -307,17 +312,22 @@ Facilities:
         lgaName: "" + lga.label + ", " + lga.group.label
       };
       obj.profileData = (function() {
-        var _i, _len, _ref, _results;
-        _results = [];
-        for (_i = 0, _len = profileData.length; _i < _len; _i++) {
-          _ref = profileData[_i], d0 = _ref[0], d1 = _ref[1];
-          outval = d1 === null || d1 === undefined ? NMIS.DisplayValue.raw("--")[0] : d1.value !== undefined ? NMIS.DisplayValue.raw(d1.value)[0] : NMIS.DisplayValue.raw("--");
-          _results.push({
-            name: d0,
-            value: outval
-          });
-        }
-        return _results;
+        var outp, value, variable, vv;
+        outp = (function() {
+          var _i, _len, _results;
+          _results = [];
+          for (_i = 0, _len = profileVariables.length; _i < _len; _i++) {
+            vv = profileVariables[_i];
+            variable = NMIS.variables.find(vv);
+            value = lga.lookupRecord(vv);
+            _results.push({
+              name: variable != null ? variable.name : void 0,
+              value: value != null ? value.value : void 0
+            });
+          }
+          return _results;
+        })();
+        return outp;
       })();
       facCount = 0;
       obj.overviewSectors = (function() {

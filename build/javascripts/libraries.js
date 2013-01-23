@@ -7541,7 +7541,14 @@ $.extend( $.fn.dataTableExt.oStdClasses, {
     "sSortable": "header"
 } );
 //jQuery.inDom() is a shortcut for jQuery(elem).closest('html').length !== 0
-jQuery.fn.inDom = function(){ return jQuery(this).closest("html").length !== 0; };
+// jQuery.fn.inDom = function(){ return jQuery(this).closest("html").length !== 0; };
+
+(function($){
+  $.fn.inDom = function(){
+    var h = $(this).closest("html");
+    return h[0] === document.documentElement;
+  }
+})(jQuery);
 /*!
  * jQuery UI 1.8.7
  *
