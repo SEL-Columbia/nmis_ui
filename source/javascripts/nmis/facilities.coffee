@@ -31,8 +31,14 @@ NMIS.launch_facilities = ->
     prepFacilities params
 
     fetchers = {}
-    for mod in ["data/facilities", "variable/variables", "data/lga_data"]
-      fetchers[mod] = district.get_data_module(mod).fetch()
+    for mod in ["variables/variables",
+                "presentation/facilities",
+                "data/facilities", "data/lga_data"]
+      dmod = district.get_data_module(mod)
+      fetchers[dmod.sanitizedId()] = dmod.fetch()
+
+    fetchers.lga_data = district.loadData()  if district.has_data_module("data/lga_data")
+    fetchers.variableList = district.loadVariables()
 
     $.when_O(fetchers).done (results)-> launchFacilities results, params
 
@@ -83,9 +89,10 @@ The beast: launchFacilities--
 facilitiesMap = false
 
 launchFacilities = (results, params) ->
-  facilities = results.facilities
-  variableData = results.variables
-  profileData = results.profile_data.profile_data
+  facilities = results.data_facilities
+  variableData = results.variables_variables
+  facPresentation = results.presentation_facilities
+  profileVariables = facPresentation.profile_indicator_ids
 
   lga = NMIS._currentDistrict
   state = NMIS._currentDistrict.group
@@ -197,7 +204,7 @@ launchFacilities = (results, params) ->
         icon.url = iconURLData(item)[0]
         mapItem.marker.setIcon icon
 
-  sectors = variableData.sectors
+  # sectors = variableData.sectors
   sector = NMIS.Sectors.pluck(params.sector)
   e =
     state: state
@@ -243,16 +250,13 @@ launchFacilities = (results, params) ->
     obj =
       lgaName: "#{lga.label}, #{lga.group.label}"
 
-    obj.profileData = for [d0, d1] in profileData
-      outval = if d1 is null or d1 is `undefined`
-          NMIS.DisplayValue.raw("--")[0]
-        else if d1.value isnt `undefined`
-          NMIS.DisplayValue.raw(d1.value)[0]
-        else
-          NMIS.DisplayValue.raw("--")
-
-      name: d0
-      value: outval
+    obj.profileData = do ->
+      outp = for vv in profileVariables
+        variable = NMIS.variables.find(vv)
+        value = lga.lookupRecord vv
+        name: variable?.name
+        value: value?.value
+      outp
 
     facCount = 0
     obj.overviewSectors = for s in NMIS.Sectors.all()

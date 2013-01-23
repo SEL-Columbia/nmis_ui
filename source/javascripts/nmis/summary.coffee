@@ -74,14 +74,16 @@ class TmpSector
 
 launch_summary = (params, state, lga, query_results={})->
   summary_data = query_results.summary
-  summary_sectors = query_results.summary_sectors
+  summary_sectors_results = query_results.summary_sectors
+  summary_sectors = summary_sectors_results.sectors
   NMIS.panels.changePanel "summary"
   NMIS.DisplayWindow.setDWHeight()
   overviewObj =
     name: "Overview"
     slug: "overview"
 
-  current_sector = new TmpSector(s) for s in summary_data.view_details when s.id is params.sector
+  view_details = summary_data.view_details
+  current_sector = new TmpSector(s) for s in view_details when s.id is params.sector
   current_sector = overviewObj unless current_sector
   NMIS.Env
     mode:
@@ -111,7 +113,7 @@ launch_summary = (params, state, lga, query_results={})->
       context.summary_sectors = summary_sectors
       context.lga = lga
       cc_div = $ '<div>', id: 'conditional-content'
-      for sector_view_panel in summary_data.view_details
+      for sector_view_panel in view_details
         sector_window = $("<div>", class: "lga")
         sector_window.html("<div class='display-window-bar breadcrumb'></div>")
         sector_window_inner_wrap = $("<div>", class:'cwrap').appendTo(sector_window)
@@ -120,7 +122,36 @@ launch_summary = (params, state, lga, query_results={})->
         context.summary_sector = context.summary_sectors[sector_id]
         context.view_panel = sector_view_panel
         for module in sector_view_panel.modules
-          sector_window_inner_wrap.append create_sector_panel(sector_id, module, context)
+          sectorPanel = do ->
+            spanStr = (content="&mdash;", cls="")-> "<span class='#{cls}' style='text-transform:none'>#{content}</span>"
+            establish_template_display_panels()
+            # lga = context.lga
+            context.relevant_data = context.summary_data.data?[sector_id]?[module]
+            div = $('<div>')
+            context.lookupName = (id)->
+              if id
+                vrb = NMIS.variables.find id
+                if vrb
+                  spanStr vrb.name, "variable-name"
+                else
+                  spanStr id, "label label-important important"
+              else
+                "No variable id"
+            context.lookupValue = (id, defaultValue=null)->
+              record = lga.lookupRecord(id)
+              if record
+                spanStr record.value, "found"
+              else if id
+                spanStr spanStr("No val: #{id}", "label important label-important"), "missing missing-value", "Missing value for id: #{id}"
+              else
+                spanStr "&cross;", "missing missing-id", "Missing ID"
+            if __display_panels[module]?
+              panel = __display_panels[module]
+              panel.build div, context
+            else
+              div.html template_not_found(module)
+            div
+          sector_window_inner_wrap.append sectorPanel
         sector_window.appendTo cc_div
       $('.content').append(cc_div)
   do ->
@@ -152,54 +183,35 @@ establish_template_display_panels = ()->
       __display_panels[module] = new UnderscoreTemplateDisplayPanel(module, $this)
     _tdps = true
 
-create_sector_panel = (sector_id, module, context)->
-  establish_template_display_panels()
-  lga = context.lga
-  context.relevant_data = context.summary_data.data?[sector_id]?[module]
-  div = $('<div>')
-  context.lookupName = (id)->
-    if id
-      vrb = NMIS.variables.find id
-      if vrb
-        """
-        <span class="variable-name">
-          #{vrb.name}
-        </span>
-        """
-      else
-        """
-        <span class="label label-important important" style="text-transform:none">
-          #{id}
-        </span>
-        """
-    else
-      "No variable id"
-  context.lookupValue = (id, defaultValue=null)->
-    record = lga.lookupRecord(id)
-    if record
-      """
-      <span class="found">
-        #{record.value}
-      </span>
-      """
-    else if id
-      """
-      <span class="missing missing-value" title="Missing value for id: '#{id}'">
-        <span class="label important label-important">No val: #{id}</span>
-      </span>
-      """
-    else
-      """
-      <span class="missing missing-id" title="Missing id.">
-        &cross;
-      </span>
-      """
-  if __display_panels[module]?
-    panel = __display_panels[module]
-    panel.build div, context
-  else
-    div.html template_not_found(module)
-  div
+# create_sector_panel = (sector_id, module, context)->
+#   spanStr = (content="&mdash;", cls="")-> "<span class='#{cls}' style='text-transform:none'>#{content}</span>"
+#   establish_template_display_panels()
+#   lga = context.lga
+#   context.relevant_data = context.summary_data.data?[sector_id]?[module]
+#   div = $('<div>')
+#   context.lookupName = (id)->
+#     if id
+#       vrb = NMIS.variables.find id
+#       if vrb
+#         spanStr vrb.name, "variable-name"
+#       else
+#         spanStr id, "label label-important important"
+#     else
+#       "No variable id"
+#   context.lookupValue = (id, defaultValue=null)->
+#     record = lga.lookupRecord(id)
+#     if record
+#       spanStr record.value, "found"
+#     else if id
+#       spanStr spanStr("No val: #{id}", "label important label-important"), "missing missing-value", "Missing value for id: #{id}"
+#     else
+#       spanStr "&cross;", "missing missing-id", "Missing ID"
+#   if __display_panels[module]?
+#     panel = __display_panels[module]
+#     panel.build div, context
+#   else
+#     div.html template_not_found(module)
+#   div
 
 # identical to _.delay except switches the order of the parameters
 _rDelay = (i, fn)-> _.delay fn, i

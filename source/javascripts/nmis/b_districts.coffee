@@ -172,7 +172,7 @@ class NMIS.District
       return mf
     for mf in ModuleFile.DEFAULT_MODULES when mf.name is module
       return mf
-    throw new Error("Module not found: module")
+    throw new Error("Module not found: #{module}")
     # new NoOpFetch(module)
     # match = m for m in @module_files when m.name is module
     # unless match?
@@ -258,4 +258,8 @@ class ModuleFile
     throw new Error "No data_src_root_url" unless NMIS._data_src_root_url?
     mid_url = if district? then "#{district.data_root}/" else ""
     @url = "#{NMIS._data_src_root_url}#{mid_url}#{@filename}"
+  sanitizedId: ()->
+    unless @_sanitizedId
+      @_sanitizedId = "#{@name}".toLowerCase().replace(/\W/, "_").replace(/__/g, "_")
+    @_sanitizedId
   fetch: ()-> NMIS.DataLoader.fetch @url
