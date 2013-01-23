@@ -170,6 +170,9 @@ class NMIS.District
   get_data_module: (module)->
     for mf in @module_files when mf.name is module
       return mf
+    for mf in ModuleFile.DEFAULT_MODULES when mf.name is module
+      return mf
+    throw new Error("Module not found: module")
     # new NoOpFetch(module)
     # match = m for m in @module_files when m.name is module
     # unless match?
@@ -248,7 +251,6 @@ class NMIS.Group
 class ModuleFile
   @DEFAULT_MODULES = {}
   constructor: (@filename, district)->
-    log @filename , district
     try
       [devnull, @name, @file_type] = @filename.match(/(.*)\.(json|csv)/)
     catch e

@@ -17,13 +17,13 @@ summaryMap = false
 NMIS.loadSummary = (s) ->
   # called before the data is loaded into the page.
   # this prepares the dom and launches the AJAX requests.
-
   lga_code = "#{s.params.state}/#{s.params.lga}"
   lga = NMIS.getDistrictByUrlCode(lga_code)
   state = lga.group
-  mapLoader = NMIS.loadGoogleMaps()
 
   fetchers = {}
+
+  googleMapsLoad = NMIS.loadGoogleMaps()
 
   # todo datamod
   if lga.has_data_module("presentation/summary")
@@ -39,32 +39,33 @@ NMIS.loadSummary = (s) ->
   fetchers.variables = lga.loadVariables()
 
   fetchersDone = $.when_O(fetchers)
-  fetchersDone.done (results)-> launch_summary s.params, state, lga, results
-  fetchersDone.done ()-> mapLoader.done ()-> launchOpenLayersMap()
+  fetchersDone.done (results)->
+    googleMapsLoad.done -> launchGoogleMapSummaryView(lga)
+    launch_summary s.params, state, lga, results
 
-launchOpenLayersMap = (lga)->
-  $mapDiv = $(".profile-box .map").eq(0)
-  mapDiv = $mapDiv.get(0)
-  ll = (+x for x in lga.latLng.split(","))
-  mapZoom = 9
-  if mapDiv
-    unless summaryMap
-      summaryMap = new google.maps.Map(mapDiv,
-        zoom: mapZoom
-        center: new google.maps.LatLng(ll[1], ll[0])
-        streetViewControl: false
-        panControl: false
-        mapTypeControl: false
-        mapTypeId: google.maps.MapTypeId.HYBRID
-      )
-      summaryMap.mapTypes.set "ng_base_map", NMIS.MapMgr.mapboxLayer(
-        tileset: "nigeria_base"
-        name: "Nigeria"
-      )
-      summaryMap.setMapTypeId "ng_base_map"
-    _rDelay 1, ->
-      google.maps.event.trigger summaryMap, "resize"
-      summaryMap.setCenter new google.maps.LatLng(ll[1], ll[0]), mapZoom
+  launchGoogleMapSummaryView = (lga)->
+    $mapDiv = $(".profile-box .map").eq(0)
+    mapDiv = $mapDiv.get(0)
+    ll = (+x for x in lga.latLng.split(","))
+    mapZoom = 9
+    if mapDiv
+      unless summaryMap
+        summaryMap = new google.maps.Map(mapDiv,
+          zoom: mapZoom
+          center: new google.maps.LatLng(ll[1], ll[0])
+          streetViewControl: false
+          panControl: false
+          mapTypeControl: false
+          mapTypeId: google.maps.MapTypeId.HYBRID
+        )
+        summaryMap.mapTypes.set "ng_base_map", NMIS.MapMgr.mapboxLayer(
+          tileset: "nigeria_base"
+          name: "Nigeria"
+        )
+        summaryMap.setMapTypeId "ng_base_map"
+        _rDelay 1, ->
+          google.maps.event.trigger summaryMap, "resize"
+          summaryMap.setCenter new google.maps.LatLng(ll[1], ll[0]), mapZoom
 
 class TmpSector
   constructor: (s)->

@@ -21,7 +21,8 @@ URL actions can be triggered by calling:
   @get "#{NMIS.url_root}#/:state/:lga/?", ->
     # when user lands at this base page, they will
     # be redirected to a default section (ie. "summary")
-    dashboard.setLocation "#{NMIS.url_root}#/#{@params.state}/#{@params.lga}/summary"
+    redirect = => dashboard.setLocation "#{NMIS.url_root}#/#{@params.state}/#{@params.lga}/summary"
+    _.delay(redirect, 500)
 )
 
 #
@@ -100,15 +101,17 @@ do ->
   dashboard.get NMIS.url_root, NMIS.CountryView
   dashboard.get "#{NMIS.url_root}#/", NMIS.CountryView
 
-dashboard.get "#{NMIS.url_root}#/:state/:lga/facilities/?(#.*)?", NMIS.launch_facilities
-dashboard.get "#{NMIS.url_root}#/:state/:lga/facilities/:sector/?(#.*)?", NMIS.launch_facilities
-dashboard.get "#{NMIS.url_root}#/:state/:lga/facilities/:sector/:subsector/?(#.*)?", NMIS.launch_facilities
-dashboard.get "#{NMIS.url_root}#/:state/:lga/facilities/:sector/:subsector/:indicator/?(#.*)?", NMIS.launch_facilities
+do ->
+  dashboard.get "#{NMIS.url_root}#/:state/:lga/facilities/?(#.*)?", NMIS.launch_facilities
+  dashboard.get "#{NMIS.url_root}#/:state/:lga/facilities/:sector/?(#.*)?", NMIS.launch_facilities
+  dashboard.get "#{NMIS.url_root}#/:state/:lga/facilities/:sector/:subsector/?(#.*)?", NMIS.launch_facilities
+  dashboard.get "#{NMIS.url_root}#/:state/:lga/facilities/:sector/:subsector/:indicator/?(#.*)?", NMIS.launch_facilities
 
-dashboard.get "#{NMIS.url_root}#/:state/:lga/summary/?(#.*)?", NMIS.loadSummary
-dashboard.get "#{NMIS.url_root}#/:state/:lga/summary/:sector/?(#.*)?", NMIS.loadSummary
-dashboard.get "#{NMIS.url_root}#/:state/:lga/summary/:sector/:subsector/?(#.*)?", NMIS.loadSummary
-dashboard.get "#{NMIS.url_root}#/:state/:lga/summary/:sector/:subsector/:indicator/?(#.*)?", NMIS.loadSummary
+do ->
+  dashboard.get "#{NMIS.url_root}#/:state/:lga/summary/?(#.*)?", NMIS.loadSummary
+  dashboard.get "#{NMIS.url_root}#/:state/:lga/summary/:sector/?(#.*)?", NMIS.loadSummary
+  dashboard.get "#{NMIS.url_root}#/:state/:lga/summary/:sector/:subsector/?(#.*)?", NMIS.loadSummary
+  dashboard.get "#{NMIS.url_root}#/:state/:lga/summary/:sector/:subsector/:indicator/?(#.*)?", NMIS.loadSummary
 
 do ->
   ###
