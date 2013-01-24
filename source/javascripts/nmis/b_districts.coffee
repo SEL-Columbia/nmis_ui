@@ -88,14 +88,14 @@ do ->
     getSchema = $.ajax(url: schema_url, dataType: "json", cache: false)
     getSchema.done (schema)->
       display_in_header schema
-      ModuleFile.DEFAULT_MODULES = (new ModuleFile(durl) for dname, durl of schema.defaults)
+      Module.DEFAULT_MODULES = (new Module(dname, durl) for dname, durl of schema.defaults)
 
       if schema.districts? and schema.groups?
         load_districts schema.groups, schema.districts
         deferred.resolve()
       else
         districts_module = do ->
-          for mf in ModuleFile.DEFAULT_MODULES when mf.name is "geo/districts"
+          for mf in Module.DEFAULT_MODULES when mf.name is "geo/districts"
             return mf
         districts_module.fetch().done ({groups, districts})->
           load_districts groups, districts
@@ -141,9 +141,8 @@ class NMIS.District
     _.extend @, d
     @name = @label unless @name
     [@group_slug, @slug] = d.url_code.split("/")
-    # change everything over to @lat_lng at a later time?
     @files = [] unless @files?
-    @module_files = (new ModuleFile(f, @) for f in @files)
+    @module_files = (new Module(slug, f_param, @) for slug, f_param of @files)
     @latLng = @lat_lng
     @html_params =
       text: @label
@@ -170,14 +169,14 @@ class NMIS.District
   get_data_module: (module)->
     for mf in @module_files when mf.name is module
       return mf
-    for mf in ModuleFile.DEFAULT_MODULES when mf.name is module
+    for mf in Module.DEFAULT_MODULES when mf.name is module
       return mf
     throw new Error("Module not found: #{module}")
     # new NoOpFetch(module)
     # match = m for m in @module_files when m.name is module
     # unless match?
     #   # log "GETTING DEFAULT #{module}", DEFAULT_MODULES, module in DEFAULT_MODULES
-    #   match = ModuleFile.DEFAULT_MODULES[module]
+    #   match = Module.DEFAULT_MODULES[module]
     # throw new Error("Module not found: #{module}") unless match?
     # match
 
@@ -248,9 +247,20 @@ class NMIS.Group
       g = g.group
     ps
 
-class ModuleFile
-  @DEFAULT_MODULES = {}
-  constructor: (@filename, district)->
+class Module
+  @DEFAULT_MODULES = []
+  constructor: (@id, file_param, district)->
+    if _.isArray(file_param)
+      @filename = file_param[0]
+    else
+      @filename = file_param
+    # @files = []
+    # if _.isArray file_param
+    #   @files.push file  for file in file_param
+    # else if _.isString file_param
+    #   @files.push file_param
+    # else
+    #   debugger
     try
       [devnull, @name, @file_type] = @filename.match(/(.*)\.(json|csv)/)
     catch e
