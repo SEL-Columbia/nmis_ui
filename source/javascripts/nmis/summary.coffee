@@ -28,7 +28,7 @@ NMIS.loadSummary = (s) ->
   # todo datamod
   if lga.has_data_module("presentation/summary_sectors")
     # todo datamod
-    fetchers.summary_sectors = NMIS.DataLoader.fetch(lga.module_url("presentation/summary_sectors"))
+    fetchers.summary_sectors = lga.get_data_module("presentation/summary_sectors").fetch()
 
   # todo datamod
   fetchers.lga_data = lga.loadData()  if lga.has_data_module("data/lga_data")

@@ -147,16 +147,10 @@ class NMIS.District
     @html_params =
       text: @label
       value: @id
-  module_url: (module_name)->
-    @get_data_module(module_name).url
   defaultSammyUrl: ()->
     "#{NMIS.url_root}#/#{@group_slug}/#{@slug}/summary"
   sectors_data_loader: ()->
-    # if @has_data_module("sectors")
-    #   fetcher = NMIS.DataLoader.fetch @module_url("sectors")
-    # else
     # todo datamod
-    
     _fetcher = @get_data_module("presentation/sectors")
     fetcher = _fetcher.fetch()
     fetcher.done (s)->
@@ -189,7 +183,7 @@ class NMIS.District
   loadData: ()->
     dfd = $.Deferred()
     # todo datamod/data
-    loader = NMIS.DataLoader.fetch @module_url("data/lga_data") #
+    loader = @get_data_module("data/lga_data").fetch()
     loader.done (results)=>
       @lga_data = for d in results.data
         new NMIS.DataRecord @, d
@@ -200,7 +194,7 @@ class NMIS.District
   loadVariables: ()->
     dfd = $.Deferred()
     # todo datamod/variables
-    NMIS.DataLoader.fetch(@module_url("variables/variables")).done (results)=>
+    @get_data_module("variables/variables").fetch().done (results)=>
       NMIS.variables.clear()
       NMIS.variables.load results
       dfd.resolve NMIS.variables
@@ -247,29 +241,32 @@ class NMIS.Group
       g = g.group
     ps
 
+_sanitizeStr = (str)->
+  "#{str}".toLowerCase().replace(/\W/, "_").replace(/__/g, "_")
+
 class Module
   @DEFAULT_MODULES = []
   constructor: (@id, file_param, district)->
     if _.isArray(file_param)
-      @filename = file_param[0]
+      @files = (new ModuleFile(fp, district) for fp in file_param)
     else
       @filename = file_param
-    # @files = []
-    # if _.isArray file_param
-    #   @files.push file  for file in file_param
-    # else if _.isString file_param
-    #   @files.push file_param
-    # else
-    #   debugger
+      @files = [new ModuleFile(file_param, district)]
+    @name = @id
+  sanitizedId: ()->
+    @_sanitizedId = _sanitizeStr @name  unless @_sanitizedId
+    @_sanitizedId
+  fetch: ()->
+    $.when.apply null, (f.fetch() for f in @files)
+
+class ModuleFile
+  constructor: (@filename, @district)->
     try
       [devnull, @name, @file_type] = @filename.match(/(.*)\.(json|csv)/)
     catch e
-      throw new Error("Filetype not recognized: #{@filename}")
-    throw new Error "No data_src_root_url" unless NMIS._data_src_root_url?
-    mid_url = if district? then "#{district.data_root}/" else ""
+      throw new Error("ModuleFile Filetype not recognized: #{@filename}")
+    mid_url = if @district? then "#{@district.data_root}/" else ""
     @url = "#{NMIS._data_src_root_url}#{mid_url}#{@filename}"
-  sanitizedId: ()->
-    unless @_sanitizedId
-      @_sanitizedId = "#{@name}".toLowerCase().replace(/\W/, "_").replace(/__/g, "_")
-    @_sanitizedId
-  fetch: ()-> NMIS.DataLoader.fetch @url
+  fetch: ()->
+    NMIS.DataLoader.fetch @url
+    # log "odfule #{@url}"
