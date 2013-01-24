@@ -1,3 +1,10 @@
+span.warn-missing {
+    font-size: smaller;
+    color: rgb(160, 60, 60);
+    background-color: rgba(255, 160, 160, 0.5);
+    padding: 2px 3px;
+    border-radius: 3px;
+}
 #lga-widget-wrap table th, #lga-widget-wrap table td {
 	padding: 0;
 }

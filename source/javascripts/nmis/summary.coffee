@@ -128,17 +128,17 @@ launch_summary = (params, state, lga, query_results={})->
                 if vrb
                   spanStr vrb.name, "variable-name"
                 else
-                  spanStr id, "label label-important important"
+                  spanStr id, "warn-missing"
               else
-                "No variable id"
+                spanStr "No variable id", "warn-missing"
             context.lookupValue = (id, defaultValue=null)->
               record = lga.lookupRecord(id)
               if record
                 spanStr record.value, "found"
               else if id
-                spanStr spanStr("No val: #{id}", "label important label-important"), "missing missing-value", "Missing value for id: #{id}"
+                spanStr "&ndash;", "warn-missing", "Missing value for id: #{id}"
               else
-                spanStr "&cross;", "missing missing-id", "Missing ID"
+                spanStr "&cross;", "warn-missing", "Missing ID"
             if __display_panels[module]?
               panel = __display_panels[module]
               panel.build div, context
