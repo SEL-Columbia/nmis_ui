@@ -1509,7 +1509,7 @@ until they play well together (and I ensure they don't over-depend on other modu
 
 }).call(this);
 (function() {
-  var ModuleFile, NoOpFetch, headers;
+  var Module, ModuleFile, NoOpFetch, headers, _sanitizeStr;
 
   headers = (function() {
     var header, nav;
@@ -1664,13 +1664,13 @@ until they play well together (and I ensure they don't over-depend on other modu
       getSchema.done(function(schema) {
         var districts_module, dname, durl;
         display_in_header(schema);
-        ModuleFile.DEFAULT_MODULES = (function() {
+        Module.DEFAULT_MODULES = (function() {
           var _ref, _results;
           _ref = schema.defaults;
           _results = [];
           for (dname in _ref) {
             durl = _ref[dname];
-            _results.push(new ModuleFile(durl));
+            _results.push(new Module(dname, durl));
           }
           return _results;
         })();
@@ -1680,7 +1680,7 @@ until they play well together (and I ensure they don't over-depend on other modu
         } else {
           districts_module = (function() {
             var mf, _i, _len, _ref;
-            _ref = ModuleFile.DEFAULT_MODULES;
+            _ref = Module.DEFAULT_MODULES;
             for (_i = 0, _len = _ref.length; _i < _len; _i++) {
               mf = _ref[_i];
               if (mf.name === "geo/districts") {
@@ -1769,7 +1769,7 @@ until they play well together (and I ensure they don't over-depend on other modu
   NMIS.District = (function() {
 
     function District(d) {
-      var f, _ref;
+      var f_param, slug, _ref;
       _.extend(this, d);
       if (!this.name) {
         this.name = this.label;
@@ -1779,12 +1779,12 @@ until they play well together (and I ensure they don't over-depend on other modu
         this.files = [];
       }
       this.module_files = (function() {
-        var _i, _len, _ref1, _results;
+        var _ref1, _results;
         _ref1 = this.files;
         _results = [];
-        for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
-          f = _ref1[_i];
-          _results.push(new ModuleFile(f, this));
+        for (slug in _ref1) {
+          f_param = _ref1[slug];
+          _results.push(new Module(slug, f_param, this));
         }
         return _results;
       }).call(this);
@@ -1794,10 +1794,6 @@ until they play well together (and I ensure they don't over-depend on other modu
         value: this.id
       };
     }
-
-    District.prototype.module_url = function(module_name) {
-      return this.get_data_module(module_name).url;
-    };
 
     District.prototype.defaultSammyUrl = function() {
       return "" + NMIS.url_root + "#/" + this.group_slug + "/" + this.slug + "/summary";
@@ -1827,7 +1823,7 @@ until they play well together (and I ensure they don't over-depend on other modu
           return mf;
         }
       }
-      _ref1 = ModuleFile.DEFAULT_MODULES;
+      _ref1 = Module.DEFAULT_MODULES;
       for (_j = 0, _len1 = _ref1.length; _j < _len1; _j++) {
         mf = _ref1[_j];
         if (mf.name === module) {
@@ -1849,7 +1845,7 @@ until they play well together (and I ensure they don't over-depend on other modu
       var dfd, loader,
         _this = this;
       dfd = $.Deferred();
-      loader = NMIS.DataLoader.fetch(this.module_url("data/lga_data"));
+      loader = this.get_data_module("data/lga_data").fetch();
       loader.done(function(results) {
         var d;
         _this.lga_data = (function() {
@@ -1871,7 +1867,7 @@ until they play well together (and I ensure they don't over-depend on other modu
       var dfd,
         _this = this;
       dfd = $.Deferred();
-      NMIS.DataLoader.fetch(this.module_url("variables/variables")).done(function(results) {
+      this.get_data_module("variables/variables").fetch().done(function(results) {
         NMIS.variables.clear();
         NMIS.variables.load(results);
         return dfd.resolve(NMIS.variables);
@@ -1972,31 +1968,73 @@ until they play well together (and I ensure they don't over-depend on other modu
 
   })();
 
-  ModuleFile = (function() {
+  _sanitizeStr = function(str) {
+    return ("" + str).toLowerCase().replace(/\W/, "_").replace(/__/g, "_");
+  };
 
-    ModuleFile.DEFAULT_MODULES = {};
+  Module = (function() {
+
+    Module.DEFAULT_MODULES = [];
+
+    function Module(id, file_param, district) {
+      var fp;
+      this.id = id;
+      if (_.isArray(file_param)) {
+        this.files = (function() {
+          var _i, _len, _results;
+          _results = [];
+          for (_i = 0, _len = file_param.length; _i < _len; _i++) {
+            fp = file_param[_i];
+            _results.push(new ModuleFile(fp, district));
+          }
+          return _results;
+        })();
+      } else {
+        this.filename = file_param;
+        this.files = [new ModuleFile(file_param, district)];
+      }
+      this.name = this.id;
+    }
+
+    Module.prototype.sanitizedId = function() {
+      if (!this._sanitizedId) {
+        this._sanitizedId = _sanitizeStr(this.name);
+      }
+      return this._sanitizedId;
+    };
+
+    Module.prototype.fetch = function() {
+      var f;
+      return $.when.apply(null, (function() {
+        var _i, _len, _ref, _results;
+        _ref = this.files;
+        _results = [];
+        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+          f = _ref[_i];
+          _results.push(f.fetch());
+        }
+        return _results;
+      }).call(this));
+    };
+
+    return Module;
+
+  })();
+
+  ModuleFile = (function() {
 
     function ModuleFile(filename, district) {
       var devnull, mid_url, _ref;
       this.filename = filename;
+      this.district = district;
       try {
         _ref = this.filename.match(/(.*)\.(json|csv)/), devnull = _ref[0], this.name = _ref[1], this.file_type = _ref[2];
       } catch (e) {
-        throw new Error("Filetype not recognized: " + this.filename);
+        throw new Error("ModuleFile Filetype not recognized: " + this.filename);
       }
-      if (NMIS._data_src_root_url == null) {
-        throw new Error("No data_src_root_url");
-      }
-      mid_url = district != null ? "" + district.data_root + "/" : "";
+      mid_url = this.district != null ? "" + this.district.data_root + "/" : "";
       this.url = "" + NMIS._data_src_root_url + mid_url + this.filename;
     }
-
-    ModuleFile.prototype.sanitizedId = function() {
-      if (!this._sanitizedId) {
-        this._sanitizedId = ("" + this.name).toLowerCase().replace(/\W/, "_").replace(/__/g, "_");
-      }
-      return this._sanitizedId;
-    };
 
     ModuleFile.prototype.fetch = function() {
       return NMIS.DataLoader.fetch(this.url);
@@ -3495,7 +3533,7 @@ Facilities:
     fetchers = {};
     googleMapsLoad = NMIS.loadGoogleMaps();
     if (lga.has_data_module("presentation/summary_sectors")) {
-      fetchers.summary_sectors = NMIS.DataLoader.fetch(lga.module_url("presentation/summary_sectors"));
+      fetchers.summary_sectors = lga.get_data_module("presentation/summary_sectors").fetch();
     }
     if (lga.has_data_module("data/lga_data")) {
       fetchers.lga_data = lga.loadData();
@@ -3655,10 +3693,10 @@ Facilities:
                   if (vrb) {
                     return spanStr(vrb.name, "variable-name");
                   } else {
-                    return spanStr(id, "label label-important important");
+                    return spanStr(id, "warn-missing");
                   }
                 } else {
-                  return "No variable id";
+                  return spanStr("No variable id", "warn-missing");
                 }
               };
               context.lookupValue = function(id, defaultValue) {
@@ -3670,9 +3708,9 @@ Facilities:
                 if (record) {
                   return spanStr(record.value, "found");
                 } else if (id) {
-                  return spanStr(spanStr("No val: " + id, "label important label-important"), "missing missing-value", "Missing value for id: " + id);
+                  return spanStr("&ndash;", "warn-missing", "Missing value for id: " + id);
                 } else {
-                  return spanStr("&cross;", "missing missing-id", "Missing ID");
+                  return spanStr("&cross;", "warn-missing", "Missing ID");
                 }
               };
               if (__display_panels[module] != null) {

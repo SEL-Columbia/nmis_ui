@@ -33,7 +33,7 @@
     fetchers = {};
     googleMapsLoad = NMIS.loadGoogleMaps();
     if (lga.has_data_module("presentation/summary_sectors")) {
-      fetchers.summary_sectors = NMIS.DataLoader.fetch(lga.module_url("presentation/summary_sectors"));
+      fetchers.summary_sectors = lga.get_data_module("presentation/summary_sectors").fetch();
     }
     if (lga.has_data_module("data/lga_data")) {
       fetchers.lga_data = lga.loadData();
@@ -193,10 +193,10 @@
                   if (vrb) {
                     return spanStr(vrb.name, "variable-name");
                   } else {
-                    return spanStr(id, "label label-important important");
+                    return spanStr(id, "warn-missing");
                   }
                 } else {
-                  return "No variable id";
+                  return spanStr("No variable id", "warn-missing");
                 }
               };
               context.lookupValue = function(id, defaultValue) {
@@ -208,9 +208,9 @@
                 if (record) {
                   return spanStr(record.value, "found");
                 } else if (id) {
-                  return spanStr(spanStr("No val: " + id, "label important label-important"), "missing missing-value", "Missing value for id: " + id);
+                  return spanStr("&ndash;", "warn-missing", "Missing value for id: " + id);
                 } else {
-                  return spanStr("&cross;", "missing missing-id", "Missing ID");
+                  return spanStr("&cross;", "warn-missing", "Missing ID");
                 }
               };
               if (__display_panels[module] != null) {
