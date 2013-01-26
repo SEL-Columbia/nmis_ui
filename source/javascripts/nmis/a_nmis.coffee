@@ -603,7 +603,7 @@ do ->
     show = ()->
       setVisibility true
       ensureInitialized()
-      if elem.closest("html").length is 0
+      unless elem.inDom()
         contentWrap.append elem
     addTitle = (key, jqElem) ->
       titleElems[key] = jqElem

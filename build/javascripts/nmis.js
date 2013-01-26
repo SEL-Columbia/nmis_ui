@@ -1165,7 +1165,7 @@ until they play well together (and I ensure they don't over-depend on other modu
       show = function() {
         setVisibility(true);
         ensureInitialized();
-        if (elem.closest("html").length === 0) {
+        if (!elem.inDom()) {
           return contentWrap.append(elem);
         }
       };
@@ -3349,11 +3349,6 @@ Facilities:
   _rDelay = function(i, fn) {
     return _.delay(fn, i);
   };
-
-}).call(this);
-(function() {
-
-
 
 }).call(this);
 (function() {
