@@ -748,4 +748,28 @@ div.dataTables_wrapper div.dataTables_scrollBody .facility-dt td:first-child{tex
 /* additions */
 .topbar .container { min-height: 72px; }
 
-@import "mods/data_source_selector";
+
+/* was data_source_selector but was causing errors in scss building
+   middleman server.
+ */
+.topbar {
+  .data-src {
+    color: #bfbfbf;
+    font-size: 11px;
+    position: absolute;
+    top: 3px;
+    right: 18px;
+    strong {
+      font-weight: normal;
+    }
+    span {
+      font-weight: 0;
+    }
+    a {
+      color: #afafaf;
+      &:hover {
+        color: #bfbfbf;
+      }
+    }
+  }
+}
