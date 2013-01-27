@@ -136,4 +136,14 @@ NMIS._data_src_root_url = data_src
 
 # After document has loaded, load "schema" and when that is complete, run sammy.
 $ ->
-  NMIS.load_schema(data_src).done ()-> dashboard.run()
+  schemaLoad = NMIS.load_schema(data_src)
+  schemaLoad.done -> dashboard.run()
+  schemaLoad.fail ->
+    errorMessage = """
+      Failed to load schema file: "#{data_src}".<br>
+      Please correct the data source and refresh.
+    """
+    eStyle = "margin: 12px 20px 0"
+    $('<p>', class:'alert-message', style: eStyle).html(errorMessage)
+        .appendTo('div.display-window-wrap')
+    $('<br>').appendTo('div.display-window-wrap')

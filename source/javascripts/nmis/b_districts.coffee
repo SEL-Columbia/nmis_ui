@@ -100,9 +100,7 @@ do ->
         districts_module.fetch().done ({groups, districts})->
           load_districts groups, districts
           deferred.resolve()
-        # if !districts_module
-        #   deferred.fail()
-    deferred.done ->("Resolving!")
+    getSchema.fail (e)-> deferred.reject "Schema file not loaded"
     deferred.promise()
 
 do ->
