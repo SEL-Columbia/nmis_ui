@@ -174,8 +174,20 @@
   NMIS._data_src_root_url = data_src;
 
   $(function() {
-    return NMIS.load_schema(data_src).done(function() {
+    var schemaLoad;
+    schemaLoad = NMIS.load_schema(data_src);
+    schemaLoad.done(function() {
       return dashboard.run();
+    });
+    return schemaLoad.fail(function() {
+      var eStyle, errorMessage;
+      errorMessage = "Failed to load schema file: \"" + data_src + "\".<br>\nPlease correct the data source and refresh.";
+      eStyle = "margin: 12px 20px 0";
+      $('<p>', {
+        "class": 'alert-message',
+        style: eStyle
+      }).html(errorMessage).appendTo('div.display-window-wrap');
+      return $('<br>').appendTo('div.display-window-wrap');
     });
   });
 

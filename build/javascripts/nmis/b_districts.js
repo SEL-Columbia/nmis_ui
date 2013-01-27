@@ -186,8 +186,8 @@
           });
         }
       });
-      deferred.done(function() {
-        return "Resolving!";
+      getSchema.fail(function(e) {
+        return deferred.reject("Schema file not loaded");
       });
       return deferred.promise();
     };

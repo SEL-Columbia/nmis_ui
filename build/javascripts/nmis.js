@@ -1696,8 +1696,8 @@ until they play well together (and I ensure they don't over-depend on other modu
           });
         }
       });
-      deferred.done(function() {
-        return "Resolving!";
+      getSchema.fail(function(e) {
+        return deferred.reject("Schema file not loaded");
       });
       return deferred.promise();
     };
