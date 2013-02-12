@@ -106,16 +106,25 @@ title: MDG Survey Viewer [JS]
               Current
             </th>
           </tr>
-          <{ _.each(igrp.idRows, function(rowId){ }>
-            <tr>
-              <td class="empty-first empty bb"></td>
-              <td class="indicator-name bb">
-                <{= lookupName(rowId) }>
-              </td>
-              <td class="indvalue bb">
-                <{= lookupValue(rowId) }>
-              </td>
-            </tr>
+          <{ _.each(igrp.idRows, function(row){ }>
+            <{ if(_.isString(row)) { }>
+              <tr>
+                <td class="empty-first empty bb"></td>
+                <td class="indicator-name bb">
+                  <{= lookupName(row) }>
+                </td>
+                <td class="indvalue bb">
+                  <{= lookupValue(row) }>
+                </td>
+              </tr>
+            <{ } else if(row.section_header) { }>
+              <tr>
+                <td class="empty-first empty bb"></td>
+                <td class="empty indheader mdg_header">
+                  <{= row.name }>
+                </td>
+              </tr>
+            <{ } }>
           <{ }); }>
         <{ }); }>
       </tbody>
