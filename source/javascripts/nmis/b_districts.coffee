@@ -85,6 +85,8 @@ do ->
   NMIS.load_schema = (data_src)->
     schema_url = "#{data_src}schema.json"
     deferred = new $.Deferred
+    # Change root url of logo to the root url of the dashboard.
+    $("a.brand").attr "href", NMIS.url_root
     getSchema = $.ajax(url: schema_url, dataType: "json", cache: false)
     getSchema.done (schema)->
       display_in_header schema

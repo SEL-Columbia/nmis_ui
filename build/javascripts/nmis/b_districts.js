@@ -146,6 +146,7 @@
       var deferred, getSchema, schema_url;
       schema_url = "" + data_src + "schema.json";
       deferred = new $.Deferred;
+      $("a.brand").attr("href", NMIS.url_root);
       getSchema = $.ajax({
         url: schema_url,
         dataType: "json",
