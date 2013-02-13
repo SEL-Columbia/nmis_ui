@@ -5,7 +5,7 @@ View on github-pages
 
 Step 1.
 -------
-Link the hidden data repository by going to this [this link](http://modilabs.github.com/nmis_ui_/build/#data=/nmis_ui_data_2ef92c15/).
+Link the hidden data repository by going to this [this link](http://modilabs.github.com/nmis_ui_/build/?data=/nmis_ui_data_2ef92c15/).
 
 This will set the value of "$.cookie('data-source')" to "/nmis_ui_data_2ef92c15/" which directs the UI to load [this schema](https://github.com/modilabs/nmis_ui_data_2ef92c15/blob/master/schema.yaml) (except as JSON).
 
