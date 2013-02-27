@@ -90,6 +90,7 @@ do ->
     getSchema = $.ajax(url: schema_url, dataType: "json", cache: false)
     getSchema.done (schema)->
       display_in_header schema
+      NMIS._mapLayersModule_ = new Module "Map Layers", schema.map_layers  if schema.map_layers
       Module.DEFAULT_MODULES = (new Module(dname, durl) for dname, durl of schema.defaults)
 
       if schema.districts? and schema.groups?

@@ -1665,6 +1665,9 @@ until they play well together (and I ensure they don't over-depend on other modu
       getSchema.done(function(schema) {
         var districts_module, dname, durl;
         display_in_header(schema);
+        if (schema.map_layers) {
+          NMIS._mapLayersModule_ = new Module("Map Layers", schema.map_layers);
+        }
         Module.DEFAULT_MODULES = (function() {
           var _ref, _results;
           _ref = schema.defaults;
