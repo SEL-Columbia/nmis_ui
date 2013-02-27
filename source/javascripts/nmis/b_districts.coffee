@@ -62,7 +62,7 @@ do ->
 
     new_select = $ '<select>', id: 'lga-select', title: 'Select a district'
     for group in groups
-      optgroup = $ '<optgroup>', label: group.name
+      optgroup = $ '<optgroup>', label: group.label
       optgroup.append $ '<option>', d.html_params for d in group.districts
       new_select.append optgroup
 
@@ -144,8 +144,9 @@ class NMIS.District
     @files = [] unless @files?
     @module_files = (new Module(slug, f_param, @) for slug, f_param of @files)
     @latLng = @lat_lng
+    @id = [@group_slug, @local_id].join("_")
     @html_params =
-      text: @label
+      text: @name
       value: @id
   defaultSammyUrl: ()->
     "#{NMIS.url_root}#/#{@group_slug}/#{@slug}/summary"
