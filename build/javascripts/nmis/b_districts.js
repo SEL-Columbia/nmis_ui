@@ -122,7 +122,7 @@
       for (_m = 0, _len4 = groups.length; _m < _len4; _m++) {
         group = groups[_m];
         optgroup = $('<optgroup>', {
-          label: group.name
+          label: group.label
         });
         _ref = group.districts;
         for (_n = 0, _len5 = _ref.length; _n < _len5; _n++) {
@@ -280,8 +280,9 @@
         return _results;
       }).call(this);
       this.latLng = this.lat_lng;
+      this.id = [this.group_slug, this.local_id].join("_");
       this.html_params = {
-        text: this.label,
+        text: this.name,
         value: this.id
       };
     }
