@@ -101,7 +101,9 @@ NMIS.MainMdgMap = do ->
             layername: curMdgL.slug
             type: "png"
           mapLayerArray.push mlx
-          curMdgL.onSelect = ()-> map.setBaseLayer mlx
+          curMdgL.onSelect = ()->
+            map.setBaseLayer mlx
+            @show_description()
 
       map.addLayers mapLayerArray
       map.setBaseLayer mapLayers.nigeria_base
@@ -133,6 +135,11 @@ NMIS.MainMdgMap = do ->
         else
           layersWitoutMdg.push @
 
+      show_description: ->
+        descWrap = $(".mn-iiwrap")
+        goalText = NMIS.mdgGoalText(@mdg)
+        descWrap.find(".mdg-display").html goalText
+        descWrap.find("div.layer-description").html $("<p>", text: @description)
       $option: ->
         $ "<option>", value: @slug, text: @name
 
@@ -153,6 +160,19 @@ NMIS.MainMdgMap = do ->
 
   launchCountryMapInElem: launchCountryMapInElem
   createLayerSwitcher: createLayerSwitcher
+
+do ->
+  NMIS.mdgGoalText = (gn)->
+    [
+      "Goal 1 &raquo; Eradicate extreme poverty and hunger",
+      "Goal 2 &raquo; Achieve universal primary education",
+      "Goal 3 &raquo; Promote gender equality and empower women",
+      "Goal 4 &raquo; Reduce child mortality rates",
+      "Goal 5 &raquo; Improve maternal health",
+      "Goal 6 &raquo; Combat HIV/AIDS, malaria, and other diseases",
+      "Goal 7 &raquo; Ensure environmental sustainability",
+      "Goal 8 &raquo; Develop a global partnership for development"
+    ][gn-1]
 
 do ->
   NMIS.CountryView = ()->
