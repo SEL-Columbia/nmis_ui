@@ -24,6 +24,7 @@ NMIS.launch_facilities = ->
     params[paramName] = val.replace "/", ""
 
   district = NMIS.getDistrictByUrlCode "#{params.state}/#{params.lga}"
+  NMIS.districtDropdownSelect district
 
   NMIS._currentDistrict = district
   params.sector = `undefined`  if params.sector is "overview"

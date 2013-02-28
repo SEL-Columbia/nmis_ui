@@ -26,6 +26,8 @@ do ->
     brand.empty().append(logo).append(title)
     headers('header').find("span").text(s.id)
 
+  district_select = false
+
   ### NMIS.load_districts should be moved here. ###
   load_districts = (group_list, district_list)->
     group_names = []
@@ -80,7 +82,11 @@ do ->
 
     submit_button = headers('nav').find("input[type='submit']").detach()
     headers('nav').find('form div').eq(0).empty().html(new_select).append(submit_button)
-    new_select.chosen()
+    district_select = new_select.chosen()
+
+  NMIS.districtDropdownSelect = (district=false)->
+    if district and district_select
+      district_select.val(district.id).trigger "liszt:updated"
 
   NMIS.load_schema = (data_src)->
     schema_url = "#{data_src}schema.json"

@@ -19,6 +19,8 @@ NMIS.loadSummary = (s) ->
   # this prepares the dom and launches the AJAX requests.
   lga_code = "#{s.params.state}/#{s.params.lga}"
   lga = NMIS.getDistrictByUrlCode(lga_code)
+  NMIS.districtDropdownSelect lga
+
   state = lga.group
 
   fetchers = {}
