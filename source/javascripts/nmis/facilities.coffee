@@ -248,7 +248,7 @@ launchFacilities = (results, params) ->
       "normal"
 
     obj =
-      lgaName: "#{lga.label}, #{lga.group.label}"
+      lgaName: "#{lga.name}, #{lga.group.name}"
 
     obj.profileData = do ->
       outp = for vv in profileVariables

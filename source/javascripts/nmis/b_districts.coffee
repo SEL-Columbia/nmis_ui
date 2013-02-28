@@ -218,7 +218,7 @@ NMIS.getDistrictByUrlCode = (url_code)->
 class NMIS.Group
   constructor: (details)->
     @districts = []
-    @label = details.label
+    @name = @label = details.label
     @id = details.id
     @groupId = details.group
     @children = []
