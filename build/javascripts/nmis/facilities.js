@@ -39,6 +39,7 @@ Facilities:
       }
     }
     district = NMIS.getDistrictByUrlCode("" + params.state + "/" + params.lga);
+    NMIS.districtDropdownSelect(district);
     NMIS._currentDistrict = district;
     if (params.sector === "overview") {
       params.sector = undefined;
@@ -309,7 +310,7 @@ Facilities:
         return "normal";
       });
       obj = {
-        lgaName: "" + lga.label + ", " + lga.group.label
+        lgaName: "" + lga.name + ", " + lga.group.name
       };
       obj.profileData = (function() {
         var outp, value, variable, vv;

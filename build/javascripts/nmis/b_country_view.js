@@ -136,7 +136,8 @@
           });
           mapLayerArray.push(mlx);
           return curMdgL.onSelect = function() {
-            return map.setBaseLayer(mlx);
+            map.setBaseLayer(mlx);
+            return this.show_description();
           };
         };
         for (_i = 0, _len = mdgLayers.length; _i < _len; _i++) {
@@ -179,6 +180,16 @@
             layersWitoutMdg.push(this);
           }
         }
+
+        MDGLayer.prototype.show_description = function() {
+          var descWrap, goalText;
+          descWrap = $(".mn-iiwrap");
+          goalText = NMIS.mdgGoalText(this.mdg);
+          descWrap.find(".mdg-display").html(goalText);
+          return descWrap.find("div.layer-description").html($("<p>", {
+            text: this.description
+          }));
+        };
 
         MDGLayer.prototype.$option = function() {
           return $("<option>", {
@@ -232,6 +243,12 @@
     return {
       launchCountryMapInElem: launchCountryMapInElem,
       createLayerSwitcher: createLayerSwitcher
+    };
+  })();
+
+  (function() {
+    return NMIS.mdgGoalText = function(gn) {
+      return ["Goal 1 &raquo; Eradicate extreme poverty and hunger", "Goal 2 &raquo; Achieve universal primary education", "Goal 3 &raquo; Promote gender equality and empower women", "Goal 4 &raquo; Reduce child mortality rates", "Goal 5 &raquo; Improve maternal health", "Goal 6 &raquo; Combat HIV/AIDS, malaria, and other diseases", "Goal 7 &raquo; Ensure environmental sustainability", "Goal 8 &raquo; Develop a global partnership for development"][gn - 1];
     };
   })();
 

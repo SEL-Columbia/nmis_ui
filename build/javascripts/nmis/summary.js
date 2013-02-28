@@ -29,6 +29,7 @@
     var fetchers, fetchersDone, googleMapsLoad, launchGoogleMapSummaryView, lga, lga_code, state;
     lga_code = "" + s.params.state + "/" + s.params.lga;
     lga = NMIS.getDistrictByUrlCode(lga_code);
+    NMIS.districtDropdownSelect(lga);
     state = lga.group;
     fetchers = {};
     googleMapsLoad = NMIS.loadGoogleMaps();

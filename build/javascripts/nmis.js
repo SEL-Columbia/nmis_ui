@@ -1390,7 +1390,8 @@ until they play well together (and I ensure they don't over-depend on other modu
           });
           mapLayerArray.push(mlx);
           return curMdgL.onSelect = function() {
-            return map.setBaseLayer(mlx);
+            map.setBaseLayer(mlx);
+            return this.show_description();
           };
         };
         for (_i = 0, _len = mdgLayers.length; _i < _len; _i++) {
@@ -1433,6 +1434,16 @@ until they play well together (and I ensure they don't over-depend on other modu
             layersWitoutMdg.push(this);
           }
         }
+
+        MDGLayer.prototype.show_description = function() {
+          var descWrap, goalText;
+          descWrap = $(".mn-iiwrap");
+          goalText = NMIS.mdgGoalText(this.mdg);
+          descWrap.find(".mdg-display").html(goalText);
+          return descWrap.find("div.layer-description").html($("<p>", {
+            text: this.description
+          }));
+        };
 
         MDGLayer.prototype.$option = function() {
           return $("<option>", {
@@ -1486,6 +1497,12 @@ until they play well together (and I ensure they don't over-depend on other modu
     return {
       launchCountryMapInElem: launchCountryMapInElem,
       createLayerSwitcher: createLayerSwitcher
+    };
+  })();
+
+  (function() {
+    return NMIS.mdgGoalText = function(gn) {
+      return ["Goal 1 &raquo; Eradicate extreme poverty and hunger", "Goal 2 &raquo; Achieve universal primary education", "Goal 3 &raquo; Promote gender equality and empower women", "Goal 4 &raquo; Reduce child mortality rates", "Goal 5 &raquo; Improve maternal health", "Goal 6 &raquo; Combat HIV/AIDS, malaria, and other diseases", "Goal 7 &raquo; Ensure environmental sustainability", "Goal 8 &raquo; Develop a global partnership for development"][gn - 1];
     };
   })();
 
@@ -1544,7 +1561,7 @@ until they play well together (and I ensure they don't over-depend on other modu
   })();
 
   (function() {
-    var display_in_header, load_districts;
+    var display_in_header, district_select, load_districts;
     display_in_header = function(s) {
       var brand, logo, title;
       title = s.title;
@@ -1554,6 +1571,7 @@ until they play well together (and I ensure they don't over-depend on other modu
       brand.empty().append(logo).append(title);
       return headers('header').find("span").text(s.id);
     };
+    district_select = false;
     /* NMIS.load_districts should be moved here.
     */
 
@@ -1650,7 +1668,15 @@ until they play well together (and I ensure they don't over-depend on other modu
       NMIS._groups_ = groups;
       submit_button = headers('nav').find("input[type='submit']").detach();
       headers('nav').find('form div').eq(0).empty().html(new_select).append(submit_button);
-      return new_select.chosen();
+      return district_select = new_select.chosen();
+    };
+    NMIS.districtDropdownSelect = function(district) {
+      if (district == null) {
+        district = false;
+      }
+      if (district && district_select) {
+        return district_select.val(district.id).trigger("liszt:updated");
+      }
     };
     return NMIS.load_schema = function(data_src) {
       var deferred, getSchema, schema_url;
@@ -1922,7 +1948,7 @@ until they play well together (and I ensure they don't over-depend on other modu
 
     function Group(details) {
       this.districts = [];
-      this.label = details.label;
+      this.name = this.label = details.label;
       this.id = details.id;
       this.groupId = details.group;
       this.children = [];
@@ -2839,6 +2865,7 @@ Facilities:
       }
     }
     district = NMIS.getDistrictByUrlCode("" + params.state + "/" + params.lga);
+    NMIS.districtDropdownSelect(district);
     NMIS._currentDistrict = district;
     if (params.sector === "overview") {
       params.sector = undefined;
@@ -3109,7 +3136,7 @@ Facilities:
         return "normal";
       });
       obj = {
-        lgaName: "" + lga.label + ", " + lga.group.label
+        lgaName: "" + lga.name + ", " + lga.group.name
       };
       obj.profileData = (function() {
         var outp, value, variable, vv;
@@ -3529,6 +3556,7 @@ Facilities:
     var fetchers, fetchersDone, googleMapsLoad, launchGoogleMapSummaryView, lga, lga_code, state;
     lga_code = "" + s.params.state + "/" + s.params.lga;
     lga = NMIS.getDistrictByUrlCode(lga_code);
+    NMIS.districtDropdownSelect(lga);
     state = lga.group;
     fetchers = {};
     googleMapsLoad = NMIS.loadGoogleMaps();

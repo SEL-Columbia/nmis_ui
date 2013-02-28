@@ -34,7 +34,7 @@
   })();
 
   (function() {
-    var display_in_header, load_districts;
+    var display_in_header, district_select, load_districts;
     display_in_header = function(s) {
       var brand, logo, title;
       title = s.title;
@@ -44,6 +44,7 @@
       brand.empty().append(logo).append(title);
       return headers('header').find("span").text(s.id);
     };
+    district_select = false;
     /* NMIS.load_districts should be moved here.
     */
 
@@ -140,7 +141,15 @@
       NMIS._groups_ = groups;
       submit_button = headers('nav').find("input[type='submit']").detach();
       headers('nav').find('form div').eq(0).empty().html(new_select).append(submit_button);
-      return new_select.chosen();
+      return district_select = new_select.chosen();
+    };
+    NMIS.districtDropdownSelect = function(district) {
+      if (district == null) {
+        district = false;
+      }
+      if (district && district_select) {
+        return district_select.val(district.id).trigger("liszt:updated");
+      }
     };
     return NMIS.load_schema = function(data_src) {
       var deferred, getSchema, schema_url;
@@ -412,7 +421,7 @@
 
     function Group(details) {
       this.districts = [];
-      this.label = details.label;
+      this.name = this.label = details.label;
       this.id = details.id;
       this.groupId = details.group;
       this.children = [];
