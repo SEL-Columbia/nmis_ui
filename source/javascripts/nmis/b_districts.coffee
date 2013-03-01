@@ -132,6 +132,18 @@ class NMIS.DataRecord
     @source = obj.source
     @id = obj.id
 
+  displayValue: ->
+    variable = @variable()
+    if variable.data_type is "percent"
+      value = NMIS.DisplayValue.raw(@value * 100, variable)[0]
+      "#{value}%"
+    else
+      value = NMIS.DisplayValue.raw(@value)[0]
+      value
+
+  variable: ->
+    NMIS.variables.find @id
+
 class NoOpFetch
   constructor: (@id)->
   fetch: ()->

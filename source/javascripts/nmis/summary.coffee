@@ -136,7 +136,7 @@ launch_summary = (params, state, lga, query_results={})->
             context.lookupValue = (id, defaultValue=null)->
               record = lga.lookupRecord(id)
               if record
-                spanStr record.value, "found"
+                spanStr record.displayValue(), "found"
               else if id
                 spanStr "&ndash;", "warn-missing", "Missing value for id: #{id}"
               else

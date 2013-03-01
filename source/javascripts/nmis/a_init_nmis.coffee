@@ -116,7 +116,7 @@ do ->
     value(true)
     //  ["Yes"]
   ###
-  value = (v) ->
+  value = (v, variable={}) ->
     r = [v]
     if v is `undefined`
       r = ["&mdash;", "val-undefined"]
@@ -127,7 +127,7 @@ do ->
     else if v is false
       r = ["No"]
     else unless isNaN(+v)
-      r = [round_down(v)]
+      r = [round_down(v, variable.precision)]
     else if $.type(v) is "string"
       r = [NMIS.HackCaps(v)] 
     r
@@ -138,7 +138,7 @@ do ->
   ###
   DisplayValue = (d, element) ->
     res = value(d)
-    element.addClass res[1] if res[1]?
+    element.addClass res[1]  if res[1]?
     element.html res[0]
     element
 
