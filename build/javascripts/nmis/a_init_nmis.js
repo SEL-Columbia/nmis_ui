@@ -153,8 +153,11 @@ independently testable modules.
     */
 
     var DisplayValue, round_down, value;
-    value = function(v) {
+    value = function(v, variable) {
       var r;
+      if (variable == null) {
+        variable = {};
+      }
       r = [v];
       if (v === undefined) {
         r = ["&mdash;", "val-undefined"];
@@ -165,7 +168,7 @@ independently testable modules.
       } else if (v === false) {
         r = ["No"];
       } else if (!isNaN(+v)) {
-        r = [round_down(v)];
+        r = [round_down(v, variable.precision)];
       } else if ($.type(v) === "string") {
         r = [NMIS.HackCaps(v)];
       }

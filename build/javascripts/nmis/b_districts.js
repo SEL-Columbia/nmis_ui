@@ -239,6 +239,22 @@
       this.id = obj.id;
     }
 
+    DataRecord.prototype.displayValue = function() {
+      var value, variable;
+      variable = this.variable();
+      if (variable.data_type === "percent") {
+        value = NMIS.DisplayValue.raw(this.value * 100, variable)[0];
+        return "" + value + "%";
+      } else {
+        value = NMIS.DisplayValue.raw(this.value)[0];
+        return value;
+      }
+    };
+
+    DataRecord.prototype.variable = function() {
+      return NMIS.variables.find(this.id);
+    };
+
     return DataRecord;
 
   })();

@@ -207,7 +207,7 @@
                 }
                 record = lga.lookupRecord(id);
                 if (record) {
-                  return spanStr(record.value, "found");
+                  return spanStr(record.displayValue(), "found");
                 } else if (id) {
                   return spanStr("&ndash;", "warn-missing", "Missing value for id: " + id);
                 } else {

@@ -153,8 +153,11 @@ independently testable modules.
     */
 
     var DisplayValue, round_down, value;
-    value = function(v) {
+    value = function(v, variable) {
       var r;
+      if (variable == null) {
+        variable = {};
+      }
       r = [v];
       if (v === undefined) {
         r = ["&mdash;", "val-undefined"];
@@ -165,7 +168,7 @@ independently testable modules.
       } else if (v === false) {
         r = ["No"];
       } else if (!isNaN(+v)) {
-        r = [round_down(v)];
+        r = [round_down(v, variable.precision)];
       } else if ($.type(v) === "string") {
         r = [NMIS.HackCaps(v)];
       }
@@ -1766,6 +1769,22 @@ until they play well together (and I ensure they don't over-depend on other modu
       this.id = obj.id;
     }
 
+    DataRecord.prototype.displayValue = function() {
+      var value, variable;
+      variable = this.variable();
+      if (variable.data_type === "percent") {
+        value = NMIS.DisplayValue.raw(this.value * 100, variable)[0];
+        return "" + value + "%";
+      } else {
+        value = NMIS.DisplayValue.raw(this.value)[0];
+        return value;
+      }
+    };
+
+    DataRecord.prototype.variable = function() {
+      return NMIS.variables.find(this.id);
+    };
+
     return DataRecord;
 
   })();
@@ -2789,6 +2808,8 @@ until they play well together (and I ensure they don't over-depend on other modu
       id = v.id || v.slug;
       this.id = id;
       this.name = v.name;
+      this.data_type = v.data_type || "float";
+      this.precision = v.precision || 2;
     }
 
     return Variable;
@@ -2796,7 +2817,7 @@ until they play well together (and I ensure they don't over-depend on other modu
   })();
 
   NMIS.variables = (function() {
-    var clear, find, load;
+    var clear, find, ids, load;
     clear = function() {};
     load = function(variables) {
       var list, v, vrb, _i, _len, _results;
@@ -2813,12 +2834,22 @@ until they play well together (and I ensure they don't over-depend on other modu
       }
       return _results;
     };
+    ids = function() {
+      var key, val, _results;
+      _results = [];
+      for (key in variablesById) {
+        val = variablesById[key];
+        _results.push(key);
+      }
+      return _results;
+    };
     find = function(id) {
       return variablesById[id];
     };
     return {
       load: load,
       clear: clear,
+      ids: ids,
       find: find
     };
   })();
@@ -3734,7 +3765,7 @@ Facilities:
                 }
                 record = lga.lookupRecord(id);
                 if (record) {
-                  return spanStr(record.value, "found");
+                  return spanStr(record.displayValue(), "found");
                 } else if (id) {
                   return spanStr("&ndash;", "warn-missing", "Missing value for id: " + id);
                 } else {
