@@ -5,7 +5,7 @@ View on github-pages
 
 Step 1.
 -------
-Link the hidden data repository by going to this [this link](http://modilabs.github.com/nmis_ui_/build/?data=/nmis_ui_data_2ef92c15/).
+Link the hidden data repository by going to this [this link](http://modilabs.github.com/nmis_ui/build/?data=/nmis_ui_data_2ef92c15/).
 
 This will set the value of "$.cookie('data-source')" to "/nmis_ui_data_2ef92c15/" which directs the UI to load [this schema](https://github.com/modilabs/nmis_ui_data_2ef92c15/blob/master/schema.yaml) (except as JSON).
 
@@ -15,4 +15,4 @@ Step 2.
 -------
 Click through to an individual LGA.
 
-Example: [Enugu / Isi Uzo](http://modilabs.github.com/nmis_ui_/build/#/enugu/isi_uzo/)
+Example: [Enugu / Isi Uzo](http://modilabs.github.com/nmis_ui/build/#/enugu/isi_uzo/)
