@@ -12,6 +12,12 @@ independently testable modules.
     this.NMIS = {};
   }
 
+  if (!this.NMIS.settings) {
+    this.NMIS.settings = {
+      openLayersRoot: "javascripts/OpenLayers.js"
+    };
+  }
+
   NMIS.expected_modules = ["Tabulation", "clear", "Sectors", "validateData", "dataForSector", "data", "FacilityPopup", "Breadcrumb", "IconSwitcher", "MapMgr", "FacilityHover"];
 
   _.templateSettings = {
@@ -2644,8 +2650,8 @@ until they play well together (and I ensure they don't over-depend on other modu
   })();
 
   NMIS.loadOpenLayers = function(url) {
-    if (url == null) {
-      url = "javascripts/OpenLayers.js";
+    if (!url && NMIS.settings.openLayersRoot) {
+      url = NMIS.settings.openLayersRoot;
     }
     return $.ajax({
       url: url,

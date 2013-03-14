@@ -12,6 +12,12 @@ independently testable modules.
     this.NMIS = {};
   }
 
+  if (!this.NMIS.settings) {
+    this.NMIS.settings = {
+      openLayersRoot: "javascripts/OpenLayers.js"
+    };
+  }
+
   NMIS.expected_modules = ["Tabulation", "clear", "Sectors", "validateData", "dataForSector", "data", "FacilityPopup", "Breadcrumb", "IconSwitcher", "MapMgr", "FacilityHover"];
 
   _.templateSettings = {

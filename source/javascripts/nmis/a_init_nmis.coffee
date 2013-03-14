@@ -3,6 +3,9 @@ This file is meant to initialize the NMIS object which includes
 independently testable modules.
 ###
 @NMIS = {} unless @NMIS?
+unless @NMIS.settings
+  @NMIS.settings =
+    openLayersRoot: "javascripts/OpenLayers.js"
 
 NMIS.expected_modules = ["Tabulation","clear","Sectors","validateData","dataForSector","data","FacilityPopup","Breadcrumb","IconSwitcher","MapMgr","FacilityHover"]
 
