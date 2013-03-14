@@ -76,8 +76,8 @@ NMIS.FacilityPopup = do ->
           NMIS.DisplayValue.special facility[oo.slug], oo
         )
     )
-    tmplHtml = $("#facility-popup").eq(0).html().replace(/<{/g, "{{").replace(/\}>/g, "}}")
-    div = jQuery(Mustache.to_html(tmplHtml, obj))
+    tmplHtml = $._template("#facility-popup", obj)
+    div = $(tmplHtml)
     s = div.find("select")
     sdiv = div.find(".fac-content")
     showDataForSector = ((slug) ->
