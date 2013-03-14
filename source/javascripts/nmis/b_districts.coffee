@@ -159,6 +159,7 @@ class NMIS.District
   constructor: (d)->
     _.extend @, d
     @name = @label unless @name
+    @active = !!d.active
     [@group_slug, @slug] = d.url_code.split("/")
     @files = [] unless @files?
     @module_files = (new Module(slug, f_param, @) for slug, f_param of @files)
@@ -167,6 +168,7 @@ class NMIS.District
     @html_params =
       text: @name
       value: @id
+    @html_params.disabled = "disabled"  unless @active
   defaultSammyUrl: ()->
     "#{NMIS.url_root}#/#{@group_slug}/#{@slug}/summary"
   sectors_data_loader: ()->
@@ -247,6 +249,10 @@ class NMIS.Group
     @districts = @districts.sort (a, b)-> a.label > b.label if b?
     @children = @children.sort (a, b)-> a.label > b.label if b?
     true
+  activeDistrictsCount: ->
+    i = 0
+    i++  for district in @districts when district.active
+    i
   assignParentGroup: (allGroups)->
     if @groupId and allGroups[@groupId]
       @group = allGroups[@groupId]
