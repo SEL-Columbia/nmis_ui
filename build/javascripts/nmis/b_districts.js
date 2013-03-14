@@ -293,6 +293,7 @@
       if (!this.name) {
         this.name = this.label;
       }
+      this.active = !!d.active;
       _ref = d.url_code.split("/"), this.group_slug = _ref[0], this.slug = _ref[1];
       if (this.files == null) {
         this.files = [];
@@ -313,6 +314,9 @@
         text: this.name,
         value: this.id
       };
+      if (!this.active) {
+        this.html_params.disabled = "disabled";
+      }
     }
 
     District.prototype.defaultSammyUrl = function() {
@@ -460,6 +464,19 @@
         }
       });
       return true;
+    };
+
+    Group.prototype.activeDistrictsCount = function() {
+      var district, i, _i, _len, _ref;
+      i = 0;
+      _ref = this.districts;
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        district = _ref[_i];
+        if (district.active) {
+          i++;
+        }
+      }
+      return i;
     };
 
     Group.prototype.assignParentGroup = function(allGroups) {
