@@ -226,38 +226,45 @@ do ->
     shiftStatus: shiftStatus
     iterate: iterate
 
-do ->
-  NMIS.FacilitySelector = do->
-    active = false
+NMIS.FacilitySelector = do->
+  ###
+  NMIS.FacilitySelector handles actions that pertain to selecting a facility.
 
-    isActive = -> active
-    activate = (params) ->
-      fId = params.id
+  Usage:
+    NMIS.FacilitySelector.activate id: 1234
+    NMIS.FacilitySelector.deselect()
+    NMIS.FacilitySelector.isActive() #returns boolean
+  ###
+  active = false
+
+  isActive = -> active
+  activate = (params) ->
+    fId = params.id
+    NMIS.IconSwitcher.shiftStatus (id, item) ->
+      if id isnt fId
+        "background"
+      else
+        active = true
+        "normal"
+    facility = false
+    facility = val for key, val of NMIS.data() when key is params.id
+
+    # facility = _.find(NMIS.data(), (val, key) ->
+    #   key is params.id
+    # )
+    NMIS.FacilityPopup facility
+  deselect = ->
+    if active
+      sector = NMIS.activeSector()
       NMIS.IconSwitcher.shiftStatus (id, item) ->
-        if id isnt fId
-          "background"
-        else
-          active = true
-          "normal"
-      facility = false
-      facility = val for key, val of NMIS.data() when key is params.id
-
-      # facility = _.find(NMIS.data(), (val, key) ->
-      #   key is params.id
-      # )
-      NMIS.FacilityPopup facility
-    deselect = ->
-      if active
-        sector = NMIS.activeSector()
-        NMIS.IconSwitcher.shiftStatus (id, item) ->
-          (if item.sector is sector then "normal" else "background")
-        active = false
-        dashboard.setLocation NMIS.urlFor(NMIS.Env.extend(facility: false))
-        NMIS.FacilityPopup.hide()
-    # Externally callable functions:
-    activate: activate
-    isActive: isActive
-    deselect: deselect
+        (if item.sector is sector then "normal" else "background")
+      active = false
+      dashboard.setLocation NMIS.urlFor(NMIS.Env.extend(facility: false))
+      NMIS.FacilityPopup.hide()
+  # Externally callable functions:
+  activate: activate
+  isActive: isActive
+  deselect: deselect
 
 do ->
   NMIS.DataLoader = do ->
