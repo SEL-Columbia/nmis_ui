@@ -653,9 +653,10 @@ until they play well together (and I ensure they don't over-depend on other modu
             }
           });
           active = false;
-          return dashboard.setLocation(NMIS.urlFor(NMIS.Env.extend({
+          dashboard.setLocation(NMIS.urlFor(NMIS.Env.extend({
             facility: false
           })));
+          return NMIS.FacilityPopup.hide();
         }
       };
       return {
@@ -3520,9 +3521,9 @@ Facilities:
   })();
 
   NMIS.FacilityPopup = (function() {
-    var div, make;
+    var div, facility_popup;
     div = void 0;
-    make = function(facility, opts) {
+    facility_popup = function(facility, opts) {
       var defaultSubgroup, obj, s, sdiv, showDataForSector, subgroups, tmplHtml;
       if (opts === undefined) {
         opts = {};
@@ -3548,8 +3549,8 @@ Facilities:
           })
         });
       });
-      tmplHtml = $("#facility-popup").eq(0).html().replace(/<{/g, "{{").replace(/\}>/g, "}}");
-      div = jQuery(Mustache.to_html(tmplHtml, obj));
+      tmplHtml = $._template("#facility-popup", obj);
+      div = $(tmplHtml);
       s = div.find("select");
       sdiv = div.find(".fac-content");
       showDataForSector = (function(slug) {
@@ -3575,7 +3576,10 @@ Facilities:
       }
       return div;
     };
-    return make;
+    facility_popup.hide = function() {
+      return $(".fac-popup").remove();
+    };
+    return facility_popup;
   })();
 
 }).call(this);

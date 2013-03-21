@@ -56,7 +56,7 @@ NMIS.FacilityHover = do ->
 NMIS.FacilityPopup = do ->
   div = undefined
 
-  make = (facility, opts) ->
+  facility_popup = (facility, opts) ->
     opts = {}  if opts is `undefined`
     div.remove()  unless not div
     obj = _.extend(
@@ -76,8 +76,8 @@ NMIS.FacilityPopup = do ->
           NMIS.DisplayValue.special facility[oo.slug], oo
         )
     )
-    tmplHtml = $("#facility-popup").eq(0).html().replace(/<{/g, "{{").replace(/\}>/g, "}}")
-    div = jQuery(Mustache.to_html(tmplHtml, obj))
+    tmplHtml = $._template("#facility-popup", obj)
+    div = $(tmplHtml)
     s = div.find("select")
     sdiv = div.find(".fac-content")
     showDataForSector = ((slug) ->
@@ -98,5 +98,9 @@ NMIS.FacilityPopup = do ->
 
     div.addClass opts.addClass  unless not opts.addClass
     div
-  make
+
+  facility_popup.hide = ->
+    $(".fac-popup").remove()
+
+  facility_popup
 

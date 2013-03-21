@@ -253,7 +253,7 @@ do ->
           (if item.sector is sector then "normal" else "background")
         active = false
         dashboard.setLocation NMIS.urlFor(NMIS.Env.extend(facility: false))
-
+        NMIS.FacilityPopup.hide()
     # Externally callable functions:
     activate: activate
     isActive: isActive
