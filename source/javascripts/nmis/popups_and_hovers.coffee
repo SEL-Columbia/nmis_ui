@@ -56,7 +56,7 @@ NMIS.FacilityHover = do ->
 NMIS.FacilityPopup = do ->
   div = undefined
 
-  make = (facility, opts) ->
+  facility_popup = (facility, opts) ->
     opts = {}  if opts is `undefined`
     div.remove()  unless not div
     obj = _.extend(
@@ -98,5 +98,9 @@ NMIS.FacilityPopup = do ->
 
     div.addClass opts.addClass  unless not opts.addClass
     div
-  make
+
+  facility_popup.hide = ->
+    $(".fac-popup").remove()
+
+  facility_popup
 
