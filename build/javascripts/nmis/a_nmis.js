@@ -383,9 +383,10 @@ until they play well together (and I ensure they don't over-depend on other modu
             }
           });
           active = false;
-          return dashboard.setLocation(NMIS.urlFor(NMIS.Env.extend({
+          dashboard.setLocation(NMIS.urlFor(NMIS.Env.extend({
             facility: false
           })));
+          return NMIS.FacilityPopup.hide();
         }
       };
       return {

@@ -81,9 +81,9 @@
   })();
 
   NMIS.FacilityPopup = (function() {
-    var div, make;
+    var div, facility_popup;
     div = void 0;
-    make = function(facility, opts) {
+    facility_popup = function(facility, opts) {
       var defaultSubgroup, obj, s, sdiv, showDataForSector, subgroups, tmplHtml;
       if (opts === undefined) {
         opts = {};
@@ -136,7 +136,10 @@
       }
       return div;
     };
-    return make;
+    facility_popup.hide = function() {
+      return $(".fac-popup").remove();
+    };
+    return facility_popup;
   })();
 
 }).call(this);
