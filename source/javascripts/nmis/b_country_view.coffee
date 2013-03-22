@@ -74,6 +74,8 @@ NMIS.MainMdgMap = do ->
         maxResolution: 156543.0339
         restrictedExtent: new OpenLayers.Bounds(reA, reB, reC, reD)
         maxExtent: new OpenLayers.Bounds(meA, meB, meC, meD)
+        numZoomLevels: 11
+
 
       centroid =
         lat: 649256.11813719
@@ -84,7 +86,6 @@ NMIS.MainMdgMap = do ->
       options.zoom = zoom
 
       overlays = [["Boundaries", "nigeria_base"]]
-
       map = new OpenLayers.Map mapId, options
       mapserver = ["http://b.tiles.mapbox.com/modilabs/"]
       mapLayers = {}
