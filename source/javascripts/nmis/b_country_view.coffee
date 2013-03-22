@@ -61,7 +61,7 @@ NMIS.MainMdgMap = do ->
       [reA, reB, reC, reD] = [-4783.9396188051, 463514.13943762, 1707405.4936624, 1625356.9691642]
       [meA, meB, meC, meD] = [-20037500, -20037500, 20037500, 20037500]
 
-      OpenLayers.ImgPath = "openlayers/default/img/"
+      OpenLayers.ImgPath = "theme/default/img/"
       OpenLayers.IMAGE_RELOAD_ATTEMPTS = 0
 
       googProj = new OpenLayers.Projection("EPSG:900913")
@@ -74,6 +74,8 @@ NMIS.MainMdgMap = do ->
         maxResolution: 156543.0339
         restrictedExtent: new OpenLayers.Bounds(reA, reB, reC, reD)
         maxExtent: new OpenLayers.Bounds(meA, meB, meC, meD)
+        numZoomLevels: 11
+
 
       centroid =
         lat: 649256.11813719
@@ -84,7 +86,6 @@ NMIS.MainMdgMap = do ->
       options.zoom = zoom
 
       overlays = [["Boundaries", "nigeria_base"]]
-
       map = new OpenLayers.Map mapId, options
       mapserver = ["http://b.tiles.mapbox.com/modilabs/"]
       mapLayers = {}
