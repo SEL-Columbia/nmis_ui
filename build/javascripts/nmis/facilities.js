@@ -137,7 +137,7 @@ Facilities:
             water: "water.png",
             "default": "book_green_wb.png"
           };
-          return "./images/icons_f/" + status + "_" + (iconFiles[slug] || iconFiles["default"]);
+          return "" + NMIS.settings.pathToMapIcons + "/icons_f/" + status + "_" + (iconFiles[slug] || iconFiles["default"]);
         };
         slug = void 0;
         status = item.status;

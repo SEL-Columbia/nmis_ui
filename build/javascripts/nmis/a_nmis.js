@@ -343,58 +343,65 @@ until they play well together (and I ensure they don't over-depend on other modu
     })();
   })();
 
-  (function() {
-    return NMIS.FacilitySelector = (function() {
-      var activate, active, deselect, isActive;
-      active = false;
-      isActive = function() {
-        return active;
-      };
-      activate = function(params) {
-        var fId, facility, key, val, _ref;
-        fId = params.id;
+  NMIS.FacilitySelector = (function() {
+    /*
+      NMIS.FacilitySelector handles actions that pertain to selecting a facility.
+    
+      Usage:
+        NMIS.FacilitySelector.activate id: 1234
+        NMIS.FacilitySelector.deselect()
+        NMIS.FacilitySelector.isActive() #returns boolean
+    */
+
+    var activate, active, deselect, isActive;
+    active = false;
+    isActive = function() {
+      return active;
+    };
+    activate = function(params) {
+      var fId, facility, key, val, _ref;
+      fId = params.id;
+      NMIS.IconSwitcher.shiftStatus(function(id, item) {
+        if (id !== fId) {
+          return "background";
+        } else {
+          active = true;
+          return "normal";
+        }
+      });
+      facility = false;
+      _ref = NMIS.data();
+      for (key in _ref) {
+        val = _ref[key];
+        if (key === params.id) {
+          facility = val;
+        }
+      }
+      return NMIS.FacilityPopup(facility);
+    };
+    deselect = function() {
+      var sector;
+      if (active) {
+        sector = NMIS.activeSector();
         NMIS.IconSwitcher.shiftStatus(function(id, item) {
-          if (id !== fId) {
-            return "background";
-          } else {
-            active = true;
+          if (item.sector === sector) {
             return "normal";
+          } else {
+            return "background";
           }
         });
-        facility = false;
-        _ref = NMIS.data();
-        for (key in _ref) {
-          val = _ref[key];
-          if (key === params.id) {
-            facility = val;
-          }
-        }
-        return NMIS.FacilityPopup(facility);
-      };
-      deselect = function() {
-        var sector;
-        if (active) {
-          sector = NMIS.activeSector();
-          NMIS.IconSwitcher.shiftStatus(function(id, item) {
-            if (item.sector === sector) {
-              return "normal";
-            } else {
-              return "background";
-            }
-          });
-          active = false;
-          dashboard.setLocation(NMIS.urlFor(NMIS.Env.extend({
-            facility: false
-          })));
-          return NMIS.FacilityPopup.hide();
-        }
-      };
-      return {
-        activate: activate,
-        isActive: isActive,
-        deselect: deselect
-      };
-    })();
+        active = false;
+        dashboard.setLocation(NMIS.urlFor(NMIS.Env.extend({
+          facility: false
+        })));
+        return NMIS.FacilityPopup.hide();
+      }
+    };
+    return {
+      activate: activate,
+      isActive: isActive,
+      deselect: deselect
+    };
   })();
 
   (function() {
