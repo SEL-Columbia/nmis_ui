@@ -108,7 +108,7 @@ launchFacilities = (results, params) ->
           health: "health.png"
           water: "water.png"
           default: "book_green_wb.png"
-        "./images/icons_f/#{status}_#{iconFiles[slug] or iconFiles.default}"
+        "#{NMIS.settings.pathToMapIcons}/icons_f/#{status}_#{iconFiles[slug] or iconFiles.default}"
       slug = undefined
       status = item.status
       return item._custom_png_data  if status is "custom"
