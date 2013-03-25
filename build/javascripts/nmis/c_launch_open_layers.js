@@ -25,7 +25,7 @@
 
   NMIS.loadOpenLayers = function(url) {
     if (!url && NMIS.settings.openLayersRoot) {
-      url = NMIS.settings.openLayersRoot;
+      url = "" + NMIS.settings.openLayersRoot + "OpenLayers.js";
     }
     return $.ajax({
       url: url,

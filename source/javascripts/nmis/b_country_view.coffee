@@ -54,6 +54,7 @@ NMIS.MainMdgMap = do ->
     $elem = $(eselector).css width: 680, height: 476, position: 'absolute'
     launcher = NMIS.loadOpenLayers()
     launcher.done ()->
+      OpenLayers._getScriptLocation = ()-> NMIS.settings.openLayersRoot        
       $(".map-loading-message").hide()
       elem = $elem.get(0)
       mapId = "nmis-ol-country-map"
@@ -61,7 +62,8 @@ NMIS.MainMdgMap = do ->
       [reA, reB, reC, reD] = [-4783.9396188051, 463514.13943762, 1707405.4936624, 1625356.9691642]
       [meA, meB, meC, meD] = [-20037500, -20037500, 20037500, 20037500]
 
-      OpenLayers.ImgPath = "theme/default/img/"
+      #OpenLayers.ImgPath = "theme/default/img/"
+      OpenLayers.ImgPath = "#{NMIS.settings.openLayersRoot}theme/default/img/"
       OpenLayers.IMAGE_RELOAD_ATTEMPTS = 0
 
       googProj = new OpenLayers.Projection("EPSG:900913")
