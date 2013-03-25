@@ -63,6 +63,7 @@ NMIS.MainMdgMap = do ->
       [meA, meB, meC, meD] = [-20037500, -20037500, 20037500, 20037500]
 
       #OpenLayers.ImgPath = "theme/default/img/"
+      OpenLayers.ImgPath = "#{NMIS.settings.openLayersRoot}theme/default/img/"
       OpenLayers.IMAGE_RELOAD_ATTEMPTS = 0
 
       googProj = new OpenLayers.Projection("EPSG:900913")
