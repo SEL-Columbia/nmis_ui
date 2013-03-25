@@ -419,8 +419,10 @@ do ->
         get_env()
 
     get_env = ()->
-      throw new Error("NMIS.Env is not set") unless env
-      _.extend {}, env
+      if env
+        _.extend {}, env
+      else
+        null
     set_env = (_env)-> env = _.extend {}, _env
 
     env_accessor.extend = (o)->

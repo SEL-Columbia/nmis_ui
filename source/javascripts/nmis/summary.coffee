@@ -70,6 +70,9 @@ class TmpSector
     @slug = s.id
     @name = s.name
 
+NMIS.clearPageForNewLGA = ->
+  $("#conditional-content").remove()
+
 launch_summary = (params, state, lga, query_results={})->
   summary_sectors_results = query_results.summary_sectors
   summary_sectors = summary_sectors_results.sectors
@@ -83,6 +86,15 @@ launch_summary = (params, state, lga, query_results={})->
   view_details = summary_sectors_results.view_details
   current_sector = new TmpSector(s) for s in view_details when s.id is params.sector
   current_sector = overviewObj unless current_sector
+
+  if NMIS.Env() is null
+    # first time loading
+  else if NMIS.Env().lga isnt lga
+    # Changing district, so clear out anything that needs to be cleared out.
+    NMIS.clearPageForNewLGA()
+  # else
+  #   staying within the same district
+
   NMIS.Env
     mode:
       name: "Summary"
