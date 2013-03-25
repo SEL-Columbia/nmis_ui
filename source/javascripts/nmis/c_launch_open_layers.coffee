@@ -17,7 +17,7 @@ NMIS.loadGoogleMaps = do ->
     googleMapsDfd.promise()
 
 NMIS.loadOpenLayers = (url)->
-  url = NMIS.settings.openLayersRoot  if !url and NMIS.settings.openLayersRoot
+  url = "#{NMIS.settings.openLayersRoot}OpenLayers.js" if !url and NMIS.settings.openLayersRoot
   $.ajax url: url, dataType: "script", cache: false
 
 NMIS.loadGmapsAndOpenlayers = do ->
