@@ -1362,7 +1362,7 @@ until they play well together (and I ensure they don't over-depend on other modu
         $elem.prop('id', mapId);
         _ref = [-4783.9396188051, 463514.13943762, 1707405.4936624, 1625356.9691642], reA = _ref[0], reB = _ref[1], reC = _ref[2], reD = _ref[3];
         _ref1 = [-20037500, -20037500, 20037500, 20037500], meA = _ref1[0], meB = _ref1[1], meC = _ref1[2], meD = _ref1[3];
-        OpenLayers.ImgPath = "openlayers/default/img/";
+        OpenLayers.ImgPath = "theme/default/img/";
         OpenLayers.IMAGE_RELOAD_ATTEMPTS = 0;
         googProj = new OpenLayers.Projection("EPSG:900913");
         dispProj = new OpenLayers.Projection("EPSG:4326");
@@ -1372,7 +1372,8 @@ until they play well together (and I ensure they don't over-depend on other modu
           units: "m",
           maxResolution: 156543.0339,
           restrictedExtent: new OpenLayers.Bounds(reA, reB, reC, reD),
-          maxExtent: new OpenLayers.Bounds(meA, meB, meC, meD)
+          maxExtent: new OpenLayers.Bounds(meA, meB, meC, meD),
+          numZoomLevels: 11
         };
         centroid = {
           lat: 649256.11813719,
