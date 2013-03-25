@@ -6,6 +6,7 @@ independently testable modules.
 unless @NMIS.settings
   @NMIS.settings =
     openLayersRoot: "./openlayers/"
+    leafLetRoot: "./leaflet/"
     pathToMapIcons: "./images"
 
 NMIS.expected_modules = ["Tabulation","clear","Sectors","validateData","dataForSector","data","FacilityPopup","Breadcrumb","IconSwitcher","MapMgr","FacilityHover"]
