@@ -14,7 +14,7 @@ independently testable modules.
 
   if (!this.NMIS.settings) {
     this.NMIS.settings = {
-      openLayersRoot: "javascripts/OpenLayers.js",
+      openLayersRoot: "./openlayers/",
       pathToMapIcons: "./images"
     };
   }
@@ -1356,13 +1356,15 @@ until they play well together (and I ensure they don't over-depend on other modu
       launcher = NMIS.loadOpenLayers();
       launcher.done(function() {
         var centroid, dispProj, elem, googProj, layerId, layerName, map, mapId, mapLayerArray, mapLayers, mapserver, mdgL, meA, meB, meC, meD, options, overlays, reA, reB, reC, reD, zoom, _fn, _i, _len, _ref, _ref1;
+        OpenLayers._getScriptLocation = function() {
+          return NMIS.settings.openLayersRoot;
+        };
         $(".map-loading-message").hide();
         elem = $elem.get(0);
         mapId = "nmis-ol-country-map";
         $elem.prop('id', mapId);
         _ref = [-4783.9396188051, 463514.13943762, 1707405.4936624, 1625356.9691642], reA = _ref[0], reB = _ref[1], reC = _ref[2], reD = _ref[3];
         _ref1 = [-20037500, -20037500, 20037500, 20037500], meA = _ref1[0], meB = _ref1[1], meC = _ref1[2], meD = _ref1[3];
-        OpenLayers.ImgPath = "theme/default/img/";
         OpenLayers.IMAGE_RELOAD_ATTEMPTS = 0;
         googProj = new OpenLayers.Projection("EPSG:900913");
         dispProj = new OpenLayers.Projection("EPSG:4326");
@@ -2661,7 +2663,7 @@ until they play well together (and I ensure they don't over-depend on other modu
 
   NMIS.loadOpenLayers = function(url) {
     if (!url && NMIS.settings.openLayersRoot) {
-      url = NMIS.settings.openLayersRoot;
+      url = "" + NMIS.settings.openLayersRoot + "OpenLayers.js";
     }
     return $.ajax({
       url: url,

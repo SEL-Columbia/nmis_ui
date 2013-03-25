@@ -84,13 +84,15 @@
       launcher = NMIS.loadOpenLayers();
       launcher.done(function() {
         var centroid, dispProj, elem, googProj, layerId, layerName, map, mapId, mapLayerArray, mapLayers, mapserver, mdgL, meA, meB, meC, meD, options, overlays, reA, reB, reC, reD, zoom, _fn, _i, _len, _ref, _ref1;
+        OpenLayers._getScriptLocation = function() {
+          return NMIS.settings.openLayersRoot;
+        };
         $(".map-loading-message").hide();
         elem = $elem.get(0);
         mapId = "nmis-ol-country-map";
         $elem.prop('id', mapId);
         _ref = [-4783.9396188051, 463514.13943762, 1707405.4936624, 1625356.9691642], reA = _ref[0], reB = _ref[1], reC = _ref[2], reD = _ref[3];
         _ref1 = [-20037500, -20037500, 20037500, 20037500], meA = _ref1[0], meB = _ref1[1], meC = _ref1[2], meD = _ref1[3];
-        OpenLayers.ImgPath = "theme/default/img/";
         OpenLayers.IMAGE_RELOAD_ATTEMPTS = 0;
         googProj = new OpenLayers.Projection("EPSG:900913");
         dispProj = new OpenLayers.Projection("EPSG:4326");
