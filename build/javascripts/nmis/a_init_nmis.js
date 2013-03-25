@@ -14,7 +14,7 @@ independently testable modules.
 
   if (!this.NMIS.settings) {
     this.NMIS.settings = {
-      openLayersRoot: "javascripts/OpenLayers.js",
+      openLayersRoot: "./openlayers/",
       pathToMapIcons: "./images"
     };
   }
