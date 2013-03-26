@@ -13,6 +13,34 @@ do ->
 
   NMIS.panels.getPanel("facilities").addCallbacks open: panelOpen, close: panelClose
 
+facilitiesMode =
+  name: "Facility Detail"
+  slug: "facilities"
+
+# used in the breadcrumb
+_standardBcSlugs = "state lga mode sector subsector indicator".split(" ")
+
+NMIS.Env.onChange (next, prev)->
+  # log "Changing mode"  if @changing "mode"
+  # log "Changing LGA"  if @changing "lga"
+
+  if @changingToSlug "mode", "facilities"
+    log "Changing to facilities"
+    # This runs only when the environment is *changing to* the "mode" of "facilities"
+    NMIS.panels.changePanel "facilities"
+
+  if @usingSlug "mode", "facilities"
+    # This runs when the upcoming environment matches "mode" of "facilities"
+    NMIS.LocalNav.markActive ["mode:facilities", "sector:#{next.sector.slug}"]
+
+    NMIS.Breadcrumb.clear()
+    breadcrumbValues = NMIS._prepBreadcrumbValues next, _standardBcSlugs, state: next.state, lga: next.lga
+    NMIS.Breadcrumb.setLevels breadcrumbValues
+
+    NMIS.LocalNav.iterate (sectionType, buttonName, a) ->
+      env = _.extend {}, next, subsector: false
+      env[sectionType] = buttonName
+      a.attr "href", NMIS.urlFor env
 
 NMIS.launch_facilities = ->
 
@@ -28,52 +56,48 @@ NMIS.launch_facilities = ->
 
   NMIS._currentDistrict = district
   params.sector = `undefined`  if params.sector is "overview"
+  ###
+  We ALWAYS need to load the sectors first (either cached or not) in order
+  to determine if the sector is valid.
+  ###
   district.sectors_data_loader().done ->
-    prepFacilities params
+    # once the sectors are downloaded, we can set the environment
+    # variables.
 
-    fetchers = {}
-    for mod in ["variables/variables",
-                "presentation/facilities",
-                "data/facilities", "data/lga_data"]
-      dmod = district.get_data_module(mod)
-      fetchers[dmod.sanitizedId()] = dmod.fetch()
+    # and ensure the correct DOM elements exists and are visible
+    NMIS.panels.changePanel "facilities"
 
-    fetchers.lga_data = district.loadData()  if district.has_data_module("data/lga_data")
-    fetchers.variableList = district.loadVariables()
+    NMIS.Env do ->
+      ###
+      This self-invoking function returns and sets the environment
+      object which we will be using for the page view.
+      ###
+      e =
+        lga: district
+        state: district.group
+        mode: facilitiesMode
+        sector: NMIS.Sectors.pluck params.sector
 
-    $.when_O(fetchers).done (results)-> launchFacilities results, params
+      e.subsector = e.sector.getSubsector params.subsector  if params.subsector
+      e.indicator = e.sector.getIndicator params.indicator  if params.indicator
+      e
 
-prepFacilities = (params) ->
-  NMIS.panels.changePanel "facilities"
-  facilitiesMode =
-    name: "Facility Detail"
-    slug: "facilities"
+    do ->
+      # Now that the page is ready, we can load in the
+      # data modules necessary for the facilities view
+      fetchers = {}
+      for mod in ["variables/variables",
+                  "presentation/facilities",
+                  "data/facilities", "data/lga_data"]
+        dmod = district.get_data_module mod
+        fetchers[dmod.sanitizedId()] = dmod.fetch()
 
-  lga = NMIS.getDistrictByUrlCode("#{params.state}/#{params.lga}")
-  state = lga.group
+      fetchers.lga_data = district.loadData()  if district.has_data_module("data/lga_data")
+      fetchers.variableList = district.loadVariables()
 
-  e =
-    state: state
-    lga: lga
-    mode: facilitiesMode
-    sector: NMIS.Sectors.pluck(params.sector)
-
-  e.subsector = e.sector.getSubsector(params.subsector)
-  e.indicator = e.sector.getIndicator(params.indicator)
-  bcValues = NMIS._prepBreadcrumbValues(e, "state lga mode sector subsector indicator".split(" "),
-    state: state
-    lga: lga
-  )
-  NMIS.LocalNav.markActive ["mode:facilities", "sector:" + e.sector.slug]
-  NMIS.Breadcrumb.clear()
-  NMIS.Breadcrumb.setLevels bcValues
-  NMIS.LocalNav.iterate (sectionType, buttonName, a) ->
-    env = _.extend({}, e,
-      subsector: false
-    )
-    env[sectionType] = buttonName
-    a.attr "href", NMIS.urlFor(env)
-
+      $.when_O(fetchers).done (results)->
+        log "Ready to launch!", results
+        # launchFacilities(results, params)
 
 @mustachify = (id, obj) ->
   Mustache.to_html $("#" + id).eq(0).html().replace(/<{/g, "{{").replace(/\}>/g, "}}"), obj

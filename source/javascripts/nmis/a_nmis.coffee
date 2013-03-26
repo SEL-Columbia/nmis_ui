@@ -412,6 +412,36 @@ do ->
 do ->
   NMIS.Env = do ->
     env = false
+    changeCbs = []
+
+    class EnvContext
+      constructor: (@next, @prev)->
+
+      usingSlug: (what, whatSlug)->
+        # Usage: env.usingSlug("mode", "facilities") runs if the next env matches
+        #        "mode:facilities"
+        @_matchingSlug what, whatSlug
+
+      changingToSlug: (what, whatSlug)->
+        # Usage: env.changingToSlug("mode", "facilities") only runs if the previous env
+        #        did not have "mode" match "facilities" but the next one does.
+        # Output is equivalent to:
+        #   @changing(what) and @usingSlug(what, whatSlug)
+        !@_matchingSlug(what, whatSlug, false) and @_matchingSlug(what, whatSlug)
+
+      changing: (what)->
+        @_getSlug(what) isnt @_getSlug(what, false)
+
+      _matchingSlug: (what, whatSlug, checkNext=true)->
+        # returns boolean of whether the environment matches a value
+        @_getSlug(what, checkNext) is whatSlug
+
+      _getSlug: (what, checkNext=true)->
+        # returns a string that hopefully represents the slug of the environment variable
+        checkEnv = if checkNext then @next else @prev
+        obj = checkEnv[what]
+        "#{if obj and obj.slug then obj.slug else obj}"
+
     env_accessor = (arg)->
       if arg?
         set_env arg
@@ -423,11 +453,18 @@ do ->
         _.extend {}, env
       else
         null
-    set_env = (_env)-> env = _.extend {}, _env
+
+    set_env = (_env)->
+      context = new EnvContext(_.extend({}, _env), env)
+      changeCb.call context, context.next, context.prev  for changeCb in changeCbs
+      env = context.next
 
     env_accessor.extend = (o)->
       e = if env then env else {}
       _.extend({}, e, o)
+
+    env_accessor.onChange = (cb)->
+      changeCbs.push cb
 
     env_accessor
 
