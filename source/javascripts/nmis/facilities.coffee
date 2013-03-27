@@ -25,7 +25,6 @@ NMIS.Env.onChange (next, prev)->
   # log "Changing LGA"  if @changing "lga"
 
   if @changingToSlug "mode", "facilities"
-    log "Changing to facilities"
     # This runs only when the environment is *changing to* the "mode" of "facilities"
     NMIS.panels.changePanel "facilities"
 
@@ -114,6 +113,14 @@ The beast: launchFacilities--
 facilitiesMap = false
 
 launchFacilities = (results, params) ->
+  ###
+  Clean up everything below this line
+    |
+    |
+   \ /
+    V
+ -----------------------------------------------------------------
+  ###
   facilities = results.data_facilities
   variableData = results.variables_variables
   facPresentation = results.presentation_facilities
@@ -379,10 +386,10 @@ prepare_data_for_pie_graph = (pieWrap, legend, data, _opts) ->
   if we want to customize stuff (ie. have behavior that changes based on
   different input) then we should work it into the "_opts" parameter.
   ###
-  gid = $(pieWrap).get(0).id
-  unless gid
-    $(pieWrap).attr "id", "pie-wrap"
+  unless gid = $(pieWrap).eq(0).prop "id"
+    $(pieWrap).prop "id", "pie-wrap"
     gid = "pie-wrap"
+
   defaultOpts =
     x: 50
     y: 40
@@ -390,22 +397,22 @@ prepare_data_for_pie_graph = (pieWrap, legend, data, _opts) ->
     font: "12px 'Fontin Sans', Fontin-Sans, sans-serif"
 
   opts = $.extend({}, defaultOpts, _opts)
+
   rearranged_vals = $.map legend, (val) -> $.extend val, value: data[val.key]
-  values = []
-  colors = []
-  legend = []
+  rearranged_vals2 = (val.value = data[val.key]  for val in legend)
+
+  pvals =
+    values: []
+    colors: []
+    legend: []
+
   rearranged_vals.sort (a, b) -> b.value - a.value
 
   for item in rearranged_vals
     if item.value > 0
-      values.push item.value
-      colors.push item.color
-      legend.push "%% - #{item.legend} (##)"
-
-  pvals =
-    values: values
-    colors: colors
-    legend: legend
+      pvals.values.push item.value
+      pvals.colors.push item.color
+      pvals.legend.push "%% - #{item.legend} (##)"
 
   ###
   NOTE: hack to get around a graphael bug!
