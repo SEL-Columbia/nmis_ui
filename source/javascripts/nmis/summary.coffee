@@ -12,7 +12,6 @@ do ->
 
   NMIS.panels.getPanel("summary").addCallbacks open: panelOpen, close: panelClose
 
-summaryMap = false
 _bcKeys = "state lga mode sector subsector indicator".split(" ")
 
 NMIS.Env.onChange (next, prev)->
@@ -36,8 +35,11 @@ NMIS.Env.onChange (next, prev)->
       o = {}
       o[sectionType] = buttonName
       a.attr "href", NMIS.urlFor.extendEnv o
-    # if @changingToSlug("sector", "overview")
-    #   log "chaging *to* overview and within mode:summary"
+    if @changingToSlug("sector", "overview") or @changing "lga"
+      @change.done (env)->
+        # This callback is triggered when NMIS.Env.changeDone()
+        # is called (in this case, after google maps script has loaded)
+        launchGoogleMapSummaryView env.lga
 
 
 NMIS.loadSummary = (s) ->
@@ -80,31 +82,31 @@ NMIS.loadSummary = (s) ->
 
   $.when_O(fetchers).done (results)->
     launch_summary s.params, state, lga, results
-    googleMapsLoad.done -> launchGoogleMapSummaryView(lga)
+    googleMapsLoad.done ->
+      NMIS.Env.changeDone()
 
-  launchGoogleMapSummaryView = (lga)->
-    $mapDiv = $(".profile-box .map").eq(0)
-    mapDiv = $mapDiv.get(0)
-    ll = (+x for x in lga.latLng.split(","))
-    mapZoom = lga.zoomLevel || 9
-    if mapDiv
-      unless summaryMap
-        summaryMap = new google.maps.Map(mapDiv,
-          zoom: mapZoom
-          center: new google.maps.LatLng(ll[1], ll[0])
-          streetViewControl: false
-          panControl: false
-          mapTypeControl: false
-          mapTypeId: google.maps.MapTypeId.HYBRID
-        )
-        summaryMap.mapTypes.set "ng_base_map", NMIS.MapMgr.mapboxLayer(
-          tileset: "nigeria_base"
-          name: "Nigeria"
-        )
-        summaryMap.setMapTypeId "ng_base_map"
-        _rDelay 1, ->
-          google.maps.event.trigger summaryMap, "resize"
-          summaryMap.setCenter new google.maps.LatLng(ll[1], ll[0]), mapZoom
+launchGoogleMapSummaryView = (lga)->
+  $mapDiv = $(".profile-box .map").eq(0)
+  mapDiv = $mapDiv.get(0)
+  ll = (+x for x in lga.latLng.split(","))
+  mapZoom = lga.zoomLevel || 9
+  if mapDiv
+    summaryMap = new google.maps.Map(mapDiv,
+      zoom: mapZoom
+      center: new google.maps.LatLng(ll[1], ll[0])
+      streetViewControl: false
+      panControl: false
+      mapTypeControl: false
+      mapTypeId: google.maps.MapTypeId.HYBRID
+    )
+    summaryMap.mapTypes.set "ng_base_map", NMIS.MapMgr.mapboxLayer(
+      tileset: "nigeria_base"
+      name: "Nigeria"
+    )
+    summaryMap.setMapTypeId "ng_base_map"
+    _rDelay 1, ->
+      google.maps.event.trigger summaryMap, "resize"
+      summaryMap.setCenter new google.maps.LatLng(ll[1], ll[0]), mapZoom
 
 launch_summary = (params, state, lga, query_results={})->
   relevant_data = lga.ssData.relevant_data

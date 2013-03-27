@@ -413,9 +413,12 @@ do ->
   NMIS.Env = do ->
     env = false
     changeCbs = []
+    _latestChangeDeferred = false
 
     class EnvContext
       constructor: (@next, @prev)->
+        # note: a promise object called "@change" will be assigned to each
+        # EnvContext after it is created.
 
       usingSlug: (what, whatSlug)->
         # Usage: env.usingSlug("mode", "facilities") runs if the next env matches
@@ -456,6 +459,8 @@ do ->
 
     set_env = (_env)->
       context = new EnvContext(_.extend({}, _env), env)
+      _latestChangeDeferred = $.Deferred()
+      context.change = _latestChangeDeferred.promise()
       env = context.next
       changeCb.call context, context.next, context.prev  for changeCb in changeCbs
 
@@ -465,6 +470,10 @@ do ->
 
     env_accessor.onChange = (cb)->
       changeCbs.push cb
+
+    env_accessor.changeDone = ()->
+      # Use this (NMIS.Env.changeDone()) to resolve the most recent promise object
+      _latestChangeDeferred.resolve env  if _latestChangeDeferred
 
     env_accessor
 
