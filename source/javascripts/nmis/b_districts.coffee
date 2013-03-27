@@ -222,6 +222,13 @@ class NMIS.District
       dfd.resolve NMIS.variables
     dfd.promise()
 
+  loadSummarySectors: ()->
+    dfd = $.Deferred()
+    @get_data_module("presentation/summary_sectors").fetch().done (results)=>
+      @ssData = results
+      dfd.resolve()
+    dfd.promise()
+
   lookupRecord: (id)->
     matches = []
     matches.push datum  for datum in @lga_data when datum.id is id

@@ -456,8 +456,8 @@ do ->
 
     set_env = (_env)->
       context = new EnvContext(_.extend({}, _env), env)
-      changeCb.call context, context.next, context.prev  for changeCb in changeCbs
       env = context.next
+      changeCb.call context, context.next, context.prev  for changeCb in changeCbs
 
     env_accessor.extend = (o)->
       e = if env then env else {}
