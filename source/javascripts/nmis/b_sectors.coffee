@@ -55,8 +55,11 @@ init = (_sectors, opts) ->
   true
 
 clear = -> sectors = []
-pluck = (slug) ->
-  _(sectors).chain().filter((s) -> s.slug is slug).first().value() or defaultSector
+pluck = (slugOrObj, defaultIfNoMatch=true) ->
+  if slugOrObj
+    slug = if slugOrObj.slug? then slugOrObj.slug else slugOrObj
+    sectorMatch = sector  for sector in sectors when sector.slug is slug
+  unless defaultIfNoMatch then sectorMatch else sectorMatch or defaultSector
 
 all = -> sectors
 validate = ->
