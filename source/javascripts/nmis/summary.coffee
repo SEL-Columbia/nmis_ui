@@ -35,7 +35,7 @@ NMIS.Env.onChange (next, prev)->
       o = {}
       o[sectionType] = buttonName
       a.attr "href", NMIS.urlFor.extendEnv o
-    if @changingToSlug("sector", "overview") or @changing "lga"
+    if @usingSlug("sector", "overview") or @changing "lga"
       @change.done (env)->
         # This callback is triggered when NMIS.Env.changeDone()
         # is called (in this case, after google maps script has loaded)
