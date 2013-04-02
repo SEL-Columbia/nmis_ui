@@ -142,7 +142,7 @@ class NMIS.DataRecord
       value
 
   variable: ->
-    NMIS.variables.find @id
+    @lga.variableSet.find @id
 
 class NoOpFetch
   constructor: (@id)->
@@ -163,6 +163,7 @@ class NMIS.District
     [@group_slug, @slug] = d.url_code.split("/")
     @files = [] unless @files?
     @module_files = (new Module(slug, f_param, @) for slug, f_param of @files)
+    @_fetchesInProgress = {}
     @latLng = @lat_lng
     @id = [@group_slug, @local_id].join("_")
     @html_params =
@@ -202,32 +203,58 @@ class NMIS.District
     catch e
       false
 
+  _fetchModuleOnce: (resultAttribute, moduleId, cb=false)->
+    if @[resultAttribute]
+      # the result's already there so this returns a resolved promise
+      $.Deferred().resolve().promise()
+    else if @_fetchesInProgress[resultAttribute]
+      # the previous fetch is still in progress so this returns that promise obj
+      @_fetchesInProgress[resultAttribute]
+    else
+      # no previous fetch, so this returns a new fetch.
+      dfd = $.Deferred()
+      @get_data_module(moduleId).fetch().done (results)=>
+        @[resultAttribute] = if cb then cb(results) else results
+        dfd.resolve()
+      @_fetchesInProgress[resultAttribute] = dfd.promise()
+
+  loadFacilitiesData: ()->
+    @_fetchModuleOnce "facilityData", "data/facilities", (results)=>
+      # NMIS.loadFacilities will be removed soon
+      NMIS.loadFacilities results
+
+      # this replicates the functionality of NMIS.loadFacilities, but stores
+      # the results with the specific LGA.
+      clonedFacilitiesById = {}
+      for own facKey, fac of results
+        id = fac._id or facKey
+        datum = {}
+        for own key, val of fac
+          if key is "gps"
+            datum._ll = do ->
+              if val and ll = val.split?(" ")
+                [ll[0], ll[1]]
+          else if key is "sector"
+            datum.sector = NMIS.Sectors.pluck val.toLowerCase()
+          else
+            datum[key] = val
+        clonedFacilitiesById[facKey] = datum
+      clonedFacilitiesById
+
   loadData: ()->
-    dfd = $.Deferred()
-    # todo datamod/data
-    loader = @get_data_module("data/lga_data").fetch()
-    loader.done (results)=>
-      @lga_data = for d in results.data
+    @_fetchModuleOnce "lga_data", "data/lga_data", (results)=>
+      for d in results.data
         new NMIS.DataRecord @, d
 
-      dfd.resolve @lga_data
-    dfd.promise()
-
   loadVariables: ()->
-    dfd = $.Deferred()
-    # todo datamod/variables
-    @get_data_module("variables/variables").fetch().done (results)=>
-      NMIS.variables.clear()
-      NMIS.variables.load results
-      dfd.resolve NMIS.variables
-    dfd.promise()
+    @_fetchModuleOnce "variableSet", "variables/variables", (results)=>
+      new NMIS.VariableSet results
+
+  loadFacilitiesPresentation: ()->
+    @_fetchModuleOnce "facilitiesPresentation", "presentation/facilities"
 
   loadSummarySectors: ()->
-    dfd = $.Deferred()
-    @get_data_module("presentation/summary_sectors").fetch().done (results)=>
-      @ssData = results
-      dfd.resolve()
-    dfd.promise()
+    @_fetchModuleOnce "ssData", "presentation/summary_sectors"
 
   lookupRecord: (id)->
     matches = []
@@ -274,9 +301,6 @@ class NMIS.Group
       g = g.group
     ps
 
-_sanitizeStr = (str)->
-  "#{str}".toLowerCase().replace(/\W/, "_").replace(/__/g, "_")
-
 class Module
   @DEFAULT_MODULES = []
   constructor: (@id, file_param, district)->
@@ -286,9 +310,6 @@ class Module
       @filename = file_param
       @files = [new ModuleFile(file_param, district)]
     @name = @id
-  sanitizedId: ()->
-    @_sanitizedId = _sanitizeStr @name  unless @_sanitizedId
-    @_sanitizedId
   fetch: ()->
     $.when.apply null, (f.fetch() for f in @files)
 
