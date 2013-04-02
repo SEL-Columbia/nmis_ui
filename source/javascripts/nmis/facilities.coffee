@@ -35,12 +35,25 @@ NMIS.Env.onChange (next, prev)->
     NMIS.Breadcrumb.clear()
     NMIS.Breadcrumb.setLevels NMIS._prepBreadcrumbValues next, _standardBcSlugs, state: next.state, lga: next.lga
 
+    # Not sure how NMIS.activeSector is used.
+    # Potentially could be removed in favor of NMIS.Env().sector
+    NMIS.activeSector next.sector
+    # setting datawindow height to "calculate" means that the datawindow's
+    # height will be calculated from the total available height minus padding
+    NMIS.DisplayWindow.setDWHeight "calculate"
+
     NMIS.LocalNav.iterate (sectionType, buttonName, a) ->
       env = _.extend {}, next, subsector: false
       env[sectionType] = buttonName
       a.attr "href", NMIS.urlFor env
 
     do ->
+      ###
+      Checklist for what needs to happen here:
+      1. fetch all data (if not already loaded)
+      2. begin google maps load (if not already loaded)
+      ###
+      # 1.) fetch all data (if not already loaded)
       district = next.lga
       fetchers =
         presentation_facilities: district.loadFacilitiesPresentation()
@@ -51,11 +64,32 @@ NMIS.Env.onChange (next, prev)->
       # todo: figure out if it is.
       fetchers.lga_data = district.loadData()  if district.has_data_module("data/lga_data")
 
+      # 2.) begin google maps load (if not already loaded)
+      # loadGoogleMaps = NMIS.loadGoogleMaps()
+
       $.when_O(fetchers).done ()->
-        isolated_functionality NMIS.Env(), district
+        ###
+        Checklist for what needs to happen here:
+        1. Draw Facility Table for current sector
+        2. Ensure map is drawn with icons
+        ###
+
+        if next.sector.slug is "overview"
+          displayOverview district, district.facilitiesPresentation.profile_indicator_ids
+        else
+          displayFacilitySector district, next
+
+        resizeDisplayWindowAndFacilityTable()
+
+        NMIS.FacilitySelector.activate id: next.facility  if next.facility
+
+        draw_google_map_with_icons NMIS.Env(), district
+
+ensure_dw_resize_set = _.once ->
+  NMIS.DisplayWindow.addCallback "resize", (tf, size) ->
+    resizeDisplayWindowAndFacilityTable()  if size is "middle" or size is "full"
 
 NMIS.launch_facilities = ->
-
   params = {}
 
   params.facility = do ->
@@ -71,6 +105,7 @@ NMIS.launch_facilities = ->
 
   NMIS._currentDistrict = district
   params.sector = `undefined`  if params.sector is "overview"
+
   ###
   We ALWAYS need to load the sectors first (either cached or not) in order
   to determine if the sector is valid.
@@ -78,9 +113,6 @@ NMIS.launch_facilities = ->
   district.sectors_data_loader().done ->
     # once the sectors are downloaded, we can set the environment
     # variables.
-
-    # and ensure the correct DOM elements exists and are visible
-    NMIS.panels.changePanel "facilities"
 
     NMIS.Env do ->
       ###
@@ -98,29 +130,12 @@ NMIS.launch_facilities = ->
       e.facility = params.facility  if params.facility
       e
 
-# BEGIN isolated_functionality
+# BEGIN draw_google_map_with_icons
 facilitiesMap = false
-isolated_functionality = (env, district)->
-  state = district.group
-
-  profileVariables = district.facilitiesPresentation.profile_indicator_ids
-
-  sector = env.sector
-
-  dTableHeight = undefined
-
-  NMIS.activeSector sector
-
-  if env.sector isnt `undefined` and env.subsector is `undefined`
-    env.subsector = _.first(env.sector.subGroups())
-    env.subsectorUndefined = true
-  MapMgr_opts =
-    # llString: lgaData.profileData.gps.value
-    elem: NMIS._wElems.elem0
-
-  mapZoom = 8
+draw_google_map_with_icons = (env, district)->
 
   NMIS.loadGoogleMaps().done ()->
+    mapZoom = 8
     ll = (+x for x in district.lat_lng.split(","))
 
     unless facilitiesMap
@@ -234,23 +249,7 @@ isolated_functionality = (env, district)->
         google.maps.event.trigger facilitiesMap, "resize"
 
   # NMIS.MapMgr.init()
-
-  if window.dwResizeSet is `undefined`
-    window.dwResizeSet = true
-    NMIS.DisplayWindow.addCallback "resize", (tf, size) ->
-      resizeDisplayWindowAndFacilityTable()  if size is "middle" or size is "full"
-
-  NMIS.DisplayWindow.setDWHeight "calculate"
-
-  # resizeDataTable(NMIS.DisplayWindow.getSize());
-  if env.sector.slug is "overview"
-    displayOverview district, profileVariables
-  else
-    displayFacilitySector district, env
-
-  resizeDisplayWindowAndFacilityTable()
-  NMIS.FacilitySelector.activate id: env.facility  unless not env.facility
-# END isolated_functionality
+# END draw_google_map_with_icons
 
 @mustachify = (id, obj) ->
   Mustache.to_html $("#" + id).eq(0).html().replace(/<{/g, "{{").replace(/\}>/g, "}}"), obj
@@ -297,21 +296,21 @@ displayOverview = (district, profileVariables)->
   NMIS._wElems.elem1content.html _.template($("#facilities-overview").html(), obj)
 
 displayFacilitySector = (lga, e)->
-  if !!e.subsectorUndefined or not NMIS.FacilitySelector.isActive()
+  if 'subsector' not in e or not NMIS.FacilitySelector.isActive()
     NMIS.IconSwitcher.shiftStatus (id, item) ->
       (if item.sector is e.sector then "normal" else "background")
 
   displayTitle = "Facility Detail: #{lga.label} » #{e.sector.name}"
   NMIS.DisplayWindow.setTitle displayTitle, displayTitle + " - " + e.subsector.name  unless not e.subsector
 
-  #        NMIS.DisplayWindow.unsetTempSize(true);
   NMIS._wElems.elem1content.empty()
   twrap = $("<div />",
     class: "facility-table-wrap"
   ).append($("<div />").attr("class", "clearfix").html("&nbsp;")).appendTo(NMIS._wElems.elem1content)
-  tableElem = NMIS.SectorDataTable.createIn(twrap, e,
-    sScrollY: 1000
-  ).addClass("bs")
+
+  defaultSubsector = _.first(e.sector.subGroups())
+  eModded = if 'subsector' not in e then _.extend({}, e, subsector: defaultSubsector) else e
+  tableElem = NMIS.SectorDataTable.createIn(twrap, eModded, sScrollY: 1000).addClass("bs")
   unless not e.indicator
     do ->
       if e.indicator.iconify_png_url
