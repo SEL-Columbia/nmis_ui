@@ -79,12 +79,13 @@ do ->
         datum._latlng = [llArr[0], llArr[1]]
     true
 
-  _s = undefined
-  NMIS.activeSector = (s) ->
-    if s is `undefined`
-      _s
-    else
-      _s = s
+  NMIS.activeSector = do ->
+    currentSector = false
+    (sector) ->
+      if sector is `undefined`
+        currentSector
+      else
+        currentSector = sector
 
   #uses: NMIS.Sectors, data
   NMIS.dataForSector = (sectorSlug) ->
