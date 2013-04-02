@@ -33,13 +33,26 @@ NMIS.Env.onChange (next, prev)->
     NMIS.LocalNav.markActive ["mode:facilities", "sector:#{next.sector.slug}"]
 
     NMIS.Breadcrumb.clear()
-    breadcrumbValues = NMIS._prepBreadcrumbValues next, _standardBcSlugs, state: next.state, lga: next.lga
-    NMIS.Breadcrumb.setLevels breadcrumbValues
+    NMIS.Breadcrumb.setLevels NMIS._prepBreadcrumbValues next, _standardBcSlugs, state: next.state, lga: next.lga
 
     NMIS.LocalNav.iterate (sectionType, buttonName, a) ->
       env = _.extend {}, next, subsector: false
       env[sectionType] = buttonName
       a.attr "href", NMIS.urlFor env
+
+    do ->
+      district = next.lga
+      fetchers =
+        presentation_facilities: district.loadFacilitiesPresentation()
+        data_facilities: district.loadFacilitiesData()
+        variableList: district.loadVariables()
+
+      # not sure if lga_data / district.loadData() is necessary at all...
+      # todo: figure out if it is.
+      fetchers.lga_data = district.loadData()  if district.has_data_module("data/lga_data")
+
+      $.when_O(fetchers).done ()->
+        isolated_functionality NMIS.Env(), district
 
 NMIS.launch_facilities = ->
 
@@ -85,22 +98,159 @@ NMIS.launch_facilities = ->
       e.facility = params.facility  if params.facility
       e
 
-    do ->
-      # Now that the page is ready, we can load in the
-      # data modules necessary for the facilities view
-      fetchers = {}
-      for mod in ["variables/variables",
-                  "presentation/facilities",
-                  "data/facilities", "data/lga_data"]
-        dmod = district.get_data_module mod
-        fetchers[dmod.sanitizedId()] = dmod.fetch()
+# BEGIN isolated_functionality
+facilitiesMap = false
+isolated_functionality = (env, district)->
+  state = district.group
 
-      fetchers.lga_data = district.loadData()  if district.has_data_module("data/lga_data")
-      fetchers.variableList = district.loadVariables()
+  profileVariables = district.facilitiesPresentation.profile_indicator_ids
 
-      $.when_O(fetchers).done (results)->
-        district.facilityResults = results
-        launchFacilities district
+  sector = env.sector
+
+  dTableHeight = undefined
+
+  NMIS.activeSector sector
+
+  if env.sector isnt `undefined` and env.subsector is `undefined`
+    env.subsector = _.first(env.sector.subGroups())
+    env.subsectorUndefined = true
+  MapMgr_opts =
+    # llString: lgaData.profileData.gps.value
+    elem: NMIS._wElems.elem0
+
+  mapZoom = 8
+
+  NMIS.loadGoogleMaps().done ()->
+    ll = (+x for x in district.lat_lng.split(","))
+
+    unless facilitiesMap
+      # generateFacilitiesMap(district, mapZoom, ll)
+      do ->
+        iconURLData = (item) ->
+          sectorIconURL = (slug, status) ->
+            iconFiles =
+              education: "education.png"
+              health: "health.png"
+              water: "water.png"
+              default: "book_green_wb.png"
+            "#{NMIS.settings.pathToMapIcons}/icons_f/#{status}_#{iconFiles[slug] or iconFiles.default}"
+          slug = undefined
+          status = item.status
+          return item._custom_png_data  if status is "custom"
+          slug = item.iconSlug or item.sector.slug
+          [sectorIconURL(slug, status), 32, 24]
+        markerClick = ->
+          sslug = NMIS.activeSector().slug
+          if sslug is @nmis.item.sector.slug or sslug is "overview"
+            dashboard.setLocation NMIS.urlFor _.extend NMIS.Env(), facility: @nmis.id
+        markerMouseover = ->
+          sslug = NMIS.activeSector().slug
+          NMIS.FacilityHover.show this  if @nmis.item.sector.slug is sslug or sslug is "overview"
+        markerMouseout = ->
+          NMIS.FacilityHover.hide()
+        mapClick = ->
+          if NMIS.FacilitySelector.isActive()
+            NMIS.FacilitySelector.deselect()
+            dashboard.setLocation NMIS.urlFor(_.extend(NMIS.Env(),
+              facility: false
+            ))
+        facilitiesMap = new google.maps.Map(NMIS._wElems.elem0.get(0),
+          zoom: mapZoom
+          center: new google.maps.LatLng(ll[0], ll[1])
+          streetViewControl: false
+          panControl: false
+          mapTypeControlOptions:
+            mapTypeIds: ["roadmap", "satellite", "terrain", "OSM"]
+
+          mapTypeId: google.maps.MapTypeId["SATELLITE"]
+        )
+        facilitiesMap.overlayMapTypes.insertAt 0, NMIS.MapMgr.mapboxLayer(
+          tileset: "nigeria_overlays_white"
+          name: "Nigeria"
+        )
+        facilitiesMap.mapTypes.set "OSM", new google.maps.ImageMapType(
+          getTileUrl: (coord, zoom) ->
+            "http://tile.openstreetmap.org/#{zoom}/#{coord.x}/#{coord.y}.png"
+
+          tileSize: new google.maps.Size(256, 256)
+          name: "OSM"
+          maxZoom: 18
+        )
+        bounds = new google.maps.LatLngBounds()
+        google.maps.event.addListener facilitiesMap, "click", mapClick
+        NMIS.IconSwitcher.setCallback "createMapItem", (item, id, itemList) ->
+          if !!item._ll and not @mapItem(id)
+            $gm = google.maps
+            item.iconSlug = item.iconType or item.sector.slug
+            td = iconURLData(item)
+
+            iconData =
+              url: td[0]
+              size: new $gm.Size(td[1], td[2])
+
+            mI =
+              latlng: new $gm.LatLng(item._ll[0], item._ll[1])
+              icon: new $gm.MarkerImage(iconData.url, iconData.size)
+
+            mI.marker = new $gm.Marker(
+              position: mI.latlng
+              map: facilitiesMap
+              icon: mI.icon
+            )
+            mI.marker.setZIndex (if item.status is "normal" then 99 else 11)
+            mI.marker.nmis =
+              item: item
+              id: id
+
+            google.maps.event.addListener mI.marker, "click", markerClick
+            google.maps.event.addListener mI.marker, "mouseover", markerMouseover
+            google.maps.event.addListener mI.marker, "mouseout", markerMouseout
+            bounds.extend mI.latlng
+            @mapItem id, mI
+
+        NMIS.IconSwitcher.createAll()
+        district.bounds = bounds
+        _rDelay 1, ->
+          google.maps.event.trigger facilitiesMap, "resize"
+          facilitiesMap.fitBounds bounds
+        NMIS.IconSwitcher.setCallback "shiftMapItemStatus", (item, id) ->
+          mapItem = @mapItem(id)
+          unless not mapItem
+            icon = mapItem.marker.getIcon()
+            icon.url = iconURLData(item)[0]
+            mapItem.marker.setIcon icon
+
+    else
+      ###
+      Recenter the map. (unnecessary? annoying?)
+      ###
+      _rDelay 1, ->
+        if district.bounds
+          facilitiesMap.fitBounds district.bounds
+        else
+          facilitiesMap.setCenter new google.maps.LatLng(ll[0], ll[1])
+
+          facilitiesMap.setZoom(facilitiesMap.getZoom()+1)
+        google.maps.event.trigger facilitiesMap, "resize"
+
+  # NMIS.MapMgr.init()
+
+  if window.dwResizeSet is `undefined`
+    window.dwResizeSet = true
+    NMIS.DisplayWindow.addCallback "resize", (tf, size) ->
+      resizeDisplayWindowAndFacilityTable()  if size is "middle" or size is "full"
+
+  NMIS.DisplayWindow.setDWHeight "calculate"
+
+  # resizeDataTable(NMIS.DisplayWindow.getSize());
+  if env.sector.slug is "overview"
+    displayOverview district, profileVariables
+  else
+    displayFacilitySector district, env
+
+  resizeDisplayWindowAndFacilityTable()
+  NMIS.FacilitySelector.activate id: env.facility  unless not env.facility
+# END isolated_functionality
 
 @mustachify = (id, obj) ->
   Mustache.to_html $("#" + id).eq(0).html().replace(/<{/g, "{{").replace(/\}>/g, "}}"), obj
@@ -111,199 +261,21 @@ resizeDisplayWindowAndFacilityTable = ->
   cf = $(".clearfix", NMIS._wElems.elem1).eq(0).height()
   NMIS.SectorDataTable.setDtMaxHeight ah - bar - cf - 18
 
-###
-The beast: launchFacilities--
-###
-facilitiesMap = false
 
-launchFacilities = (lga) ->
-  ###
-  Clean up everything below this line
-    |
-    |
-   \ /
-    V
- -----------------------------------------------------------------
-  ###
-  facilities = lga.facilityResults.data_facilities
-  # variableData = lga.facilityResults.variables_variables
-  profileVariables = lga.facilityResults.presentation_facilities.profile_indicator_ids
-
-  env = NMIS.Env()
-
-  # lga = NMIS._currentDistrict
-  state = lga.group
-
-  # sectors = variableData.sectors
-  sector = NMIS.Sectors.pluck(env.sector)
-  console.error sector  unless env.sector is sector
-
-  e =
-    state: state
-    lga: lga
-    mode: "facilities"
-    sector: sector
-    subsector: sector.getSubsector env.subsector
-    indicator: sector.getIndicator env.indicator
-    facility: env.facility
-
-  dTableHeight = undefined
-
-  NMIS.activeSector sector
-  NMIS.loadFacilities facilities
-  if e.sector isnt `undefined` and e.subsector is `undefined`
-    e.subsector = _.first(e.sector.subGroups())
-    e.subsectorUndefined = true
-  MapMgr_opts =
-    # llString: lgaData.profileData.gps.value
-    elem: NMIS._wElems.elem0
-
-  mapZoom = 8
-
-  NMIS.loadGoogleMaps().done ()->
-    createFacilitiesMap(lga, mapZoom)
-
-  # NMIS.MapMgr.init()
-
-  if window.dwResizeSet is `undefined`
-    window.dwResizeSet = true
-    NMIS.DisplayWindow.addCallback "resize", (tf, size) ->
-      resizeDisplayWindowAndFacilityTable()  if size is "middle" or size is "full"
-
-  NMIS.DisplayWindow.setDWHeight "calculate"
-  
-  # resizeDataTable(NMIS.DisplayWindow.getSize());
-  if e.sector.slug is "overview"
-    displayOverview lga, profileVariables
-  else
-    displayFacilitySector lga, e
-
-  resizeDisplayWindowAndFacilityTable()
-  NMIS.FacilitySelector.activate id: e.facility  unless not e.facility
-
-createFacilitiesMap = (lga, mapZoom)->
-  # OSM google maps layer code from:
-  # http://wiki.openstreetmap.org/wiki/Google_Maps_Example#Example_Using_Google_Maps_API_V3
-  iconURLData = (item) ->
-    sectorIconURL = (slug, status) ->
-      iconFiles =
-        education: "education.png"
-        health: "health.png"
-        water: "water.png"
-        default: "book_green_wb.png"
-      "#{NMIS.settings.pathToMapIcons}/icons_f/#{status}_#{iconFiles[slug] or iconFiles.default}"
-    slug = undefined
-    status = item.status
-    return item._custom_png_data  if status is "custom"
-    slug = item.iconSlug or item.sector.slug
-    [sectorIconURL(slug, status), 32, 24]
-  markerClick = ->
-    sslug = NMIS.activeSector().slug
-    if sslug is @nmis.item.sector.slug or sslug is "overview"
-      dashboard.setLocation NMIS.urlFor _.extend NMIS.Env(), facility: @nmis.id
-  markerMouseover = ->
-    sslug = NMIS.activeSector().slug
-    NMIS.FacilityHover.show this  if @nmis.item.sector.slug is sslug or sslug is "overview"
-  markerMouseout = ->
-    NMIS.FacilityHover.hide()
-  mapClick = ->
-    if NMIS.FacilitySelector.isActive()
-      NMIS.FacilitySelector.deselect()
-      dashboard.setLocation NMIS.urlFor(_.extend(NMIS.Env(),
-        facility: false
-      ))
-  ll = (+x for x in lga.lat_lng.split(","))
-  unless not facilitiesMap
-    _rDelay 1, ->
-      if lga.bounds
-        facilitiesMap.fitBounds lga.bounds
-      else
-        facilitiesMap.setCenter new google.maps.LatLng(ll[0], ll[1])
-        
-        facilitiesMap.setZoom(facilitiesMap.getZoom()+1)
-      google.maps.event.trigger facilitiesMap, "resize"
-    return
-  else
-    facilitiesMap = new google.maps.Map(NMIS._wElems.elem0.get(0),
-      zoom: mapZoom
-      center: new google.maps.LatLng(ll[0], ll[1])
-      streetViewControl: false
-      panControl: false
-      mapTypeControlOptions:
-        mapTypeIds: ["roadmap", "satellite", "terrain", "OSM"]
-
-      mapTypeId: google.maps.MapTypeId["SATELLITE"]
-    )
-    facilitiesMap.overlayMapTypes.insertAt 0, NMIS.MapMgr.mapboxLayer(
-      tileset: "nigeria_overlays_white"
-      name: "Nigeria"
-    )
-  facilitiesMap.mapTypes.set "OSM", new google.maps.ImageMapType(
-    getTileUrl: (coord, zoom) ->
-      "http://tile.openstreetmap.org/#{zoom}/#{coord.x}/#{coord.y}.png"
-
-    tileSize: new google.maps.Size(256, 256)
-    name: "OSM"
-    maxZoom: 18
-  )
-  bounds = new google.maps.LatLngBounds()
-  google.maps.event.addListener facilitiesMap, "click", mapClick
-  NMIS.IconSwitcher.setCallback "createMapItem", (item, id, itemList) ->
-    if !!item._ll and not @mapItem(id)
-      $gm = google.maps
-      item.iconSlug = item.iconType or item.sector.slug
-      td = iconURLData(item)
-
-      iconData =
-        url: td[0]
-        size: new $gm.Size(td[1], td[2])
-
-      mI =
-        latlng: new $gm.LatLng(item._ll[0], item._ll[1])
-        icon: new $gm.MarkerImage(iconData.url, iconData.size)
-
-      mI.marker = new $gm.Marker(
-        position: mI.latlng
-        map: facilitiesMap
-        icon: mI.icon
-      )
-      mI.marker.setZIndex (if item.status is "normal" then 99 else 11)
-      mI.marker.nmis =
-        item: item
-        id: id
-
-      google.maps.event.addListener mI.marker, "click", markerClick
-      google.maps.event.addListener mI.marker, "mouseover", markerMouseover
-      google.maps.event.addListener mI.marker, "mouseout", markerMouseout
-      bounds.extend mI.latlng
-      @mapItem id, mI
-
-  NMIS.IconSwitcher.createAll()
-  lga.bounds = bounds
-  _rDelay 1, ->
-    google.maps.event.trigger facilitiesMap, "resize"
-    facilitiesMap.fitBounds bounds
-  NMIS.IconSwitcher.setCallback "shiftMapItemStatus", (item, id) ->
-    mapItem = @mapItem(id)
-    unless not mapItem
-      icon = mapItem.marker.getIcon()
-      icon.url = iconURLData(item)[0]
-      mapItem.marker.setIcon icon
-
-displayOverview = (lga, profileVariables)->
+displayOverview = (district, profileVariables)->
   NMIS._wElems.elem1content.empty()
-  displayTitle = "Facility Detail: #{lga.label} » Overview"
+  displayTitle = "Facility Detail: #{district.label} » Overview"
   NMIS.DisplayWindow.setTitle displayTitle
   NMIS.IconSwitcher.shiftStatus (id, item) ->
     "normal"
 
   obj =
-    lgaName: "#{lga.name}, #{lga.group.name}"
+    lgaName: "#{district.name}, #{district.group.name}"
 
   obj.profileData = do ->
     outp = for vv in profileVariables
-      variable = NMIS.variables.find(vv)
-      value = lga.lookupRecord vv
+      variable = district.variableSet.find(vv)
+      value = district.lookupRecord vv
 
       name: variable?.name
       value: value?.value
