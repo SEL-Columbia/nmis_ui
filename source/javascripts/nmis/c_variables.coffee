@@ -8,21 +8,16 @@ class Variable
     @data_type = v.data_type || "float"
     @precision = v.precision || 2
 
-NMIS.variables = do ->
-  clear = ()->
-    
-  load = (variables)->
+class NMIS.VariableSet
+  constructor: (variables)->
+    log "created new variable set for lga"
+    @variablesById = {}
     list = variables.list
     for v in list
       vrb = new Variable v
-      variablesById[vrb.id] = vrb  if vrb.id
+      @variablesById[vrb.id] = vrb  if vrb.id
 
-  ids = ->
-    key for key, val of variablesById
+  ids: ()->
+    key for key, val of @variablesById
 
-  find = (id)-> variablesById[id]
-
-  load: load
-  clear: clear
-  ids: ids
-  find: find
+  find: (id)-> @variablesById[id]

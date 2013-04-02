@@ -148,7 +148,7 @@ build_all_sector_summary_modules = (lga)->
         div = $('<div>')
         context.lookupName = (id)->
           if id
-            vrb = NMIS.variables.find id
+            vrb = lga.variableSet.find id
             if vrb
               spanStr vrb.name, "variable-name"
             else
