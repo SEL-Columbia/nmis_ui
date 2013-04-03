@@ -7,6 +7,7 @@ class Variable
     @name   = v.name
     @data_type = v.data_type || "float"
     @precision = v.precision || 1
+    @context = v.context || null
 
 NMIS.variables = do ->
   clear = ()->
