@@ -1,5 +1,11 @@
 do ->
   NMIS.SectorDataTable = do ->
+    ###
+    This creates the facilities data table.
+
+    (seen at #/state/district/facilites/health)
+    [wrapper element className: ".facility-table-wrap"]
+    ###
     dt = undefined
     table = undefined
     tableSwitcher = undefined

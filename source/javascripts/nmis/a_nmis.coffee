@@ -294,6 +294,24 @@ do ->
 
 do ->
   NMIS.LocalNav = do ->
+    ###
+    NMIS.LocalNav is the navigation boxes that shows up on top of the map.
+    > It has "buttonSections", each with buttons inside. These buttons are defined
+      when they are passed as arguments to NMIS.LocalNav.init(...)
+
+    > It is structured to make it easy to assign the buttons to point to URLs
+      relative to the active LGA. It is also meant to be easy to change which
+      buttons are active by passing values to NMIS.LocalNav.markActive(...)
+
+      An example value passed to markActive:
+        NMIS.LocalNav.markActive(["mode:facilities", "sector:health"])
+          ** this would "select" facilities and health **
+
+    > You can also run NMIS.LocalNav.iterate to run through each button, changing
+      the href to something appropriate given the current page state.
+
+    [wrapper element className: ".local-nav"]
+    ###
     elem = undefined
     wrap = undefined
     opts = undefined
@@ -379,6 +397,9 @@ do ->
 
 do ->
   NMIS.Tabulation = do ->
+    ###
+    This is only currently used in the pie chart graphing of facility indicators.
+    ###
     init = -> true
     filterBySector = (sector) ->
       sector = NMIS.Sectors.pluck(sector)
@@ -411,6 +432,12 @@ do ->
 
 do ->
   NMIS.Env = do ->
+    ###
+    NMIS.Env() gets-or-sets the page state.
+
+    It also provides the option to trigger callbacks which are run in a
+    special context upon each change of the page-state (each time NMIS.Env() is set)
+    ###
     env = false
     changeCbs = []
     _latestChangeDeferred = false
@@ -479,6 +506,10 @@ do ->
 
 
 NMIS.panels = do ->
+  ###
+  NMIS.panels provides a basic way to define HTML DOM-related behavior when navigating from
+  one section of the site to another. (e.g. "summary" to "facilities".)
+  ###
   panels = {}
   currentPanel = false
 
@@ -522,7 +553,12 @@ NMIS.panels = do ->
   allPanels: ()-> (v for k, v of panels)
 
 do ->
+
   NMIS.DisplayWindow = do ->
+    ###
+    NMIS.DisplayWindow builds and provides access to the multi-part structure of
+    the facilities view.
+    ###
     elem = undefined
     elem1 = undefined
     elem0 = undefined
