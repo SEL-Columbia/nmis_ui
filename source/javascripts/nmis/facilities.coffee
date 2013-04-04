@@ -310,7 +310,7 @@ displayFacilitySector = (lga, e)->
 
   defaultSubsector = _.first(e.sector.subGroups())
   eModded = if 'subsector' not in e then _.extend({}, e, subsector: defaultSubsector) else e
-  tableElem = NMIS.SectorDataTable.createIn(twrap, eModded, sScrollY: 1000).addClass("bs")
+  tableElem = NMIS.SectorDataTable.createIn(lga, twrap, eModded, sScrollY: 1000).addClass("bs")
   unless not e.indicator
     do ->
       if e.indicator.iconify_png_url
