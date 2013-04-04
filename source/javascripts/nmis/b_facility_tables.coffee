@@ -10,11 +10,11 @@ do ->
     table = undefined
     tableSwitcher = undefined
 
-    createIn = (tableWrap, env, _opts) ->
+    createIn = (district, tableWrap, env, _opts) ->
       opts = _.extend(
         sScrollY: 120
       , _opts)
-      data = NMIS.dataForSector(env.sector.slug)
+      data = district.facilityDataForSector env.sector.slug
       throw (new Error("Subsector is undefined"))  if env.subsector is `undefined`
       env.subsector = env.sector.getSubsector(env.subsector.slug)
       columns = env.subsector.columns()

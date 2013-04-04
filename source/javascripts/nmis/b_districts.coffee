@@ -241,6 +241,10 @@ class NMIS.District
         clonedFacilitiesById[facKey] = datum
       clonedFacilitiesById
 
+  facilityDataForSector: (sectorSlug)->
+    for own facId, fac of @facilityData when fac.sector.slug is sectorSlug
+      fac
+
   loadData: ()->
     @_fetchModuleOnce "lga_data", "data/lga_data", (results)=>
       for d in results.data
