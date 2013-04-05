@@ -1,6 +1,11 @@
 sectors = null
 defaultSector = null
 
+class DistrictSectors
+  constructor: (@district, _sectors, opts={})->
+    @defaultSector = new Sector(_.extend(opts["default"], default: true))  if opts.default
+    @sectors = _(_sectors).chain().clone().map((s) -> new Sector(_.extend({}, s))).value()
+
 class Sector
   constructor: (d)->
     # "extend" d onto this object but prepend underscore to certain keys
@@ -46,13 +51,16 @@ class SubSector
 class Indicator
   constructor: (@sector, opts) -> @[k] = val  for own k, val of opts
   customIconForItem: (item)->
-    ["#{@iconify_png_url}#{item[@slug]}.png", 32, 24]
+    ["#{NMIS.settings.pathToMapIcons}/#{@iconify_png_url}#{item[@slug]}.png", 32, 24]
 
 init = (_sectors, opts) ->
   if !!opts and !!opts["default"]
     defaultSector = new Sector(_.extend(opts["default"], default: true))
   sectors = _(_sectors).chain().clone().map((s) -> new Sector(_.extend({}, s))).value()
   true
+
+loadForDistrict = (district, data)->
+  district.sectors = new DistrictSectors(district, data)
 
 clear = -> sectors = []
 pluck = (slugOrObj, defaultIfNoMatch=true) ->
@@ -77,6 +85,7 @@ slugs = ->
 
 NMIS.Sectors =
   init: init
+  loadForDistrict: loadForDistrict
   pluck: pluck
   slugs: slugs
   all: all
