@@ -170,18 +170,28 @@ class NMIS.District
       text: @name
       value: @id
     @html_params.disabled = "disabled"  unless @active
+  llArr: ->
+    +coord for coord in @latLng.split ","
+  latLngBounds: ()->
+    if !@_latLngBounds and @bounds
+      @_latLngBounds = @bounds.split /\s|,/
+    else if !@_latLngBounds
+      log """
+      Approximating district lat-lng bounds. You can set district's bounding box in districts.json by
+      setting the value of "bounds" to comma separated coordinates.
+      Format: "SW-lat,SW-lng,NE-lat,NE-lng"
+      Example: "6.645,7.612,6.84,7.762"
+      """
+      # small padding on lat and lng to create an estimated bounding box.
+      # note: this is not meant to be accurate. The best way to actually 
+      # zoom to the district is to specify the bounding box.
+      smallLat = 0.075
+      smallLng = 0.1
+      [lat, lng] = @llArr()
+      @_latLngBounds = [lat - smallLat, lng - smallLng, lat + smallLat, lng + smallLng]
+    @_latLngBounds
   defaultSammyUrl: ()->
     "#{NMIS.url_root}#/#{@group_slug}/#{@slug}/summary"
-  sectors_data_loader: ()->
-    # todo datamod
-    _fetcher = @get_data_module("presentation/sectors")
-    fetcher = _fetcher.fetch()
-    fetcher.done (s)->
-      NMIS.loadSectors s.sectors,
-        default:
-          name: "Overview"
-          slug: "overview"
-    fetcher
 
   get_data_module: (module)->
     for mf in @module_files when mf.name is module
@@ -217,6 +227,14 @@ class NMIS.District
         @[resultAttribute] = if cb then cb(results) else results
         dfd.resolve()
       @_fetchesInProgress[resultAttribute] = dfd.promise()
+
+  sectors_data_loader: ->
+    # TODO: use "sectors" associated with this LGA instead of global NMIS sectors.
+    @_fetchModuleOnce "__sectors_TODO", "presentation/sectors", (results)=>
+      NMIS.loadSectors results.sectors,
+        default:
+          name: "overview"
+          slug: "overview"
 
   loadFacilitiesData: ()->
     @_fetchModuleOnce "facilityData", "data/facilities", (results)=>

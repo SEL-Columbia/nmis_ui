@@ -70,74 +70,6 @@ do ->
       str
 
 do ->
-  NMIS.MapMgr = do->
-    opts = {}
-    started = false
-    finished = false
-    callbackStr = "NMIS.MapMgr.loaded"
-    elem = false
-    fakse = false
-    loadCallbacks = []
-    mapLoadFn = -> NMIS.loadGoogleMaps()
-    addLoadCallback = (cb) -> loadCallbacks.push cb
-    isLoaded = -> finished
-    clear = -> started = finished = false
-    loaded = ->
-      cb.call(opts) for cb in loadCallbacks
-      loadCallbacks = []
-      finished = true
-
-    init = (_opts)->
-      return true  if started
-
-      if _opts isnt `undefined`
-        opts = _.extend(
-          #defaults
-          launch: true
-          fake: false
-          fakeDelay: 3000
-          mapLoadFn: false
-          elem: "body"
-          defaultMapType: "SATELLITE"
-          loadCallbacks: []
-        , _opts)
-        loadCallbacks = Array::concat.apply(loadCallbacks, opts.loadCallbacks)
-        fake = !!opts.fake
-        mapLoadFn = opts.mapLoadFn  if opts.mapLoadFn
-      else
-        fake = false
-      started = true
-      unless fake
-        mapLoadFn()
-      else
-        _.delay loaded, opts.fakeDelay
-      started
-
-    mapboxLayer = (options) ->
-      throw (new Error("Google Maps has not yet loaded into the page."))  if typeof google is "undefined"
-      new google.maps.ImageMapType(
-        getTileUrl: (coord, z) ->
-          # Y coordinate is flipped in Mapbox, compared to Google
-          # Simplistic predictable hashing
-          "http://b.tiles.mapbox.com/v3/modilabs." + options.tileset + "/" + z + "/" + coord.x + "/" + coord.y + ".png?updated=1331159407403"
-
-        name: options.name
-        alt: options.name
-        tileSize: new google.maps.Size(256, 256)
-        isPng: true
-        minZoom: 0
-        maxZoom: options.maxZoom or 17
-      )
-
-    # Externally callable functions:
-    init: init
-    clear: clear
-    loaded: loaded
-    isLoaded: isLoaded
-    mapboxLayer: mapboxLayer
-    addLoadCallback: addLoadCallback
-
-do ->
   NMIS.IconSwitcher = do ->
     context = {}
     callbacks = ["createMapItem", "shiftMapItemStatus", "statusShiftDone", "hideMapItem", "showMapItem", "setMapItemVisibility"]
@@ -462,6 +394,8 @@ do ->
       changing: (what)->
         @_getSlug(what) isnt @_getSlug(what, false)
 
+      changeDone: ()-> @_deferred?.resolve(@next)
+
       _matchingSlug: (what, whatSlug, checkNext=true)->
         # returns boolean of whether the environment matches a value
         @_getSlug(what, checkNext) is whatSlug
@@ -486,7 +420,7 @@ do ->
 
     set_env = (_env)->
       context = new EnvContext(_.extend({}, _env), env)
-      _latestChangeDeferred = $.Deferred()
+      context._deferred = _latestChangeDeferred = $.Deferred()
       context.change = _latestChangeDeferred.promise()
       env = context.next
       changeCb.call context, context.next, context.prev  for changeCb in changeCbs

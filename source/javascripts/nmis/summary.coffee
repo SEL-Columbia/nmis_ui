@@ -99,10 +99,19 @@ launchGoogleMapSummaryView = (lga)->
       mapTypeControl: false
       mapTypeId: google.maps.MapTypeId.HYBRID
     )
-    summaryMap.mapTypes.set "ng_base_map", NMIS.MapMgr.mapboxLayer(
-      tileset: "nigeria_base"
-      name: "Nigeria"
-    )
+    summaryMap.mapTypes.set "ng_base_map", do ->
+      tileset = "nigeria_base"
+      name = "Nigeria"
+      maxZoom = 17
+      new google.maps.ImageMapType
+        getTileUrl: (coord, z) -> "http://b.tiles.mapbox.com/v3/modilabs.#{tileset}/#{z}/#{coord.x}/#{coord.y}.png"
+        name: name
+        alt: name
+        tileSize: new google.maps.Size(256, 256)
+        isPng: true
+        minZoom: 0
+        maxZoom: maxZoom
+
     summaryMap.setMapTypeId "ng_base_map"
     _rDelay 1, ->
       google.maps.event.trigger summaryMap, "resize"

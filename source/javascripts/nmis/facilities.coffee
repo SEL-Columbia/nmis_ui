@@ -47,43 +47,47 @@ NMIS.Env.onChange (next, prev)->
       env[sectionType] = buttonName
       a.attr "href", NMIS.urlFor env
 
-    do ->
-      ###
-      Checklist for what needs to happen here:
-      1. fetch all data (if not already loaded)
-      2. begin google maps load (if not already loaded)
-      ###
-      # 1.) fetch all data (if not already loaded)
+
+    ###
+    determine which map changes should be made
+    ###
+    if @changing("lga") or @changingToSlug("mode", "facilities")
+      repositionMapToDistrictBounds = true
+      addIcons = true
+    if @changing("sector")
+      if next.sector.slug is "overview"
+        featureAllIcons = true
+        displayOverview(next.lga, )
+      else
+        featureIconsOfSector = next.sector
+        displayFacilitySector(next.lga, NMIS.Env())
+    if @changing("facility")
+      if next.facility
+        highlightFacility = next.facility
+      else
+        hideFacility = true
+
+    resizeDisplayWindowAndFacilityTable()
+
+    @change.done ()->
+      withFacilityMapDrawnForDistrict(next.lga).done (nmisMapContext)->
+        nmisMapContext.fitDistrictBounds(next.lga)  if repositionMapToDistrictBounds
+        nmisMapContext.addIcons()  if addIcons
+        nmisMapContext.featureAllIcons()  if featureAllIcons
+        nmisMapContext.featureIconsOfSector(featureIconsOfSector)  if featureIconsOfSector
+        NMIS.FacilitySelector.activate id: highlightFacility  if highlightFacility
+        NMIS.FacilityPopup.hide()  if hideFacility
+
+    do =>
+      # Fetch all data
       district = next.lga
       fetchers =
         presentation_facilities: district.loadFacilitiesPresentation()
         data_facilities: district.loadFacilitiesData()
         variableList: district.loadVariables()
 
-      # not sure if lga_data / district.loadData() is necessary at all...
-      # todo: figure out if it is.
-      fetchers.lga_data = district.loadData()  if district.has_data_module("data/lga_data")
-
-      # 2.) begin google maps load (if not already loaded)
-      # loadGoogleMaps = NMIS.loadGoogleMaps()
-
-      $.when_O(fetchers).done ()->
-        ###
-        Checklist for what needs to happen here:
-        1. Draw Facility Table for current sector
-        2. Ensure map is drawn with icons
-        ###
-
-        if next.sector.slug is "overview"
-          displayOverview district, district.facilitiesPresentation.profile_indicator_ids
-        else
-          displayFacilitySector district, next
-
-        resizeDisplayWindowAndFacilityTable()
-
-        NMIS.FacilitySelector.activate id: next.facility  if next.facility
-
-        draw_google_map_with_icons NMIS.Env(), district
+      # when data is fetched, trigger the "changeDone" callback
+      $.when_O(fetchers).done ()=> @changeDone()
 
 ensure_dw_resize_set = _.once ->
   NMIS.DisplayWindow.addCallback "resize", (tf, size) ->
@@ -130,126 +134,154 @@ NMIS.launch_facilities = ->
       e.facility = params.facility  if params.facility
       e
 
-# BEGIN draw_google_map_with_icons
-facilitiesMap = false
-draw_google_map_with_icons = (env, district)->
+NMIS.mapClick = ()->
+  if NMIS.FacilitySelector.isActive()
+    NMIS.FacilitySelector.deselect()
+    dashboard.setLocation NMIS.urlFor.extendEnv facility: false
 
-  NMIS.loadGoogleMaps().done ()->
-    mapZoom = 8
-    ll = (+x for x in district.lat_lng.split(","))
+withFacilityMapDrawnForDistrict = do ->
+  # gmap is the persisent link to the google.maps.Map object
+  gmap = false
+  $elem = elem = false
 
-    unless facilitiesMap
-      # generateFacilitiesMap(district, mapZoom, ll)
-      do ->
-        iconURLData = (item) ->
-          sectorIconURL = (slug, status) ->
-            iconFiles =
-              education: "education.png"
-              health: "health.png"
-              water: "water.png"
-              default: "book_green_wb.png"
-            "#{NMIS.settings.pathToMapIcons}/icons_f/#{status}_#{iconFiles[slug] or iconFiles.default}"
-          slug = undefined
-          status = item.status
-          return item._custom_png_data  if status is "custom"
-          slug = item.iconSlug or item.sector.slug
-          [sectorIconURL(slug, status), 32, 24]
-        markerClick = ->
-          sslug = NMIS.activeSector().slug
-          if sslug is @nmis.item.sector.slug or sslug is "overview"
-            dashboard.setLocation NMIS.urlFor _.extend NMIS.Env(), facility: @nmis.id
-        markerMouseover = ->
-          sslug = NMIS.activeSector().slug
-          NMIS.FacilityHover.show this  if @nmis.item.sector.slug is sslug or sslug is "overview"
-        markerMouseout = ->
-          NMIS.FacilityHover.hide()
-        mapClick = ->
-          if NMIS.FacilitySelector.isActive()
-            NMIS.FacilitySelector.deselect()
-            dashboard.setLocation NMIS.urlFor(_.extend(NMIS.Env(),
-              facility: false
-            ))
-        facilitiesMap = new google.maps.Map(NMIS._wElems.elem0.get(0),
-          zoom: mapZoom
-          center: new google.maps.LatLng(ll[0], ll[1])
-          streetViewControl: false
-          panControl: false
-          mapTypeControlOptions:
-            mapTypeIds: ["roadmap", "satellite", "terrain", "OSM"]
+  # in this context, district points to the most recently
+  # drawn district.
+  district = false
 
-          mapTypeId: google.maps.MapTypeId["SATELLITE"]
-        )
-        facilitiesMap.overlayMapTypes.insertAt 0, NMIS.MapMgr.mapboxLayer(
-          tileset: "nigeria_overlays_white"
-          name: "Nigeria"
-        )
-        facilitiesMap.mapTypes.set "OSM", new google.maps.ImageMapType(
-          getTileUrl: (coord, zoom) ->
-            "http://tile.openstreetmap.org/#{zoom}/#{coord.x}/#{coord.y}.png"
+  _createMap = ()->
+    gmap = new google.maps.Map elem,
+      streetViewControl: false
+      panControl: false
+      mapTypeControlOptions:
+        mapTypeIds: ["roadmap", "satellite", "terrain", "OSM"]
+      mapTypeId: google.maps.MapTypeId["SATELLITE"]
 
-          tileSize: new google.maps.Size(256, 256)
-          name: "OSM"
-          maxZoom: 18
-        )
-        bounds = new google.maps.LatLngBounds()
-        google.maps.event.addListener facilitiesMap, "click", mapClick
-        NMIS.IconSwitcher.setCallback "createMapItem", (item, id, itemList) ->
-          if !!item._ll and not @mapItem(id)
-            $gm = google.maps
-            item.iconSlug = item.iconType or item.sector.slug
-            td = iconURLData(item)
+    google.maps.event.addListener gmap, "click", NMIS.mapClick
 
-            iconData =
-              url: td[0]
-              size: new $gm.Size(td[1], td[2])
+    gmap.overlayMapTypes.insertAt 0, do ->
+      tileset = "nigeria_overlays_white"
+      name = "Nigeria"
+      maxZoom = 17
+      new google.maps.ImageMapType
+        getTileUrl: (coord, z) -> "http://b.tiles.mapbox.com/v3/modilabs.#{tileset}/#{z}/#{coord.x}/#{coord.y}.png"
+        name: name
+        alt: name
+        tileSize: new google.maps.Size(256, 256)
+        isPng: true
+        minZoom: 0
+        maxZoom: maxZoom
 
-            mI =
-              latlng: new $gm.LatLng(item._ll[0], item._ll[1])
-              icon: new $gm.MarkerImage(iconData.url, iconData.size)
+    gmap.mapTypes.set "OSM", new google.maps.ImageMapType
+      getTileUrl: (c, z) -> "http://tile.openstreetmap.org/#{z}/#{c.x}/#{c.y}.png"
+      tileSize: new google.maps.Size(256, 256)
+      name: "OSM"
+      maxZoom: 18
 
-            mI.marker = new $gm.Marker(
-              position: mI.latlng
-              map: facilitiesMap
-              icon: mI.icon
-            )
-            mI.marker.setZIndex (if item.status is "normal" then 99 else 11)
-            mI.marker.nmis =
-              item: item
-              id: id
+  _addIconsAndListeners = ()->
+    iconURLData = (item) ->
+      slug = undefined
+      status = item.status
+      return item._custom_png_data  if status is "custom"
+      slug = item.iconSlug or item.sector.slug
+      iconFiles =
+        education: "education.png"
+        health: "health.png"
+        water: "water.png"
+        default: "book_green_wb.png?default"
+      filenm = iconFiles[slug] or iconFiles.default
+      # throw new Error("Status is undefined")  unless status?
+      ["#{NMIS.settings.pathToMapIcons}/icons_f/#{status}_#{filenm}", 32, 24]
+    markerClick = ->
+      sslug = NMIS.activeSector().slug
+      if sslug is @nmis.item.sector.slug or sslug is "overview"
+        dashboard.setLocation NMIS.urlFor.extendEnv facility: @nmis.id
+    markerMouseover = ->
+      sslug = NMIS.activeSector().slug
+      NMIS.FacilityHover.show this  if @nmis.item.sector.slug is sslug or sslug is "overview"
+    markerMouseout = ->
+      NMIS.FacilityHover.hide()
 
-            google.maps.event.addListener mI.marker, "click", markerClick
-            google.maps.event.addListener mI.marker, "mouseover", markerMouseover
-            google.maps.event.addListener mI.marker, "mouseout", markerMouseout
-            bounds.extend mI.latlng
-            @mapItem id, mI
+    NMIS.IconSwitcher.setCallback "createMapItem", (item, id, itemList) ->
+      if !!item._ll and not @mapItem(id)
+        $gm = google.maps
+        item.iconSlug = item.iconType or item.sector.slug
+        item.status = "normal"  unless item.status
+        [iurl, iw, ih] = iconURLData(item)
 
-        NMIS.IconSwitcher.createAll()
-        district.bounds = bounds
-        _rDelay 1, ->
-          google.maps.event.trigger facilitiesMap, "resize"
-          facilitiesMap.fitBounds bounds
-        NMIS.IconSwitcher.setCallback "shiftMapItemStatus", (item, id) ->
-          mapItem = @mapItem(id)
-          unless not mapItem
-            icon = mapItem.marker.getIcon()
-            icon.url = iconURLData(item)[0]
-            mapItem.marker.setIcon icon
+        iconData = url: iurl, size: new $gm.Size(iw, ih)
 
-    else
-      ###
-      Recenter the map. (unnecessary? annoying?)
-      ###
-      _rDelay 1, ->
-        if district.bounds
-          facilitiesMap.fitBounds district.bounds
-        else
-          facilitiesMap.setCenter new google.maps.LatLng(ll[0], ll[1])
+        mI =
+          latlng: new $gm.LatLng(item._ll[0], item._ll[1])
+          icon: new $gm.MarkerImage(iconData.url, iconData.size)
 
-          facilitiesMap.setZoom(facilitiesMap.getZoom()+1)
-        google.maps.event.trigger facilitiesMap, "resize"
+        mI.marker = new $gm.Marker
+          position: mI.latlng
+          map: gmap
+          icon: mI.icon
 
-  # NMIS.MapMgr.init()
-# END draw_google_map_with_icons
+        mI.marker.setZIndex (if item.status is "normal" then 99 else 11)
+        mI.marker.nmis = item: item, id: id
+
+        $gm.event.addListener mI.marker, "click", markerClick
+        $gm.event.addListener mI.marker, "mouseover", markerMouseover
+        $gm.event.addListener mI.marker, "mouseout", markerMouseout
+        @mapItem id, mI
+
+    NMIS.IconSwitcher.createAll()
+
+    NMIS.IconSwitcher.setCallback "shiftMapItemStatus", (item, id) ->
+      mapItem = @mapItem(id)
+      unless not mapItem
+        icon = mapItem.marker.getIcon()
+        icon.url = iconURLData(item)[0]
+        mapItem.marker.setIcon icon
+
+  nmisMapContext = do ->
+    createMap = ()-> _createMap()
+
+    addIcons = ()-> _addIconsAndListeners()
+
+    fitDistrictBounds = (_district=false)->
+      district = _district  if _district
+      createMap()  unless gmap
+      throw new Error("Google map [gmap] is not initialized.")  unless gmap
+      [swLat, swLng, neLat, neLng] = district.latLngBounds()
+      bounds = new google.maps.LatLngBounds new google.maps.LatLng(swLat, swLng), new google.maps.LatLng(neLat, neLng)
+      gmap.fitBounds bounds
+
+    featureAllIcons = ()->
+      NMIS.IconSwitcher.shiftStatus () -> "normal"
+
+    featureIconsOfSector = (sector)->
+      NMIS.IconSwitcher.shiftStatus (id, item) ->
+        (if item.sector.slug is sector.slug then "normal" else "background")
+
+    selectFacility = (fac)->
+      NMIS.IconSwitcher.shiftStatus (id, item) ->
+        (if item.id is id then "normal" else "background")
+
+    createMap: createMap
+    addIcons: addIcons
+    fitDistrictBounds: fitDistrictBounds
+    featureAllIcons: featureAllIcons
+    featureIconsOfSector: featureIconsOfSector
+    selectFacility: selectFacility
+    
+
+  (_district)->
+    ###
+    This function is set to "withFacilityMapDrawnForDistrict" but always executed in this scope.
+    ###
+    dfd = $.Deferred()
+
+    $elem = $(NMIS._wElems.elem0)
+    district = _district
+    elem = $elem.get(0)
+    existingMapDistrictId = $elem.data("districtId")
+
+    NMIS.loadGoogleMaps().done ()-> dfd.resolve nmisMapContext
+
+    dfd.promise()
 
 @mustachify = (id, obj) ->
   Mustache.to_html $("#" + id).eq(0).html().replace(/<{/g, "{{").replace(/\}>/g, "}}"), obj
@@ -261,7 +293,8 @@ resizeDisplayWindowAndFacilityTable = ->
   NMIS.SectorDataTable.setDtMaxHeight ah - bar - cf - 18
 
 
-displayOverview = (district, profileVariables)->
+displayOverview = (district)->
+  profileVariables = district.facilitiesPresentation.profile_indicator_ids
   NMIS._wElems.elem1content.empty()
   displayTitle = "Facility Detail: #{district.label} » Overview"
   NMIS.DisplayWindow.setTitle displayTitle
@@ -308,7 +341,7 @@ displayFacilitySector = (lga, e)->
     class: "facility-table-wrap"
   ).append($("<div />").attr("class", "clearfix").html("&nbsp;")).appendTo(NMIS._wElems.elem1content)
 
-  defaultSubsector = _.first(e.sector.subGroups())
+  defaultSubsector = e.sector.subGroups()[0]
   eModded = if 'subsector' not in e then _.extend({}, e, subsector: defaultSubsector) else e
   tableElem = NMIS.SectorDataTable.createIn(lga, twrap, eModded, sScrollY: 1000).addClass("bs")
   unless not e.indicator
@@ -339,6 +372,12 @@ displayFacilitySector = (lga, e)->
         piechartFalse = _.include(column.click_actions, "piechart_false")
         pieChartDisplayDefinitions = undefined
         if piechartTrue
+          # """
+          # legend,color,key
+          # No,#f55,false
+          # Yes,#21c406,true
+          # Undefined,#999,undefined
+          # """
           pieChartDisplayDefinitions = [
             legend: "No"
             color: "#ff5555"
