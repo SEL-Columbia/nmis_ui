@@ -57,19 +57,24 @@ NMIS.Env.onChange (next, prev)->
     if @changing("sector")
       if next.sector.slug is "overview"
         featureAllIcons = true
-        displayOverview(next.lga, )
       else
         featureIconsOfSector = next.sector
-        displayFacilitySector(next.lga, NMIS.Env())
     if @changing("facility")
       if next.facility
         highlightFacility = next.facility
       else
         hideFacility = true
+    if @usingSlug "sector", "overview"
+      loadLgaData = true
 
     resizeDisplayWindowAndFacilityTable()
 
     @change.done ()->
+      if next.sector.slug is "overview"
+        displayOverview(next.lga)
+      else
+        displayFacilitySector(next.lga, NMIS.Env())
+
       withFacilityMapDrawnForDistrict(next.lga).done (nmisMapContext)->
         nmisMapContext.fitDistrictBounds(next.lga)  if repositionMapToDistrictBounds
         nmisMapContext.addIcons()  if addIcons
@@ -85,6 +90,8 @@ NMIS.Env.onChange (next, prev)->
         presentation_facilities: district.loadFacilitiesPresentation()
         data_facilities: district.loadFacilitiesData()
         variableList: district.loadVariables()
+
+      fetchers.lga_data = district.loadData()  if loadLgaData and district.has_data_module("data/lga_data")
 
       # when data is fetched, trigger the "changeDone" callback
       $.when_O(fetchers).done ()=> @changeDone()
