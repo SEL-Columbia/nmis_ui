@@ -114,7 +114,6 @@ NMIS.launch_facilities = ->
   district = NMIS.getDistrictByUrlCode "#{params.state}/#{params.lga}"
   NMIS.districtDropdownSelect district
 
-  NMIS._currentDistrict = district
   params.sector = `undefined`  if params.sector is "overview"
 
   ###
