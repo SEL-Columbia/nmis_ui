@@ -19,7 +19,7 @@ independently testable modules.
     };
   }
 
-  NMIS.expected_modules = ["Tabulation", "clear", "Sectors", "validateData", "dataForSector", "data", "FacilityPopup", "Breadcrumb", "IconSwitcher", "MapMgr", "FacilityHover"];
+  NMIS.expected_modules = ["Tabulation", "clear", "Sectors", "validateData", "data", "FacilityPopup", "Breadcrumb", "IconSwitcher", "MapMgr", "FacilityHover"];
 
   _.templateSettings = {
     escape: /<{-([\s\S]+?)}>/g,
@@ -37,7 +37,7 @@ independently testable modules.
       opts has more-or-less been replaced by NMIS.Env()
     */
 
-    var cloneParse, data, opts, _s;
+    var cloneParse, data, opts;
     data = false;
     opts = false;
     NMIS.init = function(_data, _opts) {
@@ -110,21 +110,17 @@ independently testable modules.
       });
       return true;
     };
-    _s = void 0;
-    NMIS.activeSector = function(s) {
-      if (s === undefined) {
-        return _s;
-      } else {
-        return _s = s;
-      }
-    };
-    NMIS.dataForSector = function(sectorSlug) {
-      var sector;
-      sector = NMIS.Sectors.pluck(sectorSlug);
-      return _(data).filter(function(datum, id) {
-        return datum.sector.slug === sector.slug;
-      });
-    };
+    NMIS.activeSector = (function() {
+      var currentSector;
+      currentSector = false;
+      return function(sector) {
+        if (sector === undefined) {
+          return currentSector;
+        } else {
+          return currentSector = sector;
+        }
+      };
+    })();
     NMIS.dataObjForSector = function(sectorSlug) {
       var o, sector;
       sector = NMIS.Sectors.pluck(sectorSlug);
@@ -408,95 +404,6 @@ until they play well together (and I ensure they don't over-depend on other modu
   })();
 
   (function() {
-    return NMIS.MapMgr = (function() {
-      var addLoadCallback, callbackStr, clear, elem, fakse, finished, init, isLoaded, loadCallbacks, loaded, mapLoadFn, mapboxLayer, opts, started;
-      opts = {};
-      started = false;
-      finished = false;
-      callbackStr = "NMIS.MapMgr.loaded";
-      elem = false;
-      fakse = false;
-      loadCallbacks = [];
-      mapLoadFn = function() {
-        return NMIS.loadGoogleMaps();
-      };
-      addLoadCallback = function(cb) {
-        return loadCallbacks.push(cb);
-      };
-      isLoaded = function() {
-        return finished;
-      };
-      clear = function() {
-        return started = finished = false;
-      };
-      loaded = function() {
-        var cb, _i, _len;
-        for (_i = 0, _len = loadCallbacks.length; _i < _len; _i++) {
-          cb = loadCallbacks[_i];
-          cb.call(opts);
-        }
-        loadCallbacks = [];
-        return finished = true;
-      };
-      init = function(_opts) {
-        var fake;
-        if (started) {
-          return true;
-        }
-        if (_opts !== undefined) {
-          opts = _.extend({
-            launch: true,
-            fake: false,
-            fakeDelay: 3000,
-            mapLoadFn: false,
-            elem: "body",
-            defaultMapType: "SATELLITE",
-            loadCallbacks: []
-          }, _opts);
-          loadCallbacks = Array.prototype.concat.apply(loadCallbacks, opts.loadCallbacks);
-          fake = !!opts.fake;
-          if (opts.mapLoadFn) {
-            mapLoadFn = opts.mapLoadFn;
-          }
-        } else {
-          fake = false;
-        }
-        started = true;
-        if (!fake) {
-          mapLoadFn();
-        } else {
-          _.delay(loaded, opts.fakeDelay);
-        }
-        return started;
-      };
-      mapboxLayer = function(options) {
-        if (typeof google === "undefined") {
-          throw new Error("Google Maps has not yet loaded into the page.");
-        }
-        return new google.maps.ImageMapType({
-          getTileUrl: function(coord, z) {
-            return "http://b.tiles.mapbox.com/v3/modilabs." + options.tileset + "/" + z + "/" + coord.x + "/" + coord.y + ".png?updated=1331159407403";
-          },
-          name: options.name,
-          alt: options.name,
-          tileSize: new google.maps.Size(256, 256),
-          isPng: true,
-          minZoom: 0,
-          maxZoom: options.maxZoom || 17
-        });
-      };
-      return {
-        init: init,
-        clear: clear,
-        loaded: loaded,
-        isLoaded: isLoaded,
-        mapboxLayer: mapboxLayer,
-        addLoadCallback: addLoadCallback
-      };
-    })();
-  })();
-
-  (function() {
     return NMIS.IconSwitcher = (function() {
       var all, allShowing, callbacks, clear, context, createAll, filterStatus, filterStatusNot, hideItem, init, iterate, mapItem, mapItems, setCallback, setVisibility, shiftStatus, showItem;
       context = {};
@@ -720,6 +627,25 @@ until they play well together (and I ensure they don't over-depend on other modu
 
   (function() {
     return NMIS.LocalNav = (function() {
+      /*
+          NMIS.LocalNav is the navigation boxes that shows up on top of the map.
+          > It has "buttonSections", each with buttons inside. These buttons are defined
+            when they are passed as arguments to NMIS.LocalNav.init(...)
+      
+          > It is structured to make it easy to assign the buttons to point to URLs
+            relative to the active LGA. It is also meant to be easy to change which
+            buttons are active by passing values to NMIS.LocalNav.markActive(...)
+      
+            An example value passed to markActive:
+              NMIS.LocalNav.markActive(["mode:facilities", "sector:health"])
+                ** this would "select" facilities and health **
+      
+          > You can also run NMIS.LocalNav.iterate to run through each button, changing
+            the href to something appropriate given the current page state.
+      
+          [wrapper element className: ".local-nav"]
+      */
+
       var buttonSections, clear, displaySubmenu, elem, getNavLink, hide, hideSubmenu, init, iterate, markActive, opts, show, submenu, wrap;
       elem = void 0;
       wrap = void 0;
@@ -844,6 +770,10 @@ until they play well together (and I ensure they don't over-depend on other modu
 
   (function() {
     return NMIS.Tabulation = (function() {
+      /*
+          This is only currently used in the pie chart graphing of facility indicators.
+      */
+
       var filterBySector, init, sectorSlug, sectorSlugAsArray;
       init = function() {
         return true;
@@ -896,8 +826,61 @@ until they play well together (and I ensure they don't over-depend on other modu
 
   (function() {
     return NMIS.Env = (function() {
-      var env, env_accessor, get_env, set_env;
+      /*
+          NMIS.Env() gets-or-sets the page state.
+      
+          It also provides the option to trigger callbacks which are run in a
+          special context upon each change of the page-state (each time NMIS.Env() is set)
+      */
+
+      var EnvContext, changeCbs, env, env_accessor, get_env, set_env, _latestChangeDeferred;
       env = false;
+      changeCbs = [];
+      _latestChangeDeferred = false;
+      EnvContext = (function() {
+
+        function EnvContext(next, prev) {
+          this.next = next;
+          this.prev = prev;
+        }
+
+        EnvContext.prototype.usingSlug = function(what, whatSlug) {
+          return this._matchingSlug(what, whatSlug);
+        };
+
+        EnvContext.prototype.changingToSlug = function(what, whatSlug) {
+          return !this._matchingSlug(what, whatSlug, false) && this._matchingSlug(what, whatSlug);
+        };
+
+        EnvContext.prototype.changing = function(what) {
+          return this._getSlug(what) !== this._getSlug(what, false);
+        };
+
+        EnvContext.prototype.changeDone = function() {
+          var _ref;
+          return (_ref = this._deferred) != null ? _ref.resolve(this.next) : void 0;
+        };
+
+        EnvContext.prototype._matchingSlug = function(what, whatSlug, checkNext) {
+          if (checkNext == null) {
+            checkNext = true;
+          }
+          return this._getSlug(what, checkNext) === whatSlug;
+        };
+
+        EnvContext.prototype._getSlug = function(what, checkNext) {
+          var checkEnv, obj;
+          if (checkNext == null) {
+            checkNext = true;
+          }
+          checkEnv = checkNext ? this.next : this.prev;
+          obj = checkEnv[what];
+          return "" + (obj && obj.slug ? obj.slug : obj);
+        };
+
+        return EnvContext;
+
+      })();
       env_accessor = function(arg) {
         if (arg != null) {
           return set_env(arg);
@@ -906,24 +889,48 @@ until they play well together (and I ensure they don't over-depend on other modu
         }
       };
       get_env = function() {
-        if (!env) {
-          throw new Error("NMIS.Env is not set");
+        if (env) {
+          return _.extend({}, env);
+        } else {
+          return null;
         }
-        return _.extend({}, env);
       };
       set_env = function(_env) {
-        return env = _.extend({}, _env);
+        var changeCb, context, _i, _len, _results;
+        context = new EnvContext(_.extend({}, _env), env);
+        context._deferred = _latestChangeDeferred = $.Deferred();
+        context.change = _latestChangeDeferred.promise();
+        env = context.next;
+        _results = [];
+        for (_i = 0, _len = changeCbs.length; _i < _len; _i++) {
+          changeCb = changeCbs[_i];
+          _results.push(changeCb.call(context, context.next, context.prev));
+        }
+        return _results;
       };
       env_accessor.extend = function(o) {
         var e;
         e = env ? env : {};
         return _.extend({}, e, o);
       };
+      env_accessor.onChange = function(cb) {
+        return changeCbs.push(cb);
+      };
+      env_accessor.changeDone = function() {
+        if (_latestChangeDeferred) {
+          return _latestChangeDeferred.resolve(env);
+        }
+      };
       return env_accessor;
     })();
   })();
 
   NMIS.panels = (function() {
+    /*
+      NMIS.panels provides a basic way to define HTML DOM-related behavior when navigating from
+      one section of the site to another. (e.g. "summary" to "facilities".)
+    */
+
     var Panel, changePanel, currentPanel, ensurePanel, getPanel, panels;
     panels = {};
     currentPanel = false;
@@ -1016,6 +1023,11 @@ until they play well together (and I ensure they don't over-depend on other modu
 
   (function() {
     return NMIS.DisplayWindow = (function() {
+      /*
+          NMIS.DisplayWindow builds and provides access to the multi-part structure of
+          the facilities view.
+      */
+
       var addCallback, addTitle, clear, contentWrap, createHeaderBar, curSize, curTitle, elem, elem0, elem1, elem1content, elem1contentHeight, ensureInitialized, fullHeight, getElems, hbuttons, hide, init, initted, opts, resized, resizerSet, setBarHeight, setDWHeight, setSize, setTitle, setVisibility, show, showTitle, titleElems, visible;
       elem = void 0;
       elem1 = void 0;
@@ -1547,7 +1559,8 @@ until they play well together (and I ensure they don't over-depend on other modu
 
 }).call(this);
 (function() {
-  var Module, ModuleFile, NoOpFetch, headers, _sanitizeStr;
+  var Module, ModuleFile, NoOpFetch, headers,
+    __hasProp = {}.hasOwnProperty;
 
   headers = (function() {
     var header, nav;
@@ -1800,7 +1813,7 @@ until they play well together (and I ensure they don't over-depend on other modu
     };
 
     DataRecord.prototype.variable = function() {
-      return NMIS.variables.find(this.id);
+      return this.lga.variableSet.find(this.id);
     };
 
     return DataRecord;
@@ -1856,6 +1869,7 @@ until they play well together (and I ensure they don't over-depend on other modu
         }
         return _results;
       }).call(this);
+      this._fetchesInProgress = {};
       this.latLng = this.lat_lng;
       this.id = [this.group_slug, this.local_id].join("_");
       this.html_params = {
@@ -1867,23 +1881,33 @@ until they play well together (and I ensure they don't over-depend on other modu
       }
     }
 
-    District.prototype.defaultSammyUrl = function() {
-      return "" + NMIS.url_root + "#/" + this.group_slug + "/" + this.slug + "/summary";
+    District.prototype.llArr = function() {
+      var coord, _i, _len, _ref, _results;
+      _ref = this.latLng.split(",");
+      _results = [];
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        coord = _ref[_i];
+        _results.push(+coord);
+      }
+      return _results;
     };
 
-    District.prototype.sectors_data_loader = function() {
-      var fetcher, _fetcher;
-      _fetcher = this.get_data_module("presentation/sectors");
-      fetcher = _fetcher.fetch();
-      fetcher.done(function(s) {
-        return NMIS.loadSectors(s.sectors, {
-          "default": {
-            name: "Overview",
-            slug: "overview"
-          }
-        });
-      });
-      return fetcher;
+    District.prototype.latLngBounds = function() {
+      var lat, lng, smallLat, smallLng, _ref;
+      if (!this._latLngBounds && this.bounds) {
+        this._latLngBounds = this.bounds.split(/\s|,/);
+      } else if (!this._latLngBounds) {
+        log("Approximating district lat-lng bounds. You can set district's bounding box in districts.json by\nsetting the value of \"bounds\" to comma separated coordinates.\nFormat: \"SW-lat,SW-lng,NE-lat,NE-lng\"\nExample: \"6.645,7.612,6.84,7.762\"");
+        smallLat = 0.075;
+        smallLng = 0.1;
+        _ref = this.llArr(), lat = _ref[0], lng = _ref[1];
+        this._latLngBounds = [lat - smallLat, lng - smallLng, lat + smallLat, lng + smallLng];
+      }
+      return this._latLngBounds;
+    };
+
+    District.prototype.defaultSammyUrl = function() {
+      return "" + NMIS.url_root + "#/" + this.group_slug + "/" + this.slug + "/summary";
     };
 
     District.prototype.get_data_module = function(module) {
@@ -1913,38 +1937,112 @@ until they play well together (and I ensure they don't over-depend on other modu
       }
     };
 
-    District.prototype.loadData = function() {
-      var dfd, loader,
+    District.prototype._fetchModuleOnce = function(resultAttribute, moduleId, cb) {
+      var dfd,
         _this = this;
-      dfd = $.Deferred();
-      loader = this.get_data_module("data/lga_data").fetch();
-      loader.done(function(results) {
-        var d;
-        _this.lga_data = (function() {
-          var _i, _len, _ref, _results;
-          _ref = results.data;
-          _results = [];
-          for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-            d = _ref[_i];
-            _results.push(new NMIS.DataRecord(this, d));
+      if (cb == null) {
+        cb = false;
+      }
+      if (this[resultAttribute]) {
+        return $.Deferred().resolve().promise();
+      } else if (this._fetchesInProgress[resultAttribute]) {
+        return this._fetchesInProgress[resultAttribute];
+      } else {
+        dfd = $.Deferred();
+        this.get_data_module(moduleId).fetch().done(function(results) {
+          _this[resultAttribute] = cb ? cb(results) : results;
+          return dfd.resolve();
+        });
+        return this._fetchesInProgress[resultAttribute] = dfd.promise();
+      }
+    };
+
+    District.prototype.sectors_data_loader = function() {
+      var _this = this;
+      return this._fetchModuleOnce("__sectors_TODO", "presentation/sectors", function(results) {
+        return NMIS.loadSectors(results.sectors, {
+          "default": {
+            name: "overview",
+            slug: "overview"
           }
-          return _results;
-        }).call(_this);
-        return dfd.resolve(_this.lga_data);
+        });
       });
-      return dfd.promise();
+    };
+
+    District.prototype.loadFacilitiesData = function() {
+      var _this = this;
+      return this._fetchModuleOnce("facilityData", "data/facilities", function(results) {
+        var clonedFacilitiesById, datum, fac, facKey, id, key, val;
+        NMIS.loadFacilities(results);
+        clonedFacilitiesById = {};
+        for (facKey in results) {
+          if (!__hasProp.call(results, facKey)) continue;
+          fac = results[facKey];
+          id = fac._id || facKey;
+          datum = {};
+          for (key in fac) {
+            if (!__hasProp.call(fac, key)) continue;
+            val = fac[key];
+            if (key === "gps") {
+              datum._ll = (function() {
+                var ll;
+                if (val && (ll = typeof val.split === "function" ? val.split(" ") : void 0)) {
+                  return [ll[0], ll[1]];
+                }
+              })();
+            } else if (key === "sector") {
+              datum.sector = NMIS.Sectors.pluck(val.toLowerCase());
+            } else {
+              datum[key] = val;
+            }
+          }
+          clonedFacilitiesById[facKey] = datum;
+        }
+        return clonedFacilitiesById;
+      });
+    };
+
+    District.prototype.facilityDataForSector = function(sectorSlug) {
+      var fac, facId, _ref, _results;
+      _ref = this.facilityData;
+      _results = [];
+      for (facId in _ref) {
+        if (!__hasProp.call(_ref, facId)) continue;
+        fac = _ref[facId];
+        if (fac.sector.slug === sectorSlug) {
+          _results.push(fac);
+        }
+      }
+      return _results;
+    };
+
+    District.prototype.loadData = function() {
+      var _this = this;
+      return this._fetchModuleOnce("lga_data", "data/lga_data", function(results) {
+        var d, _i, _len, _ref, _results;
+        _ref = results.data;
+        _results = [];
+        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+          d = _ref[_i];
+          _results.push(new NMIS.DataRecord(_this, d));
+        }
+        return _results;
+      });
     };
 
     District.prototype.loadVariables = function() {
-      var dfd,
-        _this = this;
-      dfd = $.Deferred();
-      this.get_data_module("variables/variables").fetch().done(function(results) {
-        NMIS.variables.clear();
-        NMIS.variables.load(results);
-        return dfd.resolve(NMIS.variables);
+      var _this = this;
+      return this._fetchModuleOnce("variableSet", "variables/variables", function(results) {
+        return new NMIS.VariableSet(results);
       });
-      return dfd.promise();
+    };
+
+    District.prototype.loadFacilitiesPresentation = function() {
+      return this._fetchModuleOnce("facilitiesPresentation", "presentation/facilities");
+    };
+
+    District.prototype.loadSummarySectors = function() {
+      return this._fetchModuleOnce("ssData", "presentation/summary_sectors");
     };
 
     District.prototype.lookupRecord = function(id) {
@@ -2053,10 +2151,6 @@ until they play well together (and I ensure they don't over-depend on other modu
 
   })();
 
-  _sanitizeStr = function(str) {
-    return ("" + str).toLowerCase().replace(/\W/, "_").replace(/__/g, "_");
-  };
-
   Module = (function() {
 
     Module.DEFAULT_MODULES = [];
@@ -2080,13 +2174,6 @@ until they play well together (and I ensure they don't over-depend on other modu
       }
       this.name = this.id;
     }
-
-    Module.prototype.sanitizedId = function() {
-      if (!this._sanitizedId) {
-        this._sanitizedId = _sanitizeStr(this.name);
-      }
-      return this._sanitizedId;
-    };
 
     Module.prototype.fetch = function() {
       var f;
@@ -2134,16 +2221,23 @@ until they play well together (and I ensure they don't over-depend on other modu
 
   (function() {
     return NMIS.SectorDataTable = (function() {
+      /*
+          This creates the facilities data table.
+      
+          (seen at #/state/district/facilites/health)
+          [wrapper element className: ".facility-table-wrap"]
+      */
+
       var createIn, dataTableDraw, dt, getSelect, handleHeadRowClick, nullMarker, resizeColumns, setDtMaxHeight, table, tableSwitcher, _createTbody, _createThead;
       dt = void 0;
       table = void 0;
       tableSwitcher = void 0;
-      createIn = function(tableWrap, env, _opts) {
+      createIn = function(district, tableWrap, env, _opts) {
         var columns, data, dataTableDraw, opts;
         opts = _.extend({
           sScrollY: 120
         }, _opts);
-        data = NMIS.dataForSector(env.sector.slug);
+        data = district.facilityDataForSector(env.sector.slug);
         if (env.subsector === undefined) {
           throw new Error("Subsector is undefined");
         }
@@ -2283,152 +2377,36 @@ until they play well together (and I ensure they don't over-depend on other modu
     })();
   })();
 
-  (function() {
-    return NMIS.FacilityTables = (function() {
-      var classesStr, createForSector, createForSectors, div, hasClickAction, highlightColumn, sectorNav, select, _createHeadRow, _createNavigation, _createRow;
-      div = void 0;
-      sectorNav = void 0;
-      createForSectors = function(sArr, _opts) {
-        var opts;
-        opts = _.extend({
-          callback: function() {},
-          sectorCallback: function() {},
-          indicatorClickCallback: function() {}
-        }, _opts);
-        if (div === undefined) {
-          div = $("<div />").addClass("facility-display-wrap");
-        }
-        div.empty();
-        _.each(sArr, function(s) {
-          return div.append(createForSector(s, opts));
-        });
-        if (opts.callback) {
-          opts.callback.call(this, div);
-        }
-        return div;
-      };
-      select = function(sector, subsector) {
-        var sectorElem;
-        if (sectorNav !== undefined) {
-          sectorNav.find("a.active").removeClass("active");
-          sectorNav.find(".sub-sector-link-" + subsector.slug).addClass("active");
-        }
-        div.find("td, th").hide();
-        sectorElem = div.find(".facility-display").filter(function() {
-          return $(this).data("sector") === sector.slug;
-        }).eq(0);
-        return sectorElem.find(".subgroup-all, .subgroup-" + subsector.slug).show();
-      };
-      createForSector = function(s, opts) {
-        var cols, dobj, iDiv, orderedFacilities, sector, tbody;
-        tbody = $("<tbody />");
-        sector = NMIS.Sectors.pluck(s);
-        iDiv = $("<div />").addClass("facility-display").data("sector", sector.slug);
-        cols = sector.getColumns().sort(function(a, b) {
-          return a.display_order - b.display_order;
-        });
-        orderedFacilities = NMIS.dataForSector(sector.slug);
-        dobj = NMIS.dataObjForSector(sector.slug);
-        _.each(dobj, function(facility, fid) {
-          return _createRow(facility, cols, fid).appendTo(tbody);
-        });
-        $("<table />").append(_createHeadRow(sector, cols, opts)).append(tbody).appendTo(iDiv);
-        opts.sectorCallback.call(this, sector, iDiv, _createNavigation, div);
-        return iDiv;
-      };
-      _createRow = function(facility, cols, facility_id) {
-        var tr;
-        tr = $("<tr />").data("facility-id", facility_id);
-        _.each(cols, function(col, i) {
-          var rawval, slug, val;
-          slug = col.slug;
-          rawval = facility[slug];
-          return val = NMIS.DisplayValue(rawval, $("<td />", {
-            "class": classesStr(col)
-          })).appendTo(tr);
-        });
-        return tr;
-      };
-      _createNavigation = function(sector, _hrefCb) {
-        var sgl, subgroups;
-        sectorNav = $("<p />").addClass("facility-sectors-navigation");
-        subgroups = sector.subGroups();
-        sgl = subgroups.length;
-        _.each(subgroups, function(sg, i) {
-          var href;
-          href = _hrefCb(sg);
-          $("<a />", {
-            href: href
-          }).text(sg.name).data("subsector", sg.slug).addClass("sub-sector-link").addClass("sub-sector-link-" + sg.slug).appendTo(sectorNav);
-          if (i < sgl - 1) {
-            return $("<span />").text(" | ").appendTo(sectorNav);
-          }
-        });
-        return sectorNav;
-      };
-      classesStr = function(col) {
-        var clss;
-        clss = ["data-cell"];
-        _.each(col.subgroups, function(sg) {
-          return clss.push("subgroup-" + sg);
-        });
-        return clss.join(" ");
-      };
-      hasClickAction = function(col, carr) {
-        return !!(!!col.click_actions && col.click_actions.indexOf(col));
-      };
-      _createHeadRow = function(sector, cols, opts) {
-        var tr;
-        tr = $("<tr />");
-        _.each(cols, function(col, i) {
-          var th;
-          th = $("<th />", {
-            "class": classesStr(col)
-          }).data("col", col);
-          if (!!col.clickable) {
-            th.html($("<a />", {
-              href: "#"
-            }).text(col.name).data("col", col));
-          } else {
-            th.text(col.name);
-          }
-          return th.appendTo(tr);
-        });
-        tr.delegate("a", "click", function(evt) {
-          opts.indicatorClickCallback.call($(this).data("col"));
-          return false;
-        });
-        return $("<thead />").html(tr);
-      };
-      highlightColumn = function(column, _opts) {
-        var ind, table, th;
-        div.find(".highlighted").removeClass("highlighted");
-        th = div.find("th").filter(function() {
-          return $(this).data("col").slug === column.slug;
-        }).eq(0);
-        table = th.parents("table").eq(0);
-        ind = th.index();
-        return table.find("tr").each(function() {
-          return $(this).children().eq(ind).addClass("highlighted");
-        });
-      };
-      return {
-        createForSectors: createForSectors,
-        highlightColumn: highlightColumn,
-        select: select
-      };
-    })();
-  })();
-
 }).call(this);
 (function() {
-  var Indicator, Sector, SubSector, all, clear, defaultSector, init, pluck, sectors, slugs, validate,
+  var DistrictSectors, Indicator, Sector, SubSector, all, clear, defaultSector, init, loadForDistrict, pluck, sectors, slugs, validate,
     __indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; },
     __hasProp = {}.hasOwnProperty;
 
   sectors = null;
 
   defaultSector = null;
+
+  DistrictSectors = (function() {
+
+    function DistrictSectors(district, _sectors, opts) {
+      this.district = district;
+      if (opts == null) {
+        opts = {};
+      }
+      if (opts["default"]) {
+        this.defaultSector = new Sector(_.extend(opts["default"], {
+          "default": true
+        }));
+      }
+      this.sectors = _(_sectors).chain().clone().map(function(s) {
+        return new Sector(_.extend({}, s));
+      }).value();
+    }
+
+    return DistrictSectors;
+
+  })();
 
   Sector = (function() {
 
@@ -2566,7 +2544,7 @@ until they play well together (and I ensure they don't over-depend on other modu
     }
 
     Indicator.prototype.customIconForItem = function(item) {
-      return ["" + this.iconify_png_url + item[this.slug] + ".png", 32, 24];
+      return ["" + NMIS.settings.pathToMapIcons + "/" + this.iconify_png_url + item[this.slug] + ".png", 32, 24];
     };
 
     return Indicator;
@@ -2585,14 +2563,33 @@ until they play well together (and I ensure they don't over-depend on other modu
     return true;
   };
 
+  loadForDistrict = function(district, data) {
+    return district.sectors = new DistrictSectors(district, data);
+  };
+
   clear = function() {
     return sectors = [];
   };
 
-  pluck = function(slug) {
-    return _(sectors).chain().filter(function(s) {
-      return s.slug === slug;
-    }).first().value() || defaultSector;
+  pluck = function(slugOrObj, defaultIfNoMatch) {
+    var sector, sectorMatch, slug, _i, _len;
+    if (defaultIfNoMatch == null) {
+      defaultIfNoMatch = true;
+    }
+    if (slugOrObj) {
+      slug = slugOrObj.slug != null ? slugOrObj.slug : slugOrObj;
+      for (_i = 0, _len = sectors.length; _i < _len; _i++) {
+        sector = sectors[_i];
+        if (sector.slug === slug) {
+          sectorMatch = sector;
+        }
+      }
+    }
+    if (!defaultIfNoMatch) {
+      return sectorMatch;
+    } else {
+      return sectorMatch || defaultSector;
+    }
   };
 
   all = function() {
@@ -2628,6 +2625,7 @@ until they play well together (and I ensure they don't over-depend on other modu
 
   NMIS.Sectors = {
     init: init,
+    loadForDistrict: loadForDistrict,
     pluck: pluck,
     slugs: slugs,
     all: all,
@@ -2851,42 +2849,39 @@ until they play well together (and I ensure they don't over-depend on other modu
 
   })();
 
-  NMIS.variables = (function() {
-    var clear, find, ids, load;
-    clear = function() {};
-    load = function(variables) {
-      var list, v, vrb, _i, _len, _results;
+  NMIS.VariableSet = (function() {
+
+    function VariableSet(variables) {
+      var list, v, vrb, _i, _len;
+      log("created new variable set for lga");
+      this.variablesById = {};
       list = variables.list;
-      _results = [];
       for (_i = 0, _len = list.length; _i < _len; _i++) {
         v = list[_i];
         vrb = new Variable(v);
         if (vrb.id) {
-          _results.push(variablesById[vrb.id] = vrb);
-        } else {
-          _results.push(void 0);
+          this.variablesById[vrb.id] = vrb;
         }
       }
-      return _results;
-    };
-    ids = function() {
-      var key, val, _results;
+    }
+
+    VariableSet.prototype.ids = function() {
+      var key, val, _ref, _results;
+      _ref = this.variablesById;
       _results = [];
-      for (key in variablesById) {
-        val = variablesById[key];
+      for (key in _ref) {
+        val = _ref[key];
         _results.push(key);
       }
       return _results;
     };
-    find = function(id) {
-      return variablesById[id];
+
+    VariableSet.prototype.find = function(id) {
+      return this.variablesById[id];
     };
-    return {
-      load: load,
-      clear: clear,
-      ids: ids,
-      find: find
-    };
+
+    return VariableSet;
+
   })();
 
 }).call(this);
@@ -2897,8 +2892,9 @@ Facilities:
 
 
 (function() {
-  var facilitiesMap, launchFacilities, prepFacilities, prepare_data_for_pie_graph, resizeDisplayWindowAndFacilityTable, _rDelay,
-    __hasProp = {}.hasOwnProperty;
+  var displayFacilitySector, displayOverview, ensure_dw_resize_set, facilitiesMode, prepare_data_for_pie_graph, resizeDisplayWindowAndFacilityTable, withFacilityMapDrawnForDistrict, _rDelay, _standardBcSlugs,
+    __hasProp = {}.hasOwnProperty,
+    __indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; };
 
   (function() {
     var panelClose, panelOpen;
@@ -2916,12 +2912,130 @@ Facilities:
     });
   })();
 
+  facilitiesMode = {
+    name: "Facility Detail",
+    slug: "facilities"
+  };
+
+  _standardBcSlugs = "state lga mode sector subsector indicator".split(" ");
+
+  NMIS.Env.onChange(function(next, prev) {
+    var addIcons, featureAllIcons, featureIconsOfSector, hideFacility, highlightFacility, loadLgaData, repositionMapToDistrictBounds,
+      _this = this;
+    if (this.changingToSlug("mode", "facilities")) {
+      NMIS.panels.changePanel("facilities");
+    }
+    if (this.usingSlug("mode", "facilities")) {
+      NMIS.LocalNav.markActive(["mode:facilities", "sector:" + next.sector.slug]);
+      NMIS.Breadcrumb.clear();
+      NMIS.Breadcrumb.setLevels(NMIS._prepBreadcrumbValues(next, _standardBcSlugs, {
+        state: next.state,
+        lga: next.lga
+      }));
+      NMIS.activeSector(next.sector);
+      NMIS.DisplayWindow.setDWHeight("calculate");
+      NMIS.LocalNav.iterate(function(sectionType, buttonName, a) {
+        var env;
+        env = _.extend({}, next, {
+          subsector: false
+        });
+        env[sectionType] = buttonName;
+        return a.attr("href", NMIS.urlFor(env));
+      });
+      /*
+          determine which map changes should be made
+      */
+
+      if (this.changing("lga") || this.changingToSlug("mode", "facilities")) {
+        repositionMapToDistrictBounds = true;
+        addIcons = true;
+      }
+      if (this.changing("sector")) {
+        if (next.sector.slug === "overview") {
+          featureAllIcons = true;
+        } else {
+          featureIconsOfSector = next.sector;
+        }
+      }
+      if (this.changing("facility")) {
+        if (next.facility) {
+          highlightFacility = next.facility;
+        } else {
+          hideFacility = true;
+        }
+      }
+      if (this.usingSlug("sector", "overview")) {
+        loadLgaData = true;
+      }
+      resizeDisplayWindowAndFacilityTable();
+      this.change.done(function() {
+        if (next.sector.slug === "overview") {
+          displayOverview(next.lga);
+        } else {
+          displayFacilitySector(next.lga, NMIS.Env());
+        }
+        return withFacilityMapDrawnForDistrict(next.lga).done(function(nmisMapContext) {
+          if (repositionMapToDistrictBounds) {
+            nmisMapContext.fitDistrictBounds(next.lga);
+          }
+          if (addIcons) {
+            nmisMapContext.addIcons();
+          }
+          if (featureAllIcons) {
+            nmisMapContext.featureAllIcons();
+          }
+          if (featureIconsOfSector) {
+            nmisMapContext.featureIconsOfSector(featureIconsOfSector);
+          }
+          if (highlightFacility) {
+            NMIS.FacilitySelector.activate({
+              id: highlightFacility
+            });
+          }
+          if (hideFacility) {
+            return NMIS.FacilityPopup.hide();
+          }
+        });
+      });
+      return (function() {
+        var district, fetchers;
+        district = next.lga;
+        fetchers = {
+          presentation_facilities: district.loadFacilitiesPresentation(),
+          data_facilities: district.loadFacilitiesData(),
+          variableList: district.loadVariables()
+        };
+        if (loadLgaData && district.has_data_module("data/lga_data")) {
+          fetchers.lga_data = district.loadData();
+        }
+        return $.when_O(fetchers).done(function() {
+          return _this.changeDone();
+        });
+      })();
+    }
+  });
+
+  ensure_dw_resize_set = _.once(function() {
+    return NMIS.DisplayWindow.addCallback("resize", function(tf, size) {
+      if (size === "middle" || size === "full") {
+        return resizeDisplayWindowAndFacilityTable();
+      }
+    });
+  });
+
   NMIS.launch_facilities = function() {
     var district, paramName, params, val, _ref;
     params = {};
-    if (("" + window.location.search).match(/facility=(\d+)/)) {
-      params.facility = ("" + window.location.search).match(/facility=(\d+)/)[1];
-    }
+    params.facility = (function() {
+      var facMatch, urlEnd;
+      urlEnd = ("" + window.location).split("?")[1];
+      if (urlEnd) {
+        facMatch = urlEnd.match(/facility=(\d+)$/);
+      }
+      if (facMatch) {
+        return +facMatch[1];
+      }
+    })();
     _ref = this.params;
     for (paramName in _ref) {
       if (!__hasProp.call(_ref, paramName)) continue;
@@ -2932,63 +3046,249 @@ Facilities:
     }
     district = NMIS.getDistrictByUrlCode("" + params.state + "/" + params.lga);
     NMIS.districtDropdownSelect(district);
-    NMIS._currentDistrict = district;
     if (params.sector === "overview") {
       params.sector = undefined;
     }
+    /*
+      We ALWAYS need to load the sectors first (either cached or not) in order
+      to determine if the sector is valid.
+    */
+
     return district.sectors_data_loader().done(function() {
-      var dmod, fetchers, mod, _i, _len, _ref1;
-      prepFacilities(params);
-      fetchers = {};
-      _ref1 = ["variables/variables", "presentation/facilities", "data/facilities", "data/lga_data"];
-      for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
-        mod = _ref1[_i];
-        dmod = district.get_data_module(mod);
-        fetchers[dmod.sanitizedId()] = dmod.fetch();
-      }
-      if (district.has_data_module("data/lga_data")) {
-        fetchers.lga_data = district.loadData();
-      }
-      fetchers.variableList = district.loadVariables();
-      return $.when_O(fetchers).done(function(results) {
-        return launchFacilities(results, params);
-      });
+      return NMIS.Env((function() {
+        /*
+              This self-invoking function returns and sets the environment
+              object which we will be using for the page view.
+        */
+
+        var e;
+        e = {
+          lga: district,
+          state: district.group,
+          mode: facilitiesMode,
+          sector: NMIS.Sectors.pluck(params.sector)
+        };
+        if (params.subsector) {
+          e.subsector = e.sector.getSubsector(params.subsector);
+        }
+        if (params.indicator) {
+          e.indicator = e.sector.getIndicator(params.indicator);
+        }
+        if (params.facility) {
+          e.facility = params.facility;
+        }
+        return e;
+      })());
     });
   };
 
-  prepFacilities = function(params) {
-    var bcValues, e, facilitiesMode, lga, state;
-    NMIS.panels.changePanel("facilities");
-    facilitiesMode = {
-      name: "Facility Detail",
-      slug: "facilities"
-    };
-    lga = NMIS.getDistrictByUrlCode("" + params.state + "/" + params.lga);
-    state = lga.group;
-    e = {
-      state: state,
-      lga: lga,
-      mode: facilitiesMode,
-      sector: NMIS.Sectors.pluck(params.sector)
-    };
-    e.subsector = e.sector.getSubsector(params.subsector);
-    e.indicator = e.sector.getIndicator(params.indicator);
-    bcValues = NMIS._prepBreadcrumbValues(e, "state lga mode sector subsector indicator".split(" "), {
-      state: state,
-      lga: lga
-    });
-    NMIS.LocalNav.markActive(["mode:facilities", "sector:" + e.sector.slug]);
-    NMIS.Breadcrumb.clear();
-    NMIS.Breadcrumb.setLevels(bcValues);
-    return NMIS.LocalNav.iterate(function(sectionType, buttonName, a) {
-      var env;
-      env = _.extend({}, e, {
-        subsector: false
-      });
-      env[sectionType] = buttonName;
-      return a.attr("href", NMIS.urlFor(env));
-    });
+  NMIS.mapClick = function() {
+    if (NMIS.FacilitySelector.isActive()) {
+      NMIS.FacilitySelector.deselect();
+      return dashboard.setLocation(NMIS.urlFor.extendEnv({
+        facility: false
+      }));
+    }
   };
+
+  withFacilityMapDrawnForDistrict = (function() {
+    var $elem, district, elem, gmap, nmisMapContext, _addIconsAndListeners, _createMap;
+    gmap = false;
+    $elem = elem = false;
+    district = false;
+    _createMap = function() {
+      gmap = new google.maps.Map(elem, {
+        streetViewControl: false,
+        panControl: false,
+        mapTypeControlOptions: {
+          mapTypeIds: ["roadmap", "satellite", "terrain", "OSM"]
+        },
+        mapTypeId: google.maps.MapTypeId["SATELLITE"]
+      });
+      google.maps.event.addListener(gmap, "click", NMIS.mapClick);
+      gmap.overlayMapTypes.insertAt(0, (function() {
+        var maxZoom, name, tileset;
+        tileset = "nigeria_overlays_white";
+        name = "Nigeria";
+        maxZoom = 17;
+        return new google.maps.ImageMapType({
+          getTileUrl: function(coord, z) {
+            return "http://b.tiles.mapbox.com/v3/modilabs." + tileset + "/" + z + "/" + coord.x + "/" + coord.y + ".png";
+          },
+          name: name,
+          alt: name,
+          tileSize: new google.maps.Size(256, 256),
+          isPng: true,
+          minZoom: 0,
+          maxZoom: maxZoom
+        });
+      })());
+      return gmap.mapTypes.set("OSM", new google.maps.ImageMapType({
+        getTileUrl: function(c, z) {
+          return "http://tile.openstreetmap.org/" + z + "/" + c.x + "/" + c.y + ".png";
+        },
+        tileSize: new google.maps.Size(256, 256),
+        name: "OSM",
+        maxZoom: 18
+      }));
+    };
+    _addIconsAndListeners = function() {
+      var iconURLData, markerClick, markerMouseout, markerMouseover;
+      iconURLData = function(item) {
+        var filenm, iconFiles, slug, status;
+        slug = void 0;
+        status = item.status;
+        if (status === "custom") {
+          return item._custom_png_data;
+        }
+        slug = item.iconSlug || item.sector.slug;
+        iconFiles = {
+          education: "education.png",
+          health: "health.png",
+          water: "water.png",
+          "default": "book_green_wb.png?default"
+        };
+        filenm = iconFiles[slug] || iconFiles["default"];
+        return ["" + NMIS.settings.pathToMapIcons + "/icons_f/" + status + "_" + filenm, 32, 24];
+      };
+      markerClick = function() {
+        var sslug;
+        sslug = NMIS.activeSector().slug;
+        if (sslug === this.nmis.item.sector.slug || sslug === "overview") {
+          return dashboard.setLocation(NMIS.urlFor.extendEnv({
+            facility: this.nmis.id
+          }));
+        }
+      };
+      markerMouseover = function() {
+        var sslug;
+        sslug = NMIS.activeSector().slug;
+        if (this.nmis.item.sector.slug === sslug || sslug === "overview") {
+          return NMIS.FacilityHover.show(this);
+        }
+      };
+      markerMouseout = function() {
+        return NMIS.FacilityHover.hide();
+      };
+      NMIS.IconSwitcher.setCallback("createMapItem", function(item, id, itemList) {
+        var $gm, iconData, ih, iurl, iw, mI, _ref;
+        if (!!item._ll && !this.mapItem(id)) {
+          $gm = google.maps;
+          item.iconSlug = item.iconType || item.sector.slug;
+          if (!item.status) {
+            item.status = "normal";
+          }
+          _ref = iconURLData(item), iurl = _ref[0], iw = _ref[1], ih = _ref[2];
+          iconData = {
+            url: iurl,
+            size: new $gm.Size(iw, ih)
+          };
+          mI = {
+            latlng: new $gm.LatLng(item._ll[0], item._ll[1]),
+            icon: new $gm.MarkerImage(iconData.url, iconData.size)
+          };
+          mI.marker = new $gm.Marker({
+            position: mI.latlng,
+            map: gmap,
+            icon: mI.icon
+          });
+          mI.marker.setZIndex((item.status === "normal" ? 99 : 11));
+          mI.marker.nmis = {
+            item: item,
+            id: id
+          };
+          $gm.event.addListener(mI.marker, "click", markerClick);
+          $gm.event.addListener(mI.marker, "mouseover", markerMouseover);
+          $gm.event.addListener(mI.marker, "mouseout", markerMouseout);
+          return this.mapItem(id, mI);
+        }
+      });
+      NMIS.IconSwitcher.createAll();
+      return NMIS.IconSwitcher.setCallback("shiftMapItemStatus", function(item, id) {
+        var icon, mapItem;
+        mapItem = this.mapItem(id);
+        if (!!mapItem) {
+          icon = mapItem.marker.getIcon();
+          icon.url = iconURLData(item)[0];
+          return mapItem.marker.setIcon(icon);
+        }
+      });
+    };
+    nmisMapContext = (function() {
+      var addIcons, createMap, featureAllIcons, featureIconsOfSector, fitDistrictBounds, selectFacility;
+      createMap = function() {
+        return _createMap();
+      };
+      addIcons = function() {
+        return _addIconsAndListeners();
+      };
+      fitDistrictBounds = function(_district) {
+        var bounds, neLat, neLng, swLat, swLng, _ref;
+        if (_district == null) {
+          _district = false;
+        }
+        if (_district) {
+          district = _district;
+        }
+        if (!gmap) {
+          createMap();
+        }
+        if (!gmap) {
+          throw new Error("Google map [gmap] is not initialized.");
+        }
+        _ref = district.latLngBounds(), swLat = _ref[0], swLng = _ref[1], neLat = _ref[2], neLng = _ref[3];
+        bounds = new google.maps.LatLngBounds(new google.maps.LatLng(swLat, swLng), new google.maps.LatLng(neLat, neLng));
+        return gmap.fitBounds(bounds);
+      };
+      featureAllIcons = function() {
+        return NMIS.IconSwitcher.shiftStatus(function() {
+          return "normal";
+        });
+      };
+      featureIconsOfSector = function(sector) {
+        return NMIS.IconSwitcher.shiftStatus(function(id, item) {
+          if (item.sector.slug === sector.slug) {
+            return "normal";
+          } else {
+            return "background";
+          }
+        });
+      };
+      selectFacility = function(fac) {
+        return NMIS.IconSwitcher.shiftStatus(function(id, item) {
+          if (item.id === id) {
+            return "normal";
+          } else {
+            return "background";
+          }
+        });
+      };
+      return {
+        createMap: createMap,
+        addIcons: addIcons,
+        fitDistrictBounds: fitDistrictBounds,
+        featureAllIcons: featureAllIcons,
+        featureIconsOfSector: featureIconsOfSector,
+        selectFacility: selectFacility
+      };
+    })();
+    return function(_district) {
+      /*
+          This function is set to "withFacilityMapDrawnForDistrict" but always executed in this scope.
+      */
+
+      var dfd, existingMapDistrictId;
+      dfd = $.Deferred();
+      $elem = $(NMIS._wElems.elem0);
+      district = _district;
+      elem = $elem.get(0);
+      existingMapDistrictId = $elem.data("districtId");
+      NMIS.loadGoogleMaps().done(function() {
+        return dfd.resolve(nmisMapContext);
+      });
+      return dfd.promise();
+    };
+  })();
 
   this.mustachify = function(id, obj) {
     return Mustache.to_html($("#" + id).eq(0).html().replace(/<{/g, "{{").replace(/\}>/g, "}}"), obj);
@@ -3002,357 +3302,168 @@ Facilities:
     return NMIS.SectorDataTable.setDtMaxHeight(ah - bar - cf - 18);
   };
 
-  /*
-  The beast: launchFacilities--
-  */
-
-
-  facilitiesMap = false;
-
-  launchFacilities = function(results, params) {
-    var MapMgr_opts, c, createFacilitiesMap, d, dTableHeight, displayTitle, e, facCount, facPresentation, facilities, item, lga, mapLoader, mapZoom, obj, profileVariables, s, sector, state, tableElem, twrap, variableData;
-    facilities = results.data_facilities;
-    variableData = results.variables_variables;
-    facPresentation = results.presentation_facilities;
-    profileVariables = facPresentation.profile_indicator_ids;
-    lga = NMIS._currentDistrict;
-    state = NMIS._currentDistrict.group;
-    createFacilitiesMap = function() {
-      var bounds, iconURLData, ll, mapClick, markerClick, markerMouseout, markerMouseover, x;
-      iconURLData = function(item) {
-        var sectorIconURL, slug, status;
-        sectorIconURL = function(slug, status) {
-          var iconFiles;
-          iconFiles = {
-            education: "education.png",
-            health: "health.png",
-            water: "water.png",
-            "default": "book_green_wb.png"
-          };
-          return "" + NMIS.settings.pathToMapIcons + "/icons_f/" + status + "_" + (iconFiles[slug] || iconFiles["default"]);
-        };
-        slug = void 0;
-        status = item.status;
-        if (status === "custom") {
-          return item._custom_png_data;
-        }
-        slug = item.iconSlug || item.sector.slug;
-        return [sectorIconURL(slug, status), 32, 24];
-      };
-      markerClick = function() {
-        var sslug;
-        sslug = NMIS.activeSector().slug;
-        if (sslug === this.nmis.item.sector.slug || sslug === "overview") {
-          return dashboard.setLocation(NMIS.urlFor(_.extend(NMIS.Env(), {
-            facility: this.nmis.id
-          })));
-        }
-      };
-      markerMouseover = function() {
-        var sslug;
-        sslug = NMIS.activeSector().slug;
-        if (this.nmis.item.sector.slug === sslug || sslug === "overview") {
-          return NMIS.FacilityHover.show(this);
-        }
-      };
-      markerMouseout = function() {
-        return NMIS.FacilityHover.hide();
-      };
-      mapClick = function() {
-        if (NMIS.FacilitySelector.isActive()) {
-          NMIS.FacilitySelector.deselect();
-          return dashboard.setLocation(NMIS.urlFor(_.extend(NMIS.Env(), {
-            facility: false
-          })));
-        }
-      };
-      ll = (function() {
-        var _i, _len, _ref, _results;
-        _ref = lga.lat_lng.split(",");
-        _results = [];
-        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-          x = _ref[_i];
-          _results.push(+x);
-        }
-        return _results;
-      })();
-      if (!!facilitiesMap) {
-        _rDelay(1, function() {
-          if (lga.bounds) {
-            facilitiesMap.fitBounds(lga.bounds);
-          } else {
-            facilitiesMap.setCenter(new google.maps.LatLng(ll[0], ll[1]));
-          }
-          return google.maps.event.trigger(facilitiesMap, "resize");
-        });
-        return;
-      } else {
-        facilitiesMap = new google.maps.Map(NMIS._wElems.elem0.get(0), {
-          zoom: mapZoom,
-          center: new google.maps.LatLng(ll[0], ll[1]),
-          streetViewControl: false,
-          panControl: false,
-          mapTypeControlOptions: {
-            mapTypeIds: ["roadmap", "satellite", "terrain", "OSM"]
-          },
-          mapTypeId: google.maps.MapTypeId["SATELLITE"]
-        });
-        facilitiesMap.overlayMapTypes.insertAt(0, NMIS.MapMgr.mapboxLayer({
-          tileset: "nigeria_overlays_white",
-          name: "Nigeria"
-        }));
-      }
-      facilitiesMap.mapTypes.set("OSM", new google.maps.ImageMapType({
-        getTileUrl: function(coord, zoom) {
-          return "http://tile.openstreetmap.org/" + zoom + "/" + coord.x + "/" + coord.y + ".png";
-        },
-        tileSize: new google.maps.Size(256, 256),
-        name: "OSM",
-        maxZoom: 18
-      }));
-      bounds = new google.maps.LatLngBounds();
-      google.maps.event.addListener(facilitiesMap, "click", mapClick);
-      NMIS.IconSwitcher.setCallback("createMapItem", function(item, id, itemList) {
-        var $gm, iconData, mI, td;
-        if (!!item._ll && !this.mapItem(id)) {
-          $gm = google.maps;
-          item.iconSlug = item.iconType || item.sector.slug;
-          td = iconURLData(item);
-          iconData = {
-            url: td[0],
-            size: new $gm.Size(td[1], td[2])
-          };
-          mI = {
-            latlng: new $gm.LatLng(item._ll[0], item._ll[1]),
-            icon: new $gm.MarkerImage(iconData.url, iconData.size)
-          };
-          mI.marker = new $gm.Marker({
-            position: mI.latlng,
-            map: facilitiesMap,
-            icon: mI.icon
-          });
-          mI.marker.setZIndex((item.status === "normal" ? 99 : 11));
-          mI.marker.nmis = {
-            item: item,
-            id: id
-          };
-          google.maps.event.addListener(mI.marker, "click", markerClick);
-          google.maps.event.addListener(mI.marker, "mouseover", markerMouseover);
-          google.maps.event.addListener(mI.marker, "mouseout", markerMouseout);
-          bounds.extend(mI.latlng);
-          return this.mapItem(id, mI);
-        }
-      });
-      NMIS.IconSwitcher.createAll();
-      lga.bounds = bounds;
-      _rDelay(1, function() {
-        google.maps.event.trigger(facilitiesMap, "resize");
-        return facilitiesMap.fitBounds(bounds);
-      });
-      return NMIS.IconSwitcher.setCallback("shiftMapItemStatus", function(item, id) {
-        var icon, mapItem;
-        mapItem = this.mapItem(id);
-        if (!!mapItem) {
-          icon = mapItem.marker.getIcon();
-          icon.url = iconURLData(item)[0];
-          return mapItem.marker.setIcon(icon);
-        }
-      });
-    };
-    sector = NMIS.Sectors.pluck(params.sector);
-    e = {
-      state: state,
-      lga: lga,
-      mode: "facilities",
-      sector: sector,
-      subsector: sector.getSubsector(params.subsector),
-      indicator: sector.getIndicator(params.indicator),
-      facility: params.facility
-    };
-    dTableHeight = void 0;
-    NMIS.Env(e);
-    NMIS.activeSector(sector);
-    NMIS.loadFacilities(facilities);
-    if (e.sector !== undefined && e.subsector === undefined) {
-      e.subsector = _.first(e.sector.subGroups());
-      e.subsectorUndefined = true;
-    }
-    MapMgr_opts = {
-      elem: NMIS._wElems.elem0
-    };
-    mapZoom = 8;
-    mapLoader = NMIS.loadGoogleMaps();
-    mapLoader.done(function() {
-      return createFacilitiesMap();
+  displayOverview = function(district) {
+    var c, d, displayTitle, facCount, item, obj, profileVariables, s;
+    profileVariables = district.facilitiesPresentation.profile_indicator_ids;
+    NMIS._wElems.elem1content.empty();
+    displayTitle = "Facility Detail: " + district.label + " » Overview";
+    NMIS.DisplayWindow.setTitle(displayTitle);
+    NMIS.IconSwitcher.shiftStatus(function(id, item) {
+      return "normal";
     });
-    if (window.dwResizeSet === undefined) {
-      window.dwResizeSet = true;
-      NMIS.DisplayWindow.addCallback("resize", function(tf, size) {
-        if (size === "middle" || size === "full") {
-          return resizeDisplayWindowAndFacilityTable();
-        }
-      });
-    }
-    NMIS.DisplayWindow.setDWHeight("calculate");
-    if (e.sector.slug === "overview") {
-      NMIS._wElems.elem1content.empty();
-      displayTitle = "Facility Detail: " + lga.label + " » Overview";
-      NMIS.DisplayWindow.setTitle(displayTitle);
-      NMIS.IconSwitcher.shiftStatus(function(id, item) {
-        return "normal";
-      });
-      obj = {
-        lgaName: "" + lga.name + ", " + lga.group.name
-      };
-      obj.profileData = (function() {
-        var outp, value, variable, vv;
-        outp = (function() {
-          var _i, _len, _results;
-          _results = [];
-          for (_i = 0, _len = profileVariables.length; _i < _len; _i++) {
-            vv = profileVariables[_i];
-            variable = NMIS.variables.find(vv);
-            value = lga.lookupRecord(vv);
-            _results.push({
-              name: variable != null ? variable.name : void 0,
-              value: value != null ? value.value : void 0
-            });
-          }
-          return _results;
-        })();
-        return outp;
-      })();
-      facCount = 0;
-      obj.overviewSectors = (function() {
-        var _i, _len, _ref, _ref1, _results;
-        _ref = NMIS.Sectors.all();
+    obj = {
+      lgaName: "" + district.name + ", " + district.group.name
+    };
+    obj.profileData = (function() {
+      var outp, value, variable, vv;
+      outp = (function() {
+        var _i, _len, _results;
         _results = [];
-        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-          s = _ref[_i];
-          c = 0;
-          _ref1 = NMIS.data();
-          for (d in _ref1) {
-            item = _ref1[d];
-            if (item.sector === s) {
-              c++;
-            }
-          }
-          facCount += c;
+        for (_i = 0, _len = profileVariables.length; _i < _len; _i++) {
+          vv = profileVariables[_i];
+          variable = district.variableSet.find(vv);
+          value = district.lookupRecord(vv);
           _results.push({
-            name: s.name,
-            slug: s.slug,
-            url: NMIS.urlFor(_.extend(NMIS.Env(), {
-              sector: s,
-              subsector: false
-            })),
-            counts: c
+            name: variable != null ? variable.name : void 0,
+            value: value != null ? value.value : void 0
           });
         }
         return _results;
       })();
-      obj.facCount = facCount;
-      NMIS._wElems.elem1content.html(_.template($("#facilities-overview").html(), obj));
-    } else {
-      if (!!e.subsectorUndefined || !NMIS.FacilitySelector.isActive()) {
-        NMIS.IconSwitcher.shiftStatus(function(id, item) {
-          if (item.sector === e.sector) {
-            return "normal";
-          } else {
-            return "background";
+      return outp;
+    })();
+    facCount = 0;
+    obj.overviewSectors = (function() {
+      var _i, _len, _ref, _ref1, _results;
+      _ref = NMIS.Sectors.all();
+      _results = [];
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        s = _ref[_i];
+        c = 0;
+        _ref1 = NMIS.data();
+        for (d in _ref1) {
+          if (!__hasProp.call(_ref1, d)) continue;
+          item = _ref1[d];
+          if (item.sector === s) {
+            c++;
           }
+        }
+        facCount += c;
+        _results.push({
+          name: s.name,
+          slug: s.slug,
+          url: NMIS.urlFor(_.extend(NMIS.Env(), {
+            sector: s,
+            subsector: false
+          })),
+          counts: c
         });
       }
-      displayTitle = "Facility Detail: " + lga.label + " » " + e.sector.name;
-      if (!!e.subsector) {
-        NMIS.DisplayWindow.setTitle(displayTitle, displayTitle + " - " + e.subsector.name);
-      }
-      NMIS._wElems.elem1content.empty();
-      twrap = $("<div />", {
-        "class": "facility-table-wrap"
-      }).append($("<div />").attr("class", "clearfix").html("&nbsp;")).appendTo(NMIS._wElems.elem1content);
-      tableElem = NMIS.SectorDataTable.createIn(twrap, e, {
-        sScrollY: 1000
-      }).addClass("bs");
-      if (!!e.indicator) {
-        (function() {
-          var mm, pcWrap;
-          if (e.indicator.iconify_png_url) {
-            NMIS.IconSwitcher.shiftStatus(function(id, item) {
-              if (item.sector === e.sector) {
-                item._custom_png_data = e.indicator.customIconForItem(item);
-                return "custom";
-              } else {
-                return "background";
-              }
-            });
-          }
-          if (e.indicator.click_actions.length === 0) {
-            return;
-          }
-          $(".indicator-feature").remove();
-          obj = _.extend({}, e.indicator);
-          mm = $(_.template($("#indicator-feature").html(), obj));
-          mm.find("a.close").click(function() {
-            dashboard.setLocation(NMIS.urlFor(_.extend({}, e, {
-              indicator: false
-            })));
-            return false;
-          });
-          mm.prependTo(NMIS._wElems.elem1content);
-          pcWrap = mm.find(".raph-circle").get(0);
-          return (function() {
-            var column, pieChartDisplayDefinitions, piechartFalse, piechartTrue, tabulations;
-            sector = e.sector;
-            column = e.indicator;
-            piechartTrue = _.include(column.click_actions, "piechart_true");
-            piechartFalse = _.include(column.click_actions, "piechart_false");
-            pieChartDisplayDefinitions = void 0;
-            if (piechartTrue) {
-              pieChartDisplayDefinitions = [
-                {
-                  legend: "No",
-                  color: "#ff5555",
-                  key: "false"
-                }, {
-                  legend: "Yes",
-                  color: "#21c406",
-                  key: "true"
-                }, {
-                  legend: "Undefined",
-                  color: "#999",
-                  key: "undefined"
-                }
-              ];
-            } else if (piechartFalse) {
-              pieChartDisplayDefinitions = [
-                {
-                  legend: "Yes",
-                  color: "#ff5555",
-                  key: "true"
-                }, {
-                  legend: "No",
-                  color: "#21c406",
-                  key: "false"
-                }, {
-                  legend: "Undefined",
-                  color: "#999",
-                  key: "undefined"
-                }
-              ];
-            }
-            if (!!pieChartDisplayDefinitions) {
-              tabulations = NMIS.Tabulation.sectorSlug(sector.slug, column.slug, "true false undefined".split(" "));
-              return prepare_data_for_pie_graph(pcWrap, pieChartDisplayDefinitions, tabulations, {});
-            }
-          })();
-        })();
-      }
-    }
-    resizeDisplayWindowAndFacilityTable();
-    if (!!e.facility) {
-      return NMIS.FacilitySelector.activate({
-        id: e.facility
+      return _results;
+    })();
+    obj.facCount = facCount;
+    return NMIS._wElems.elem1content.html(_.template($("#facilities-overview").html(), obj));
+  };
+
+  displayFacilitySector = function(lga, e) {
+    var defaultSubsector, displayTitle, eModded, tableElem, twrap;
+    if (__indexOf.call(e, 'subsector') < 0 || !NMIS.FacilitySelector.isActive()) {
+      NMIS.IconSwitcher.shiftStatus(function(id, item) {
+        if (item.sector === e.sector) {
+          return "normal";
+        } else {
+          return "background";
+        }
       });
+    }
+    displayTitle = "Facility Detail: " + lga.label + " » " + e.sector.name;
+    if (!!e.subsector) {
+      NMIS.DisplayWindow.setTitle(displayTitle, displayTitle + " - " + e.subsector.name);
+    }
+    NMIS._wElems.elem1content.empty();
+    twrap = $("<div />", {
+      "class": "facility-table-wrap"
+    }).append($("<div />").attr("class", "clearfix").html("&nbsp;")).appendTo(NMIS._wElems.elem1content);
+    defaultSubsector = e.sector.subGroups()[0];
+    eModded = __indexOf.call(e, 'subsector') < 0 ? _.extend({}, e, {
+      subsector: defaultSubsector
+    }) : e;
+    tableElem = NMIS.SectorDataTable.createIn(lga, twrap, eModded, {
+      sScrollY: 1000
+    }).addClass("bs");
+    if (!!e.indicator) {
+      return (function() {
+        var mm, obj, pcWrap;
+        if (e.indicator.iconify_png_url) {
+          NMIS.IconSwitcher.shiftStatus(function(id, item) {
+            if (item.sector === e.sector) {
+              item._custom_png_data = e.indicator.customIconForItem(item);
+              return "custom";
+            } else {
+              return "background";
+            }
+          });
+        }
+        if (e.indicator.click_actions.length === 0) {
+          return;
+        }
+        $(".indicator-feature").remove();
+        obj = _.extend({}, e.indicator);
+        mm = $(_.template($("#indicator-feature").html(), obj));
+        mm.find("a.close").click(function() {
+          dashboard.setLocation(NMIS.urlFor(_.extend({}, e, {
+            indicator: false
+          })));
+          return false;
+        });
+        mm.prependTo(NMIS._wElems.elem1content);
+        pcWrap = mm.find(".raph-circle").get(0);
+        return (function() {
+          var column, pieChartDisplayDefinitions, piechartFalse, piechartTrue, sector, tabulations;
+          sector = e.sector;
+          column = e.indicator;
+          piechartTrue = _.include(column.click_actions, "piechart_true");
+          piechartFalse = _.include(column.click_actions, "piechart_false");
+          pieChartDisplayDefinitions = void 0;
+          if (piechartTrue) {
+            pieChartDisplayDefinitions = [
+              {
+                legend: "No",
+                color: "#ff5555",
+                key: "false"
+              }, {
+                legend: "Yes",
+                color: "#21c406",
+                key: "true"
+              }, {
+                legend: "Undefined",
+                color: "#999",
+                key: "undefined"
+              }
+            ];
+          } else if (piechartFalse) {
+            pieChartDisplayDefinitions = [
+              {
+                legend: "Yes",
+                color: "#ff5555",
+                key: "true"
+              }, {
+                legend: "No",
+                color: "#21c406",
+                key: "false"
+              }, {
+                legend: "Undefined",
+                color: "#999",
+                key: "undefined"
+              }
+            ];
+          }
+          if (!!pieChartDisplayDefinitions) {
+            tabulations = NMIS.Tabulation.sectorSlug(sector.slug, column.slug, "true false undefined".split(" "));
+            return prepare_data_for_pie_graph(pcWrap, pieChartDisplayDefinitions, tabulations, {});
+          }
+        })();
+      })();
     }
   };
 
@@ -3363,10 +3474,9 @@ Facilities:
       different input) then we should work it into the "_opts" parameter.
     */
 
-    var colors, defaultOpts, gid, hover_off, hover_on, item, opts, pie, pvals, r, rearranged_vals, values, _i, _len;
-    gid = $(pieWrap).get(0).id;
-    if (!gid) {
-      $(pieWrap).attr("id", "pie-wrap");
+    var defaultOpts, gid, hover_off, hover_on, item, opts, pie, pvals, r, rearranged_vals, rearranged_vals2, val, _i, _len;
+    if (!(gid = $(pieWrap).eq(0).prop("id"))) {
+      $(pieWrap).prop("id", "pie-wrap");
       gid = "pie-wrap";
     }
     defaultOpts = {
@@ -3381,25 +3491,31 @@ Facilities:
         value: data[val.key]
       });
     });
-    values = [];
-    colors = [];
-    legend = [];
+    rearranged_vals2 = (function() {
+      var _i, _len, _results;
+      _results = [];
+      for (_i = 0, _len = legend.length; _i < _len; _i++) {
+        val = legend[_i];
+        _results.push(val.value = data[val.key]);
+      }
+      return _results;
+    })();
+    pvals = {
+      values: [],
+      colors: [],
+      legend: []
+    };
     rearranged_vals.sort(function(a, b) {
       return b.value - a.value;
     });
     for (_i = 0, _len = rearranged_vals.length; _i < _len; _i++) {
       item = rearranged_vals[_i];
       if (item.value > 0) {
-        values.push(item.value);
-        colors.push(item.color);
-        legend.push("%% - " + item.legend + " (##)");
+        pvals.values.push(item.value);
+        pvals.colors.push(item.color);
+        pvals.legend.push("%% - " + item.legend + " (##)");
       }
     }
-    pvals = {
-      values: values,
-      colors: colors,
-      legend: legend
-    };
     /*
       NOTE: hack to get around a graphael bug!
       if there is only one color the chart will
@@ -3595,7 +3711,7 @@ Facilities:
 
 }).call(this);
 (function() {
-  var DisplayPanel, TmpSector, UnderscoreTemplateDisplayPanel, establish_template_display_panels, launch_summary, summaryMap, template_not_found, __display_panels, _rDelay, _tdps,
+  var DisplayPanel, UnderscoreTemplateDisplayPanel, build_all_sector_summary_modules, establish_template_display_panels, launchGoogleMapSummaryView, launch_summary, template_not_found, __display_panels, _bcKeys, _rDelay, _tdps,
     __hasProp = {}.hasOwnProperty,
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
@@ -3619,10 +3735,38 @@ Facilities:
     });
   })();
 
-  summaryMap = false;
+  _bcKeys = "state lga mode sector subsector indicator".split(" ");
+
+  NMIS.Env.onChange(function(next, prev) {
+    if (this.changing("lga")) {
+      $("#conditional-content").remove();
+    }
+    if (this.changingToSlug("mode", "summary")) {
+      NMIS.panels.changePanel("summary");
+    }
+    if (this.usingSlug("mode", "summary")) {
+      NMIS.Breadcrumb.clear();
+      NMIS.Breadcrumb.setLevels(NMIS._prepBreadcrumbValues(next, _bcKeys, {
+        state: next.state,
+        lga: next.lga
+      }));
+      NMIS.LocalNav.markActive(["mode:summary", "sector:" + next.sector.slug]);
+      NMIS.LocalNav.iterate(function(sectionType, buttonName, a) {
+        var o;
+        o = {};
+        o[sectionType] = buttonName;
+        return a.attr("href", NMIS.urlFor.extendEnv(o));
+      });
+      if (this.usingSlug("sector", "overview") || this.changing("lga")) {
+        return this.change.done(function(env) {
+          return launchGoogleMapSummaryView(env.lga);
+        });
+      }
+    }
+  });
 
   NMIS.loadSummary = function(s) {
-    var fetchers, fetchersDone, googleMapsLoad, launchGoogleMapSummaryView, lga, lga_code, state;
+    var fetchers, googleMapsLoad, lga, lga_code, state;
     lga_code = "" + s.params.state + "/" + s.params.lga;
     lga = NMIS.getDistrictByUrlCode(lga_code);
     NMIS.districtDropdownSelect(lga);
@@ -3630,209 +3774,197 @@ Facilities:
     fetchers = {};
     googleMapsLoad = NMIS.loadGoogleMaps();
     if (lga.has_data_module("presentation/summary_sectors")) {
-      fetchers.summary_sectors = lga.get_data_module("presentation/summary_sectors").fetch();
+      fetchers.summary_sectors = lga.loadSummarySectors();
+      fetchers.summary_sectors.done(function() {
+        var current_sector;
+        current_sector = (function(vd) {
+          var sector, _i, _len;
+          for (_i = 0, _len = vd.length; _i < _len; _i++) {
+            sector = vd[_i];
+            if (sector.id === s.params.sector) {
+              return {
+                slug: sector.id,
+                name: sector.name
+              };
+            }
+          }
+          return {
+            name: "Overview",
+            slug: "overview"
+          };
+        })(lga.ssData.view_details);
+        return NMIS.Env({
+          mode: {
+            name: "Summary",
+            slug: "summary"
+          },
+          state: state,
+          lga: lga,
+          sector: current_sector
+        });
+      });
     }
     if (lga.has_data_module("data/lga_data")) {
       fetchers.lga_data = lga.loadData();
     }
     fetchers.variables = lga.loadVariables();
-    fetchersDone = $.when_O(fetchers);
-    fetchersDone.done(function(results) {
-      googleMapsLoad.done(function() {
-        return launchGoogleMapSummaryView(lga);
+    return $.when_O(fetchers).done(function(results) {
+      launch_summary(s.params, state, lga, results);
+      return googleMapsLoad.done(function() {
+        return NMIS.Env.changeDone();
       });
-      return launch_summary(s.params, state, lga, results);
     });
-    return launchGoogleMapSummaryView = function(lga) {
-      var $mapDiv, ll, mapDiv, mapZoom, x;
-      $mapDiv = $(".profile-box .map").eq(0);
-      mapDiv = $mapDiv.get(0);
-      ll = (function() {
-        var _i, _len, _ref, _results;
-        _ref = lga.latLng.split(",");
-        _results = [];
-        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-          x = _ref[_i];
-          _results.push(+x);
-        }
-        return _results;
-      })();
-      mapZoom = 9;
-      if (mapDiv) {
-        if (!summaryMap) {
-          summaryMap = new google.maps.Map(mapDiv, {
-            zoom: mapZoom,
-            center: new google.maps.LatLng(ll[1], ll[0]),
-            streetViewControl: false,
-            panControl: false,
-            mapTypeControl: false,
-            mapTypeId: google.maps.MapTypeId.HYBRID
-          });
-          summaryMap.mapTypes.set("ng_base_map", NMIS.MapMgr.mapboxLayer({
-            tileset: "nigeria_base",
-            name: "Nigeria"
-          }));
-          summaryMap.setMapTypeId("ng_base_map");
-          return _rDelay(1, function() {
-            google.maps.event.trigger(summaryMap, "resize");
-            return summaryMap.setCenter(new google.maps.LatLng(ll[1], ll[0]), mapZoom);
-          });
-        }
-      }
-    };
   };
 
-  TmpSector = (function() {
-
-    function TmpSector(s) {
-      this.slug = s.id;
-      this.name = s.name;
+  launchGoogleMapSummaryView = function(lga) {
+    var $mapDiv, ll, mapDiv, mapZoom, summaryMap, x;
+    $mapDiv = $(".profile-box .map").eq(0);
+    mapDiv = $mapDiv.get(0);
+    ll = (function() {
+      var _i, _len, _ref, _results;
+      _ref = lga.latLng.split(",");
+      _results = [];
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        x = _ref[_i];
+        _results.push(+x);
+      }
+      return _results;
+    })();
+    mapZoom = lga.zoomLevel || 9;
+    if (mapDiv) {
+      summaryMap = new google.maps.Map(mapDiv, {
+        zoom: mapZoom,
+        center: new google.maps.LatLng(ll[1], ll[0]),
+        streetViewControl: false,
+        panControl: false,
+        mapTypeControl: false,
+        mapTypeId: google.maps.MapTypeId.HYBRID
+      });
+      summaryMap.mapTypes.set("ng_base_map", (function() {
+        var maxZoom, name, tileset;
+        tileset = "nigeria_base";
+        name = "Nigeria";
+        maxZoom = 17;
+        return new google.maps.ImageMapType({
+          getTileUrl: function(coord, z) {
+            return "http://b.tiles.mapbox.com/v3/modilabs." + tileset + "/" + z + "/" + coord.x + "/" + coord.y + ".png";
+          },
+          name: name,
+          alt: name,
+          tileSize: new google.maps.Size(256, 256),
+          isPng: true,
+          minZoom: 0,
+          maxZoom: maxZoom
+        });
+      })());
+      summaryMap.setMapTypeId("ng_base_map");
+      return _rDelay(1, function() {
+        google.maps.event.trigger(summaryMap, "resize");
+        return summaryMap.setCenter(new google.maps.LatLng(ll[1], ll[0]), mapZoom);
+      });
     }
-
-    return TmpSector;
-
-  })();
+  };
 
   launch_summary = function(params, state, lga, query_results) {
-    var bcKeys, current_sector, overviewObj, relevant_data, s, summary_sectors, summary_sectors_results, view_details, _i, _len;
+    var cc, cc_div, content_div, relevant_data, sector, view_details;
     if (query_results == null) {
       query_results = {};
     }
-    summary_sectors_results = query_results.summary_sectors;
-    summary_sectors = summary_sectors_results.sectors;
-    relevant_data = summary_sectors_results.relevant_data;
-    NMIS.panels.changePanel("summary");
+    relevant_data = lga.ssData.relevant_data;
     NMIS.DisplayWindow.setDWHeight();
-    overviewObj = {
-      name: "Overview",
-      slug: "overview"
-    };
-    view_details = summary_sectors_results.view_details;
-    for (_i = 0, _len = view_details.length; _i < _len; _i++) {
-      s = view_details[_i];
-      if (s.id === params.sector) {
-        current_sector = new TmpSector(s);
-      }
+    view_details = lga.ssData.view_details;
+    content_div = $('.content');
+    if (content_div.find('#conditional-content').length === 0) {
+      cc_div = build_all_sector_summary_modules(lga);
+      cc_div.appendTo(content_div);
     }
-    if (!current_sector) {
-      current_sector = overviewObj;
-    }
-    NMIS.Env({
-      mode: {
-        name: "Summary",
-        slug: "summary"
-      },
-      state: state,
-      lga: lga,
-      sector: current_sector
-    });
-    NMIS.Breadcrumb.clear();
-    bcKeys = "state lga mode sector subsector indicator".split(" ");
-    NMIS.Breadcrumb.setLevels(NMIS._prepBreadcrumbValues(NMIS.Env(), bcKeys, {
-      state: state,
-      lga: lga
-    }));
-    NMIS.LocalNav.markActive(["mode:summary", "sector:" + NMIS.Env().sector.slug]);
-    NMIS.LocalNav.iterate(function(sectionType, buttonName, a) {
-      var o;
-      o = {};
-      o[sectionType] = buttonName;
-      return a.attr("href", NMIS.urlFor.extendEnv(o));
-    });
-    (function() {
-      /*
-          how can we do this better?
-      */
+    sector = NMIS.Env().sector;
+    cc = $("#conditional-content").hide();
+    cc.find(">div").hide();
+    cc.find(">div.lga." + sector.slug).show();
+    return cc.show();
+  };
 
-      var cc_div, content_div, context, module, sectorPanel, sector_id, sector_view_panel, sector_window, sector_window_inner_wrap, _j, _k, _len1, _len2, _ref;
-      content_div = $('.content');
-      if (content_div.find('#conditional-content').length === 0) {
-        context = {};
-        context.summary_sectors = summary_sectors;
-        context.lga = lga;
-        cc_div = $('<div>', {
-          id: 'conditional-content'
-        });
-        for (_j = 0, _len1 = view_details.length; _j < _len1; _j++) {
-          sector_view_panel = view_details[_j];
-          sector_window = $("<div>", {
-            "class": "lga"
-          });
-          sector_window.html("<div class='display-window-bar breadcrumb'></div>");
-          sector_window_inner_wrap = $("<div>", {
-            "class": 'cwrap'
-          }).appendTo(sector_window);
-          sector_id = sector_view_panel.id;
-          sector_window.addClass(sector_id);
-          context.summary_sector = context.summary_sectors[sector_id];
-          context.view_panel = sector_view_panel;
-          _ref = sector_view_panel.modules;
-          for (_k = 0, _len2 = _ref.length; _k < _len2; _k++) {
-            module = _ref[_k];
-            sectorPanel = (function() {
-              var div, panel, spanStr, _ref1;
-              spanStr = function(content, cls) {
-                if (content == null) {
-                  content = "&mdash;";
-                }
-                if (cls == null) {
-                  cls = "";
-                }
-                return "<span class='" + cls + "' style='text-transform:none'>" + content + "</span>";
-              };
-              establish_template_display_panels();
-              context.relevant_data = (_ref1 = relevant_data[sector_id]) != null ? _ref1[module] : void 0;
-              div = $('<div>');
-              context.lookupName = function(id) {
-                var vrb;
-                if (id) {
-                  vrb = NMIS.variables.find(id);
-                  if (vrb) {
-                    return spanStr(vrb.name, "variable-name");
-                  } else {
-                    return spanStr(id, "warn-missing");
-                  }
-                } else {
-                  return spanStr("No variable id", "warn-missing");
-                }
-              };
-              context.lookupValue = function(id, defaultValue) {
-                var record;
-                if (defaultValue == null) {
-                  defaultValue = null;
-                }
-                record = lga.lookupRecord(id);
-                if (record) {
-                  return spanStr(record.displayValue(), "found");
-                } else if (id) {
-                  return spanStr("&ndash;", "warn-missing", "Missing value for id: " + id);
-                } else {
-                  return spanStr("&cross;", "warn-missing", "Missing ID");
-                }
-              };
-              if (__display_panels[module] != null) {
-                panel = __display_panels[module];
-                panel.build(div, context);
+  build_all_sector_summary_modules = function(lga) {
+    var cc_div, context, module, sectorPanel, sector_id, sector_view_panel, sector_window, sector_window_inner_wrap, _i, _j, _len, _len1, _ref, _ref1;
+    cc_div = $('<div>', {
+      id: 'conditional-content'
+    });
+    context = {
+      lga: lga,
+      summary_sectors: lga.ssData.sectors
+    };
+    _ref = lga.ssData.view_details;
+    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+      sector_view_panel = _ref[_i];
+      sector_window = $("<div>", {
+        "class": "lga"
+      });
+      sector_window.html("<div class='display-window-bar breadcrumb'></div>");
+      sector_window_inner_wrap = $("<div>", {
+        "class": 'cwrap'
+      }).appendTo(sector_window);
+      sector_id = sector_view_panel.id;
+      sector_window.addClass(sector_id);
+      context.summary_sector = context.summary_sectors[sector_id];
+      context.view_panel = sector_view_panel;
+      _ref1 = sector_view_panel.modules;
+      for (_j = 0, _len1 = _ref1.length; _j < _len1; _j++) {
+        module = _ref1[_j];
+        sectorPanel = (function() {
+          var div, panel, spanStr, _ref2;
+          spanStr = function(content, cls) {
+            if (content == null) {
+              content = "&mdash;";
+            }
+            if (cls == null) {
+              cls = "";
+            }
+            return "<span class='" + cls + "' style='text-transform:none'>" + content + "</span>";
+          };
+          establish_template_display_panels();
+          context.relevant_data = (_ref2 = lga.ssData.relevant_data[sector_id]) != null ? _ref2[module] : void 0;
+          div = $('<div>');
+          context.lookupName = function(id) {
+            var vrb;
+            if (id) {
+              vrb = lga.variableSet.find(id);
+              if (vrb) {
+                return spanStr(vrb.name, "variable-name");
               } else {
-                div.html(template_not_found(module));
+                return spanStr(id, "warn-missing");
               }
-              return div;
-            })();
-            sector_window_inner_wrap.append(sectorPanel);
+            } else {
+              return spanStr("No variable id", "warn-missing");
+            }
+          };
+          context.lookupValue = function(id, defaultValue) {
+            var record;
+            if (defaultValue == null) {
+              defaultValue = null;
+            }
+            record = lga.lookupRecord(id);
+            if (record) {
+              return spanStr(record.displayValue(), "found");
+            } else if (id) {
+              return spanStr("&ndash;", "warn-missing", "Missing value for id: " + id);
+            } else {
+              return spanStr("&cross;", "warn-missing", "Missing ID");
+            }
+          };
+          if (__display_panels[module] != null) {
+            panel = __display_panels[module];
+            panel.build(div, context);
+          } else {
+            div.html(template_not_found(module));
           }
-          sector_window.appendTo(cc_div);
-        }
-        return $('.content').append(cc_div);
+          return div;
+        })();
+        sector_window_inner_wrap.append(sectorPanel);
       }
-    })();
-    return (function() {
-      var cc, sector;
-      sector = NMIS.Env().sector;
-      cc = $("#conditional-content").hide();
-      cc.find(">div").hide();
-      cc.find(">div.lga." + sector.slug).show();
-      return cc.show();
-    })();
+      sector_window.appendTo(cc_div);
+    }
+    return cc_div;
   };
 
   __display_panels = {};
