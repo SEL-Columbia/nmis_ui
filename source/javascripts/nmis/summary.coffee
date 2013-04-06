@@ -124,11 +124,16 @@ launch_summary = (params, state, lga, query_results={})->
             establish_template_display_panels()
             context.relevant_data = relevant_data[sector_id]?[module]
             div = $('<div>')
-            context.lookupName = (id)->
+            context.lookupName = (id, section_name)->
               if id
                 vrb = NMIS.variables.find id
                 if vrb
-                  spanStr vrb.name, "variable-name"
+                  try context_name = vrb.context[sector_id][section_name]['name']
+                  catch error
+                    try context_name = vrb.context[sector_id]['name']
+                    catch error
+                      context_name = vrb.name
+                  spanStr context_name, "variable-name"
                 else
                   spanStr id, "warn-missing"
               else
