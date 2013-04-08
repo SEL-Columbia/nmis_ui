@@ -333,7 +333,13 @@ class Module
       @files = [new ModuleFile(file_param, district)]
     @name = @id
   fetch: ()->
-    $.when.apply null, (f.fetch() for f in @files)
+    if @files.length > 1
+      dfd = $.Deferred()
+      $.when.apply(null, (f.fetch() for f in @files)).done (args...)->
+        dfd.resolve Array::concat.apply [], args
+      dfd.promise()
+    else if @files.length is 1
+      @files[0].fetch()
 
 class ModuleFile
   constructor: (@filename, @district)->
@@ -344,5 +350,25 @@ class ModuleFile
     mid_url = if @district? then "#{@district.data_root}/" else ""
     @url = "#{NMIS._data_src_root_url}#{mid_url}#{@filename}"
   fetch: ()->
-    NMIS.DataLoader.fetch @url
-    # log "odfule #{@url}"
+    if /\.csv$/.test @url
+      # load CSV
+      dfd = $.Deferred()
+      __url_forSector = @url
+      $.ajax(url: @url).done (results)->
+        # dfd.resolve csv(results).toObjects()
+        arr = csv(results).toObjects()
+        __sector = __url_forSector.match(/.*\/(\S+)\.csv$/)[1]
+        log __sector, arr.length
+        for item in arr
+          item.sector = __sector
+        dfd.resolve arr
+      dfd
+    else if /\.json$/.test @url
+      # load JSON
+      NMIS.DataLoader.fetch @url
+    else
+      throw new Error("Unknown action")
+
+    # log @url
+    # 
+    # # log "odfule #{@url}"
