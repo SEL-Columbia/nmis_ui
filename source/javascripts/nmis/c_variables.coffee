@@ -6,7 +6,7 @@ class Variable
     @id     = id
     @name   = v.name
     @data_type = v.data_type || "float"
-    @precision = v.precision || 2
+    @precision = v.precision || 1
 
 class NMIS.VariableSet
   constructor: (variables)->
