@@ -21,3 +21,23 @@ class NMIS.VariableSet
     key for key, val of @variablesById
 
   find: (id)-> @variablesById[id]
+
+# NMIS.variables is obsolete. It can be removed.
+NMIS.variables = do ->
+  clear = ()->
+    
+  load = (variables)->
+    list = variables.list
+    for v in list
+      vrb = new Variable v
+      variablesById[vrb.id] = vrb  if vrb.id
+
+  ids = ->
+    key for key, val of variablesById
+
+  find = (id)-> variablesById[id]
+
+  load: load
+  clear: clear
+  ids: ids
+  find: find
