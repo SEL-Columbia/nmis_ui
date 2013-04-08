@@ -127,12 +127,19 @@ launch_summary = (params, state, lga, query_results={})->
             context.lookupName = (id, section_name)->
               if id
                 vrb = NMIS.variables.find id
+                #using if nests instead of try catch loop, 
+                #more cumbersom but better practice than try/catch
                 if vrb
-                  try context_name = vrb.context[sector_id][section_name]['name']
-                  catch error
-                    try context_name = vrb.context[sector_id]['name']
-                    catch error
+                  if "context" of vrb and vrb.context isnt null
+                    if sector_id of vrb.context
+                      if section_name of vrb.context[sector_id]
+                        context_name = vrb.context[sector_id][section_name]['name']
+                      else
+                        context_name = vrb.context[sector_id]['name']
+                    else
                       context_name = vrb.name
+                  else
+                    context_name = vrb.name
                   spanStr context_name, "variable-name"
                 else
                   spanStr id, "warn-missing"
