@@ -11,7 +11,8 @@
       this.id = id;
       this.name = v.name;
       this.data_type = v.data_type || "float";
-      this.precision = v.precision || 2;
+      this.precision = v.precision || 1;
+      this.context = v.context || null;
     }
 
     return Variable;

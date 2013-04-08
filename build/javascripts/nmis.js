@@ -2845,7 +2845,8 @@ until they play well together (and I ensure they don't over-depend on other modu
       this.id = id;
       this.name = v.name;
       this.data_type = v.data_type || "float";
-      this.precision = v.precision || 2;
+      this.precision = v.precision || 1;
+      this.context = v.context || null;
     }
 
     return Variable;
@@ -3784,12 +3785,25 @@ Facilities:
               establish_template_display_panels();
               context.relevant_data = (_ref1 = relevant_data[sector_id]) != null ? _ref1[module] : void 0;
               div = $('<div>');
-              context.lookupName = function(id) {
-                var vrb;
+              context.lookupName = function(id, section_name) {
+                var context_name, vrb;
                 if (id) {
                   vrb = NMIS.variables.find(id);
                   if (vrb) {
-                    return spanStr(vrb.name, "variable-name");
+                    if ("context" in vrb && vrb.context !== null) {
+                      if (sector_id in vrb.context) {
+                        if (section_name in vrb.context[sector_id]) {
+                          context_name = vrb.context[sector_id][section_name]['name'];
+                        } else {
+                          context_name = vrb.context[sector_id]['name'];
+                        }
+                      } else {
+                        context_name = vrb.name;
+                      }
+                    } else {
+                      context_name = vrb.name;
+                    }
+                    return spanStr(context_name, "variable-name");
                   } else {
                     return spanStr(id, "warn-missing");
                   }
