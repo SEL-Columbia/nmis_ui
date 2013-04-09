@@ -74,6 +74,9 @@
     };
     urlFor = function(o) {
       var builtUrl, klist;
+      if (o == null) {
+        o = {};
+      }
       if (o.root == null) {
         o.root = "" + NMIS.url_root + "#";
       }
@@ -81,7 +84,7 @@
         o.mode = "summary";
       }
       if (!o.lga || !o.state) {
-        return "" + NMIS.url_root + "#?error";
+        return NMIS.url_root;
       }
       klist = ["root", "state", "lga", "mode", "sector", "subsector", "indicator"];
       builtUrl = pushAsDefined(o, klist).join("/");
