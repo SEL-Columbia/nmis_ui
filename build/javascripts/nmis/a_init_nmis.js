@@ -19,7 +19,7 @@ independently testable modules.
     };
   }
 
-  NMIS.expected_modules = ["Tabulation", "clear", "Sectors", "validateData", "dataForSector", "data", "FacilityPopup", "Breadcrumb", "IconSwitcher", "MapMgr", "FacilityHover"];
+  NMIS.expected_modules = ["Tabulation", "clear", "Sectors", "validateData", "data", "FacilityPopup", "Breadcrumb", "IconSwitcher", "MapMgr", "FacilityHover"];
 
   _.templateSettings = {
     escape: /<{-([\s\S]+?)}>/g,
@@ -37,7 +37,7 @@ independently testable modules.
       opts has more-or-less been replaced by NMIS.Env()
     */
 
-    var cloneParse, data, opts, _s;
+    var cloneParse, data, opts;
     data = false;
     opts = false;
     NMIS.init = function(_data, _opts) {
@@ -110,21 +110,17 @@ independently testable modules.
       });
       return true;
     };
-    _s = void 0;
-    NMIS.activeSector = function(s) {
-      if (s === undefined) {
-        return _s;
-      } else {
-        return _s = s;
-      }
-    };
-    NMIS.dataForSector = function(sectorSlug) {
-      var sector;
-      sector = NMIS.Sectors.pluck(sectorSlug);
-      return _(data).filter(function(datum, id) {
-        return datum.sector.slug === sector.slug;
-      });
-    };
+    NMIS.activeSector = (function() {
+      var currentSector;
+      currentSector = false;
+      return function(sector) {
+        if (sector === undefined) {
+          return currentSector;
+        } else {
+          return currentSector = sector;
+        }
+      };
+    })();
     NMIS.dataObjForSector = function(sectorSlug) {
       var o, sector;
       sector = NMIS.Sectors.pluck(sectorSlug);

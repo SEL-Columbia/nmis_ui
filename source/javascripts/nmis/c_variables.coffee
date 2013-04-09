@@ -8,6 +8,21 @@ class Variable
     @data_type = v.data_type || "float"
     @precision = v.precision || 1
 
+class NMIS.VariableSet
+  constructor: (variables)->
+    log "created new variable set for lga"
+    @variablesById = {}
+    list = variables.list
+    for v in list
+      vrb = new Variable v
+      @variablesById[vrb.id] = vrb  if vrb.id
+
+  ids: ()->
+    key for key, val of @variablesById
+
+  find: (id)-> @variablesById[id]
+
+# NMIS.variables is obsolete. It can be removed.
 NMIS.variables = do ->
   clear = ()->
     

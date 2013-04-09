@@ -65,10 +65,10 @@ do ->
       else
         return arr
     arr
-  urlFor = (o) ->
+  urlFor = (o={}) ->
     o.root = "#{NMIS.url_root}#" unless o.root?
     o.mode = "summary" unless o.mode?
-    return "#{NMIS.url_root}#?error"  if not o.lga or not o.state
+    return NMIS.url_root  if not o.lga or not o.state
     klist = ["root", "state", "lga", "mode", "sector", "subsector", "indicator"]
     builtUrl = pushAsDefined(o, klist).join "/"
     builtUrl += "?facility=" + o.facility  unless not o.facility

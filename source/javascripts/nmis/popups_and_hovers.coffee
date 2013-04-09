@@ -34,7 +34,7 @@ NMIS.FacilityHover = do ->
       title: opts.item.id
       img_thumb: NMIS.S3Photos.url(opts.item.s3_photo_id, 200)
 
-    hoverOverlay = $(Mustache.to_html($("#facility-hover").eq(0).html().replace(/<{/g, "{{").replace(/\}>/g, "}}"), obj))
+    hoverOverlay = $ $._template("#facility-hover", obj)
     hoverOverlay.addClass opts.addClass  unless not opts.addClass
     img = $("<img />").load(->
       $this = $(this)

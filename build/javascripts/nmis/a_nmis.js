@@ -137,95 +137,6 @@ until they play well together (and I ensure they don't over-depend on other modu
   })();
 
   (function() {
-    return NMIS.MapMgr = (function() {
-      var addLoadCallback, callbackStr, clear, elem, fakse, finished, init, isLoaded, loadCallbacks, loaded, mapLoadFn, mapboxLayer, opts, started;
-      opts = {};
-      started = false;
-      finished = false;
-      callbackStr = "NMIS.MapMgr.loaded";
-      elem = false;
-      fakse = false;
-      loadCallbacks = [];
-      mapLoadFn = function() {
-        return NMIS.loadGoogleMaps();
-      };
-      addLoadCallback = function(cb) {
-        return loadCallbacks.push(cb);
-      };
-      isLoaded = function() {
-        return finished;
-      };
-      clear = function() {
-        return started = finished = false;
-      };
-      loaded = function() {
-        var cb, _i, _len;
-        for (_i = 0, _len = loadCallbacks.length; _i < _len; _i++) {
-          cb = loadCallbacks[_i];
-          cb.call(opts);
-        }
-        loadCallbacks = [];
-        return finished = true;
-      };
-      init = function(_opts) {
-        var fake;
-        if (started) {
-          return true;
-        }
-        if (_opts !== undefined) {
-          opts = _.extend({
-            launch: true,
-            fake: false,
-            fakeDelay: 3000,
-            mapLoadFn: false,
-            elem: "body",
-            defaultMapType: "SATELLITE",
-            loadCallbacks: []
-          }, _opts);
-          loadCallbacks = Array.prototype.concat.apply(loadCallbacks, opts.loadCallbacks);
-          fake = !!opts.fake;
-          if (opts.mapLoadFn) {
-            mapLoadFn = opts.mapLoadFn;
-          }
-        } else {
-          fake = false;
-        }
-        started = true;
-        if (!fake) {
-          mapLoadFn();
-        } else {
-          _.delay(loaded, opts.fakeDelay);
-        }
-        return started;
-      };
-      mapboxLayer = function(options) {
-        if (typeof google === "undefined") {
-          throw new Error("Google Maps has not yet loaded into the page.");
-        }
-        return new google.maps.ImageMapType({
-          getTileUrl: function(coord, z) {
-            return "http://b.tiles.mapbox.com/v3/modilabs." + options.tileset + "/" + z + "/" + coord.x + "/" + coord.y + ".png?updated=1331159407403";
-          },
-          name: options.name,
-          alt: options.name,
-          tileSize: new google.maps.Size(256, 256),
-          isPng: true,
-          minZoom: 0,
-          maxZoom: options.maxZoom || 17
-        });
-      };
-      return {
-        init: init,
-        clear: clear,
-        loaded: loaded,
-        isLoaded: isLoaded,
-        mapboxLayer: mapboxLayer,
-        addLoadCallback: addLoadCallback
-      };
-    })();
-  })();
-
-  (function() {
     return NMIS.IconSwitcher = (function() {
       var all, allShowing, callbacks, clear, context, createAll, filterStatus, filterStatusNot, hideItem, init, iterate, mapItem, mapItems, setCallback, setVisibility, shiftStatus, showItem;
       context = {};
@@ -449,6 +360,25 @@ until they play well together (and I ensure they don't over-depend on other modu
 
   (function() {
     return NMIS.LocalNav = (function() {
+      /*
+          NMIS.LocalNav is the navigation boxes that shows up on top of the map.
+          > It has "buttonSections", each with buttons inside. These buttons are defined
+            when they are passed as arguments to NMIS.LocalNav.init(...)
+      
+          > It is structured to make it easy to assign the buttons to point to URLs
+            relative to the active LGA. It is also meant to be easy to change which
+            buttons are active by passing values to NMIS.LocalNav.markActive(...)
+      
+            An example value passed to markActive:
+              NMIS.LocalNav.markActive(["mode:facilities", "sector:health"])
+                ** this would "select" facilities and health **
+      
+          > You can also run NMIS.LocalNav.iterate to run through each button, changing
+            the href to something appropriate given the current page state.
+      
+          [wrapper element className: ".local-nav"]
+      */
+
       var buttonSections, clear, displaySubmenu, elem, getNavLink, hide, hideSubmenu, init, iterate, markActive, opts, show, submenu, wrap;
       elem = void 0;
       wrap = void 0;
@@ -573,6 +503,10 @@ until they play well together (and I ensure they don't over-depend on other modu
 
   (function() {
     return NMIS.Tabulation = (function() {
+      /*
+          This is only currently used in the pie chart graphing of facility indicators.
+      */
+
       var filterBySector, init, sectorSlug, sectorSlugAsArray;
       init = function() {
         return true;
@@ -625,8 +559,61 @@ until they play well together (and I ensure they don't over-depend on other modu
 
   (function() {
     return NMIS.Env = (function() {
-      var env, env_accessor, get_env, set_env;
+      /*
+          NMIS.Env() gets-or-sets the page state.
+      
+          It also provides the option to trigger callbacks which are run in a
+          special context upon each change of the page-state (each time NMIS.Env() is set)
+      */
+
+      var EnvContext, changeCbs, env, env_accessor, get_env, set_env, _latestChangeDeferred;
       env = false;
+      changeCbs = [];
+      _latestChangeDeferred = false;
+      EnvContext = (function() {
+
+        function EnvContext(next, prev) {
+          this.next = next;
+          this.prev = prev;
+        }
+
+        EnvContext.prototype.usingSlug = function(what, whatSlug) {
+          return this._matchingSlug(what, whatSlug);
+        };
+
+        EnvContext.prototype.changingToSlug = function(what, whatSlug) {
+          return !this._matchingSlug(what, whatSlug, false) && this._matchingSlug(what, whatSlug);
+        };
+
+        EnvContext.prototype.changing = function(what) {
+          return this._getSlug(what) !== this._getSlug(what, false);
+        };
+
+        EnvContext.prototype.changeDone = function() {
+          var _ref;
+          return (_ref = this._deferred) != null ? _ref.resolve(this.next) : void 0;
+        };
+
+        EnvContext.prototype._matchingSlug = function(what, whatSlug, checkNext) {
+          if (checkNext == null) {
+            checkNext = true;
+          }
+          return this._getSlug(what, checkNext) === whatSlug;
+        };
+
+        EnvContext.prototype._getSlug = function(what, checkNext) {
+          var checkEnv, obj;
+          if (checkNext == null) {
+            checkNext = true;
+          }
+          checkEnv = checkNext ? this.next : this.prev;
+          obj = checkEnv[what];
+          return "" + (obj && obj.slug ? obj.slug : obj);
+        };
+
+        return EnvContext;
+
+      })();
       env_accessor = function(arg) {
         if (arg != null) {
           return set_env(arg);
@@ -635,24 +622,48 @@ until they play well together (and I ensure they don't over-depend on other modu
         }
       };
       get_env = function() {
-        if (!env) {
-          throw new Error("NMIS.Env is not set");
+        if (env) {
+          return _.extend({}, env);
+        } else {
+          return null;
         }
-        return _.extend({}, env);
       };
       set_env = function(_env) {
-        return env = _.extend({}, _env);
+        var changeCb, context, _i, _len, _results;
+        context = new EnvContext(_.extend({}, _env), env);
+        context._deferred = _latestChangeDeferred = $.Deferred();
+        context.change = _latestChangeDeferred.promise();
+        env = context.next;
+        _results = [];
+        for (_i = 0, _len = changeCbs.length; _i < _len; _i++) {
+          changeCb = changeCbs[_i];
+          _results.push(changeCb.call(context, context.next, context.prev));
+        }
+        return _results;
       };
       env_accessor.extend = function(o) {
         var e;
         e = env ? env : {};
         return _.extend({}, e, o);
       };
+      env_accessor.onChange = function(cb) {
+        return changeCbs.push(cb);
+      };
+      env_accessor.changeDone = function() {
+        if (_latestChangeDeferred) {
+          return _latestChangeDeferred.resolve(env);
+        }
+      };
       return env_accessor;
     })();
   })();
 
   NMIS.panels = (function() {
+    /*
+      NMIS.panels provides a basic way to define HTML DOM-related behavior when navigating from
+      one section of the site to another. (e.g. "summary" to "facilities".)
+    */
+
     var Panel, changePanel, currentPanel, ensurePanel, getPanel, panels;
     panels = {};
     currentPanel = false;
@@ -745,6 +756,11 @@ until they play well together (and I ensure they don't over-depend on other modu
 
   (function() {
     return NMIS.DisplayWindow = (function() {
+      /*
+          NMIS.DisplayWindow builds and provides access to the multi-part structure of
+          the facilities view.
+      */
+
       var addCallback, addTitle, clear, contentWrap, createHeaderBar, curSize, curTitle, elem, elem0, elem1, elem1content, elem1contentHeight, ensureInitialized, fullHeight, getElems, hbuttons, hide, init, initted, opts, resized, resizerSet, setBarHeight, setDWHeight, setSize, setTitle, setVisibility, show, showTitle, titleElems, visible;
       elem = void 0;
       elem1 = void 0;

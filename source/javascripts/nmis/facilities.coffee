@@ -13,12 +13,100 @@ do ->
 
   NMIS.panels.getPanel("facilities").addCallbacks open: panelOpen, close: panelClose
 
+facilitiesMode =
+  name: "Facility Detail"
+  slug: "facilities"
+
+# used in the breadcrumb
+_standardBcSlugs = "state lga mode sector subsector indicator".split(" ")
+
+NMIS.Env.onChange (next, prev)->
+  # log "Changing mode"  if @changing "mode"
+  # log "Changing LGA"  if @changing "lga"
+
+  if @changingToSlug "mode", "facilities"
+    # This runs only when the environment is *changing to* the "mode" of "facilities"
+    NMIS.panels.changePanel "facilities"
+
+  if @usingSlug "mode", "facilities"
+    # This runs when the upcoming environment matches "mode" of "facilities"
+    NMIS.LocalNav.markActive ["mode:facilities", "sector:#{next.sector.slug}"]
+
+    NMIS.Breadcrumb.clear()
+    NMIS.Breadcrumb.setLevels NMIS._prepBreadcrumbValues next, _standardBcSlugs, state: next.state, lga: next.lga
+
+    # Not sure how NMIS.activeSector is used.
+    # Potentially could be removed in favor of NMIS.Env().sector
+    NMIS.activeSector next.sector
+    # setting datawindow height to "calculate" means that the datawindow's
+    # height will be calculated from the total available height minus padding
+    NMIS.DisplayWindow.setDWHeight "calculate"
+
+    NMIS.LocalNav.iterate (sectionType, buttonName, a) ->
+      env = _.extend {}, next, subsector: false
+      env[sectionType] = buttonName
+      a.attr "href", NMIS.urlFor env
+
+
+    ###
+    determine which map changes should be made
+    ###
+    if @changing("lga") or @changingToSlug("mode", "facilities")
+      repositionMapToDistrictBounds = true
+      addIcons = true
+    if @changing("sector")
+      if next.sector.slug is "overview"
+        featureAllIcons = true
+      else
+        featureIconsOfSector = next.sector
+    if @changing("facility")
+      if next.facility
+        highlightFacility = next.facility
+      else
+        hideFacility = true
+    if @usingSlug "sector", "overview"
+      loadLgaData = true
+
+    resizeDisplayWindowAndFacilityTable()
+
+    @change.done ()->
+      if next.sector.slug is "overview"
+        displayOverview(next.lga)
+      else
+        displayFacilitySector(next.lga, NMIS.Env())
+
+      withFacilityMapDrawnForDistrict(next.lga).done (nmisMapContext)->
+        nmisMapContext.fitDistrictBounds(next.lga)  if repositionMapToDistrictBounds
+        nmisMapContext.addIcons()  if addIcons
+        nmisMapContext.featureAllIcons()  if featureAllIcons
+        nmisMapContext.featureIconsOfSector(featureIconsOfSector)  if featureIconsOfSector
+        NMIS.FacilitySelector.activate id: highlightFacility  if highlightFacility
+        NMIS.FacilityPopup.hide()  if hideFacility
+
+    do =>
+      # Fetch all data
+      district = next.lga
+      fetchers =
+        presentation_facilities: district.loadFacilitiesPresentation()
+        data_facilities: district.loadFacilitiesData()
+        variableList: district.loadVariables()
+
+      fetchers.lga_data = district.loadData()  if loadLgaData and district.has_data_module("data/lga_data")
+
+      # when data is fetched, trigger the "changeDone" callback
+      $.when_O(fetchers).done ()=> @changeDone()
+
+ensure_dw_resize_set = _.once ->
+  NMIS.DisplayWindow.addCallback "resize", (tf, size) ->
+    resizeDisplayWindowAndFacilityTable()  if size is "middle" or size is "full"
 
 NMIS.launch_facilities = ->
-
   params = {}
 
-  params.facility = ("" + window.location.search).match(/facility=(\d+)/)[1]  if ("" + window.location.search).match(/facility=(\d+)/)
+  params.facility = do ->
+    urlEnd = "#{window.location}".split("?")[1]
+    facMatch = urlEnd.match /facility=(\d+)$/  if urlEnd
+    +facMatch[1]  if facMatch
 
   for own paramName, val of @params when $.type(val) is "string" and val isnt ""
     params[paramName] = val.replace "/", ""
@@ -26,178 +114,127 @@ NMIS.launch_facilities = ->
   district = NMIS.getDistrictByUrlCode "#{params.state}/#{params.lga}"
   NMIS.districtDropdownSelect district
 
-  NMIS._currentDistrict = district
   params.sector = `undefined`  if params.sector is "overview"
+
+  ###
+  We ALWAYS need to load the sectors first (either cached or not) in order
+  to determine if the sector is valid.
+  ###
   district.sectors_data_loader().done ->
-    prepFacilities params
+    # once the sectors are downloaded, we can set the environment
+    # variables.
 
-    fetchers = {}
-    for mod in ["variables/variables",
-                "presentation/facilities",
-                "data/facilities", "data/lga_data"]
-      dmod = district.get_data_module(mod)
-      fetchers[dmod.sanitizedId()] = dmod.fetch()
+    NMIS.Env do ->
+      ###
+      This self-invoking function returns and sets the environment
+      object which we will be using for the page view.
+      ###
+      e =
+        lga: district
+        state: district.group
+        mode: facilitiesMode
+        sector: NMIS.Sectors.pluck params.sector
 
-    fetchers.lga_data = district.loadData()  if district.has_data_module("data/lga_data")
-    fetchers.variableList = district.loadVariables()
+      e.subsector = e.sector.getSubsector params.subsector  if params.subsector
+      e.indicator = e.sector.getIndicator params.indicator  if params.indicator
+      e.facility = params.facility  if params.facility
+      e
 
-    $.when_O(fetchers).done (results)-> launchFacilities results, params
+NMIS.mapClick = ()->
+  if NMIS.FacilitySelector.isActive()
+    NMIS.FacilitySelector.deselect()
+    dashboard.setLocation NMIS.urlFor.extendEnv facility: false
 
-prepFacilities = (params) ->
-  NMIS.panels.changePanel "facilities"
-  facilitiesMode =
-    name: "Facility Detail"
-    slug: "facilities"
+withFacilityMapDrawnForDistrict = do ->
+  # gmap is the persisent link to the google.maps.Map object
+  gmap = false
+  $elem = elem = false
 
-  lga = NMIS.getDistrictByUrlCode("#{params.state}/#{params.lga}")
-  state = lga.group
+  # in this context, district points to the most recently
+  # drawn district.
+  district = false
 
-  e =
-    state: state
-    lga: lga
-    mode: facilitiesMode
-    sector: NMIS.Sectors.pluck(params.sector)
+  _createMap = ()->
+    gmap = new google.maps.Map elem,
+      streetViewControl: false
+      panControl: false
+      mapTypeControlOptions:
+        mapTypeIds: ["roadmap", "satellite", "terrain", "OSM"]
+      mapTypeId: google.maps.MapTypeId["SATELLITE"]
 
-  e.subsector = e.sector.getSubsector(params.subsector)
-  e.indicator = e.sector.getIndicator(params.indicator)
-  bcValues = NMIS._prepBreadcrumbValues(e, "state lga mode sector subsector indicator".split(" "),
-    state: state
-    lga: lga
-  )
-  NMIS.LocalNav.markActive ["mode:facilities", "sector:" + e.sector.slug]
-  NMIS.Breadcrumb.clear()
-  NMIS.Breadcrumb.setLevels bcValues
-  NMIS.LocalNav.iterate (sectionType, buttonName, a) ->
-    env = _.extend({}, e,
-      subsector: false
-    )
-    env[sectionType] = buttonName
-    a.attr "href", NMIS.urlFor(env)
+    google.maps.event.addListener gmap, "click", NMIS.mapClick
 
+    gmap.overlayMapTypes.insertAt 0, do ->
+      tileset = "nigeria_overlays_white"
+      name = "Nigeria"
+      maxZoom = 17
+      new google.maps.ImageMapType
+        getTileUrl: (coord, z) -> "http://b.tiles.mapbox.com/v3/modilabs.#{tileset}/#{z}/#{coord.x}/#{coord.y}.png"
+        name: name
+        alt: name
+        tileSize: new google.maps.Size(256, 256)
+        isPng: true
+        minZoom: 0
+        maxZoom: maxZoom
 
-@mustachify = (id, obj) ->
-  Mustache.to_html $("#" + id).eq(0).html().replace(/<{/g, "{{").replace(/\}>/g, "}}"), obj
+    gmap.mapTypes.set "OSM", new google.maps.ImageMapType
+      getTileUrl: (c, z) -> "http://tile.openstreetmap.org/#{z}/#{c.x}/#{c.y}.png"
+      tileSize: new google.maps.Size(256, 256)
+      name: "OSM"
+      maxZoom: 18
 
-resizeDisplayWindowAndFacilityTable = ->
-  ah = NMIS._wElems.elem1.height()
-  bar = $(".display-window-bar", NMIS._wElems.elem1).outerHeight()
-  cf = $(".clearfix", NMIS._wElems.elem1).eq(0).height()
-  NMIS.SectorDataTable.setDtMaxHeight ah - bar - cf - 18
-
-###
-The beast: launchFacilities--
-###
-facilitiesMap = false
-
-launchFacilities = (results, params) ->
-  facilities = results.data_facilities
-  variableData = results.variables_variables
-  facPresentation = results.presentation_facilities
-  profileVariables = facPresentation.profile_indicator_ids
-
-  lga = NMIS._currentDistrict
-  state = NMIS._currentDistrict.group
-  createFacilitiesMap = ->
-    
-    # OSM google maps layer code from:
-    # http://wiki.openstreetmap.org/wiki/Google_Maps_Example#Example_Using_Google_Maps_API_V3
+  _addIconsAndListeners = ()->
     iconURLData = (item) ->
-      sectorIconURL = (slug, status) ->
-        iconFiles =
-          education: "education.png"
-          health: "health.png"
-          water: "water.png"
-          default: "book_green_wb.png"
-        "#{NMIS.settings.pathToMapIcons}/icons_f/#{status}_#{iconFiles[slug] or iconFiles.default}"
       slug = undefined
       status = item.status
       return item._custom_png_data  if status is "custom"
       slug = item.iconSlug or item.sector.slug
-      [sectorIconURL(slug, status), 32, 24]
+      iconFiles =
+        education: "education.png"
+        health: "health.png"
+        water: "water.png"
+        default: "book_green_wb.png?default"
+      filenm = iconFiles[slug] or iconFiles.default
+      # throw new Error("Status is undefined")  unless status?
+      ["#{NMIS.settings.pathToMapIcons}/icons_f/#{status}_#{filenm}", 32, 24]
     markerClick = ->
       sslug = NMIS.activeSector().slug
       if sslug is @nmis.item.sector.slug or sslug is "overview"
-        dashboard.setLocation NMIS.urlFor _.extend NMIS.Env(), facility: @nmis.id
+        dashboard.setLocation NMIS.urlFor.extendEnv facility: @nmis.id
     markerMouseover = ->
       sslug = NMIS.activeSector().slug
       NMIS.FacilityHover.show this  if @nmis.item.sector.slug is sslug or sslug is "overview"
     markerMouseout = ->
       NMIS.FacilityHover.hide()
-    mapClick = ->
-      if NMIS.FacilitySelector.isActive()
-        NMIS.FacilitySelector.deselect()
-        dashboard.setLocation NMIS.urlFor(_.extend(NMIS.Env(),
-          facility: false
-        ))
-    ll = (+x for x in lga.lat_lng.split(","))
-    unless not facilitiesMap
-      _rDelay 1, ->
-        if lga.bounds
-          facilitiesMap.fitBounds lga.bounds
-        else
-          facilitiesMap.setCenter new google.maps.LatLng(ll[0], ll[1])
-        google.maps.event.trigger facilitiesMap, "resize"
-      return
-    else
-      facilitiesMap = new google.maps.Map(NMIS._wElems.elem0.get(0),
-        zoom: mapZoom
-        center: new google.maps.LatLng(ll[0], ll[1])
-        streetViewControl: false
-        panControl: false
-        mapTypeControlOptions:
-          mapTypeIds: ["roadmap", "satellite", "terrain", "OSM"]
 
-        mapTypeId: google.maps.MapTypeId["SATELLITE"]
-      )
-      facilitiesMap.overlayMapTypes.insertAt 0, NMIS.MapMgr.mapboxLayer(
-        tileset: "nigeria_overlays_white"
-        name: "Nigeria"
-      )
-    facilitiesMap.mapTypes.set "OSM", new google.maps.ImageMapType(
-      getTileUrl: (coord, zoom) ->
-        "http://tile.openstreetmap.org/#{zoom}/#{coord.x}/#{coord.y}.png"
-
-      tileSize: new google.maps.Size(256, 256)
-      name: "OSM"
-      maxZoom: 18
-    )
-    bounds = new google.maps.LatLngBounds()
-    google.maps.event.addListener facilitiesMap, "click", mapClick
     NMIS.IconSwitcher.setCallback "createMapItem", (item, id, itemList) ->
       if !!item._ll and not @mapItem(id)
         $gm = google.maps
         item.iconSlug = item.iconType or item.sector.slug
-        td = iconURLData(item)
+        item.status = "normal"  unless item.status
+        [iurl, iw, ih] = iconURLData(item)
 
-        iconData =
-          url: td[0]
-          size: new $gm.Size(td[1], td[2])
+        iconData = url: iurl, size: new $gm.Size(iw, ih)
 
         mI =
           latlng: new $gm.LatLng(item._ll[0], item._ll[1])
           icon: new $gm.MarkerImage(iconData.url, iconData.size)
 
-        mI.marker = new $gm.Marker(
+        mI.marker = new $gm.Marker
           position: mI.latlng
-          map: facilitiesMap
+          map: gmap
           icon: mI.icon
-        )
-        mI.marker.setZIndex (if item.status is "normal" then 99 else 11)
-        mI.marker.nmis =
-          item: item
-          id: id
 
-        google.maps.event.addListener mI.marker, "click", markerClick
-        google.maps.event.addListener mI.marker, "mouseover", markerMouseover
-        google.maps.event.addListener mI.marker, "mouseout", markerMouseout
-        bounds.extend mI.latlng
+        mI.marker.setZIndex (if item.status is "normal" then 99 else 11)
+        mI.marker.nmis = item: item, id: id
+
+        $gm.event.addListener mI.marker, "click", markerClick
+        $gm.event.addListener mI.marker, "mouseover", markerMouseover
+        $gm.event.addListener mI.marker, "mouseout", markerMouseout
         @mapItem id, mI
 
     NMIS.IconSwitcher.createAll()
-    lga.bounds = bounds
-    _rDelay 1, ->
-      google.maps.event.trigger facilitiesMap, "resize"
-      facilitiesMap.fitBounds bounds
+
     NMIS.IconSwitcher.setCallback "shiftMapItemStatus", (item, id) ->
       mapItem = @mapItem(id)
       unless not mapItem
@@ -205,149 +242,176 @@ launchFacilities = (results, params) ->
         icon.url = iconURLData(item)[0]
         mapItem.marker.setIcon icon
 
-  # sectors = variableData.sectors
-  sector = NMIS.Sectors.pluck(params.sector)
-  e =
-    state: state
-    lga: lga
-    mode: "facilities"
-    sector: sector
-    subsector: sector.getSubsector(params.subsector)
-    indicator: sector.getIndicator(params.indicator)
-    facility: params.facility
+  nmisMapContext = do ->
+    createMap = ()-> _createMap()
 
-  dTableHeight = undefined
-  NMIS.Env e
-  NMIS.activeSector sector
-  NMIS.loadFacilities facilities
-  if e.sector isnt `undefined` and e.subsector is `undefined`
-    e.subsector = _.first(e.sector.subGroups())
-    e.subsectorUndefined = true
-  MapMgr_opts =
-    # llString: lgaData.profileData.gps.value
-    elem: NMIS._wElems.elem0
+    addIcons = ()-> _addIconsAndListeners()
 
-  mapZoom = 8
-  mapLoader = NMIS.loadGoogleMaps()
-  mapLoader.done ()-> createFacilitiesMap()
+    fitDistrictBounds = (_district=false)->
+      district = _district  if _district
+      createMap()  unless gmap
+      throw new Error("Google map [gmap] is not initialized.")  unless gmap
+      [swLat, swLng, neLat, neLng] = district.latLngBounds()
+      bounds = new google.maps.LatLngBounds new google.maps.LatLng(swLat, swLng), new google.maps.LatLng(neLat, neLng)
+      gmap.fitBounds bounds
 
-  # NMIS.MapMgr.init()
+    featureAllIcons = ()->
+      NMIS.IconSwitcher.shiftStatus () -> "normal"
 
-  if window.dwResizeSet is `undefined`
-    window.dwResizeSet = true
-    NMIS.DisplayWindow.addCallback "resize", (tf, size) ->
-      resizeDisplayWindowAndFacilityTable()  if size is "middle" or size is "full"
-
-  NMIS.DisplayWindow.setDWHeight "calculate"
-  
-  # resizeDataTable(NMIS.DisplayWindow.getSize());
-  if e.sector.slug is "overview"
-    NMIS._wElems.elem1content.empty()
-    displayTitle = "Facility Detail: #{lga.label} » Overview"
-    NMIS.DisplayWindow.setTitle displayTitle
-    NMIS.IconSwitcher.shiftStatus (id, item) ->
-      "normal"
-
-    obj =
-      lgaName: "#{lga.name}, #{lga.group.name}"
-
-    obj.profileData = do ->
-      outp = for vv in profileVariables
-        variable = NMIS.variables.find(vv)
-        value = lga.lookupRecord vv
-        name: variable?.name
-        value: value?.value
-      outp
-
-    facCount = 0
-    obj.overviewSectors = for s in NMIS.Sectors.all()
-      c = 0
-      c++ for d, item of NMIS.data() when item.sector is s
-      facCount += c
-
-      name: s.name
-      slug: s.slug
-      url: NMIS.urlFor(_.extend(NMIS.Env(), sector: s, subsector: false))
-      counts: c
-    obj.facCount = facCount
-
-    NMIS._wElems.elem1content.html _.template($("#facilities-overview").html(), obj)
-  else
-    if !!e.subsectorUndefined or not NMIS.FacilitySelector.isActive()
+    featureIconsOfSector = (sector)->
       NMIS.IconSwitcher.shiftStatus (id, item) ->
-        (if item.sector is e.sector then "normal" else "background")
+        (if item.sector.slug is sector.slug then "normal" else "background")
 
-    displayTitle = "Facility Detail: #{lga.label} » #{e.sector.name}"
-    NMIS.DisplayWindow.setTitle displayTitle, displayTitle + " - " + e.subsector.name  unless not e.subsector
+    selectFacility = (fac)->
+      NMIS.IconSwitcher.shiftStatus (id, item) ->
+        (if item.id is id then "normal" else "background")
+
+    createMap: createMap
+    addIcons: addIcons
+    fitDistrictBounds: fitDistrictBounds
+    featureAllIcons: featureAllIcons
+    featureIconsOfSector: featureIconsOfSector
+    selectFacility: selectFacility
     
-    #        NMIS.DisplayWindow.unsetTempSize(true);
-    NMIS._wElems.elem1content.empty()
-    twrap = $("<div />",
-      class: "facility-table-wrap"
-    ).append($("<div />").attr("class", "clearfix").html("&nbsp;")).appendTo(NMIS._wElems.elem1content)
-    tableElem = NMIS.SectorDataTable.createIn(twrap, e,
-      sScrollY: 1000
-    ).addClass("bs")
-    unless not e.indicator
+
+  (_district)->
+    ###
+    This function is set to "withFacilityMapDrawnForDistrict" but always executed in this scope.
+    ###
+    dfd = $.Deferred()
+
+    $elem = $(NMIS._wElems.elem0)
+    district = _district
+    elem = $elem.get(0)
+    existingMapDistrictId = $elem.data("districtId")
+
+    NMIS.loadGoogleMaps().done ()-> dfd.resolve nmisMapContext
+
+    dfd.promise()
+
+resizeDisplayWindowAndFacilityTable = ->
+  ah = NMIS._wElems.elem1.height()
+  bar = $(".display-window-bar", NMIS._wElems.elem1).outerHeight()
+  cf = $(".clearfix", NMIS._wElems.elem1).eq(0).height()
+  NMIS.SectorDataTable.setDtMaxHeight ah - bar - cf - 18
+
+
+displayOverview = (district)->
+  profileVariables = district.facilitiesPresentation.profile_indicator_ids
+  NMIS._wElems.elem1content.empty()
+  displayTitle = "Facility Detail: #{district.label} » Overview"
+  NMIS.DisplayWindow.setTitle displayTitle
+  NMIS.IconSwitcher.shiftStatus (id, item) ->
+    "normal"
+
+  obj =
+    lgaName: "#{district.name}, #{district.group.name}"
+
+  obj.profileData = do ->
+    outp = for vv in profileVariables
+      variable = district.variableSet.find(vv)
+      value = district.lookupRecord vv
+
+      name: variable?.name
+      value: value?.value
+    outp
+
+  facCount = 0
+  obj.overviewSectors = for s in NMIS.Sectors.all()
+    c = 0
+    c++ for own d, item of NMIS.data() when item.sector is s
+    facCount += c
+
+    name: s.name
+    slug: s.slug
+    url: NMIS.urlFor(_.extend(NMIS.Env(), sector: s, subsector: false))
+    counts: c
+
+  obj.facCount = facCount
+
+  NMIS._wElems.elem1content.html _.template($("#facilities-overview").html(), obj)
+
+displayFacilitySector = (lga, e)->
+  if 'subsector' not in e or not NMIS.FacilitySelector.isActive()
+    NMIS.IconSwitcher.shiftStatus (id, item) ->
+      (if item.sector is e.sector then "normal" else "background")
+
+  displayTitle = "Facility Detail: #{lga.label} » #{e.sector.name}"
+  NMIS.DisplayWindow.setTitle displayTitle, displayTitle + " - " + e.subsector.name  unless not e.subsector
+
+  NMIS._wElems.elem1content.empty()
+  twrap = $("<div />",
+    class: "facility-table-wrap"
+  ).append($("<div />").attr("class", "clearfix").html("&nbsp;")).appendTo(NMIS._wElems.elem1content)
+
+  defaultSubsector = e.sector.subGroups()[0]
+  eModded = if 'subsector' not in e then _.extend({}, e, subsector: defaultSubsector) else e
+  tableElem = NMIS.SectorDataTable.createIn(lga, twrap, eModded, sScrollY: 1000).addClass("bs")
+  unless not e.indicator
+    do ->
+      if e.indicator.iconify_png_url
+        NMIS.IconSwitcher.shiftStatus (id, item) ->
+          if item.sector is e.sector
+            item._custom_png_data = e.indicator.customIconForItem(item)
+            "custom"
+          else
+            "background"
+
+      return  if e.indicator.click_actions.length is 0
+      $(".indicator-feature").remove()
+      obj = _.extend({}, e.indicator)
+      mm = $ _.template($("#indicator-feature").html(), obj)
+      mm.find("a.close").click ->
+        dashboard.setLocation NMIS.urlFor _.extend({}, e, indicator: false)
+        false
+
+      mm.prependTo NMIS._wElems.elem1content
+
+      pcWrap = mm.find(".raph-circle").get(0)
       do ->
-        if e.indicator.iconify_png_url
-          NMIS.IconSwitcher.shiftStatus (id, item) ->
-            if item.sector is e.sector
-              item._custom_png_data = e.indicator.customIconForItem(item)
-              "custom"
-            else
-              "background"
+        sector = e.sector
+        column = e.indicator
+        piechartTrue = _.include(column.click_actions, "piechart_true")
+        piechartFalse = _.include(column.click_actions, "piechart_false")
+        pieChartDisplayDefinitions = undefined
+        if piechartTrue
+          # """
+          # legend,color,key
+          # No,#f55,false
+          # Yes,#21c406,true
+          # Undefined,#999,undefined
+          # """
+          pieChartDisplayDefinitions = [
+            legend: "No"
+            color: "#ff5555"
+            key: "false"
+          ,
+            legend: "Yes"
+            color: "#21c406"
+            key: "true"
+          ,
+            legend: "Undefined"
+            color: "#999"
+            key: "undefined"
+          ]
+        else if piechartFalse
+          pieChartDisplayDefinitions = [
+            legend: "Yes"
+            color: "#ff5555"
+            key: "true"
+          ,
+            legend: "No"
+            color: "#21c406"
+            key: "false"
+          ,
+            legend: "Undefined"
+            color: "#999"
+            key: "undefined"
+          ]
+        unless not pieChartDisplayDefinitions
+          tabulations = NMIS.Tabulation.sectorSlug(sector.slug, column.slug, "true false undefined".split(" "))
+          prepare_data_for_pie_graph pcWrap, pieChartDisplayDefinitions, tabulations, {}
 
-        return  if e.indicator.click_actions.length is 0
-        $(".indicator-feature").remove()
-        obj = _.extend({}, e.indicator)
-        mm = $ _.template($("#indicator-feature").html(), obj)
-        mm.find("a.close").click ->
-          dashboard.setLocation NMIS.urlFor _.extend({}, e, indicator: false)
-          false
-
-        mm.prependTo NMIS._wElems.elem1content
-
-        pcWrap = mm.find(".raph-circle").get(0)
-        do ->
-          sector = e.sector
-          column = e.indicator
-          piechartTrue = _.include(column.click_actions, "piechart_true")
-          piechartFalse = _.include(column.click_actions, "piechart_false")
-          pieChartDisplayDefinitions = undefined
-          if piechartTrue
-            pieChartDisplayDefinitions = [
-              legend: "No"
-              color: "#ff5555"
-              key: "false"
-            ,
-              legend: "Yes"
-              color: "#21c406"
-              key: "true"
-            ,
-              legend: "Undefined"
-              color: "#999"
-              key: "undefined"
-            ]
-          else if piechartFalse
-            pieChartDisplayDefinitions = [
-              legend: "Yes"
-              color: "#ff5555"
-              key: "true"
-            ,
-              legend: "No"
-              color: "#21c406"
-              key: "false"
-            ,
-              legend: "Undefined"
-              color: "#999"
-              key: "undefined"
-            ]
-          unless not pieChartDisplayDefinitions
-            tabulations = NMIS.Tabulation.sectorSlug(sector.slug, column.slug, "true false undefined".split(" "))
-            prepare_data_for_pie_graph pcWrap, pieChartDisplayDefinitions, tabulations, {}
-  resizeDisplayWindowAndFacilityTable()
-  NMIS.FacilitySelector.activate id: e.facility  unless not e.facility
 
 prepare_data_for_pie_graph = (pieWrap, legend, data, _opts) ->
   ###
@@ -355,10 +419,10 @@ prepare_data_for_pie_graph = (pieWrap, legend, data, _opts) ->
   if we want to customize stuff (ie. have behavior that changes based on
   different input) then we should work it into the "_opts" parameter.
   ###
-  gid = $(pieWrap).get(0).id
-  unless gid
-    $(pieWrap).attr "id", "pie-wrap"
+  unless gid = $(pieWrap).eq(0).prop "id"
+    $(pieWrap).prop "id", "pie-wrap"
     gid = "pie-wrap"
+
   defaultOpts =
     x: 50
     y: 40
@@ -366,22 +430,22 @@ prepare_data_for_pie_graph = (pieWrap, legend, data, _opts) ->
     font: "12px 'Fontin Sans', Fontin-Sans, sans-serif"
 
   opts = $.extend({}, defaultOpts, _opts)
+
   rearranged_vals = $.map legend, (val) -> $.extend val, value: data[val.key]
-  values = []
-  colors = []
-  legend = []
+  rearranged_vals2 = (val.value = data[val.key]  for val in legend)
+
+  pvals =
+    values: []
+    colors: []
+    legend: []
+
   rearranged_vals.sort (a, b) -> b.value - a.value
 
   for item in rearranged_vals
     if item.value > 0
-      values.push item.value
-      colors.push item.color
-      legend.push "%% - #{item.legend} (##)"
-
-  pvals =
-    values: values
-    colors: colors
-    legend: legend
+      pvals.values.push item.value
+      pvals.colors.push item.color
+      pvals.legend.push "%% - #{item.legend} (##)"
 
   ###
   NOTE: hack to get around a graphael bug!
