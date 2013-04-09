@@ -142,7 +142,7 @@ class NMIS.DataRecord
       value
 
   variable: ->
-    NMIS.variables.find @id
+    @lga.variableSet.find @id
 
 class NoOpFetch
   constructor: (@id)->
@@ -163,24 +163,35 @@ class NMIS.District
     [@group_slug, @slug] = d.url_code.split("/")
     @files = [] unless @files?
     @module_files = (new Module(slug, f_param, @) for slug, f_param of @files)
+    @_fetchesInProgress = {}
     @latLng = @lat_lng
     @id = [@group_slug, @local_id].join("_")
     @html_params =
       text: @name
       value: @id
     @html_params.disabled = "disabled"  unless @active
+  llArr: ->
+    +coord for coord in @latLng.split ","
+  latLngBounds: ()->
+    if !@_latLngBounds and @bounds
+      @_latLngBounds = @bounds.split /\s|,/
+    else if !@_latLngBounds
+      log """
+      Approximating district lat-lng bounds. You can set district's bounding box in districts.json by
+      setting the value of "bounds" to comma separated coordinates.
+      Format: "SW-lat,SW-lng,NE-lat,NE-lng"
+      Example: "6.645,7.612,6.84,7.762"
+      """
+      # small padding on lat and lng to create an estimated bounding box.
+      # note: this is not meant to be accurate. The best way to actually 
+      # zoom to the district is to specify the bounding box.
+      smallLat = 0.075
+      smallLng = 0.1
+      [lat, lng] = @llArr()
+      @_latLngBounds = [lat - smallLat, lng - smallLng, lat + smallLat, lng + smallLng]
+    @_latLngBounds
   defaultSammyUrl: ()->
     "#{NMIS.url_root}#/#{@group_slug}/#{@slug}/summary"
-  sectors_data_loader: ()->
-    # todo datamod
-    _fetcher = @get_data_module("presentation/sectors")
-    fetcher = _fetcher.fetch()
-    fetcher.done (s)->
-      NMIS.loadSectors s.sectors,
-        default:
-          name: "Overview"
-          slug: "overview"
-    fetcher
 
   get_data_module: (module)->
     for mf in @module_files when mf.name is module
@@ -202,25 +213,70 @@ class NMIS.District
     catch e
       false
 
+  _fetchModuleOnce: (resultAttribute, moduleId, cb=false)->
+    if @[resultAttribute]
+      # the result's already there so this returns a resolved promise
+      $.Deferred().resolve().promise()
+    else if @_fetchesInProgress[resultAttribute]
+      # the previous fetch is still in progress so this returns that promise obj
+      @_fetchesInProgress[resultAttribute]
+    else
+      # no previous fetch, so this returns a new fetch.
+      dfd = $.Deferred()
+      @get_data_module(moduleId).fetch().done (results)=>
+        @[resultAttribute] = if cb then cb(results) else results
+        dfd.resolve()
+      @_fetchesInProgress[resultAttribute] = dfd.promise()
+
+  sectors_data_loader: ->
+    # TODO: use "sectors" associated with this LGA instead of global NMIS sectors.
+    @_fetchModuleOnce "__sectors_TODO", "presentation/sectors", (results)=>
+      NMIS.loadSectors results.sectors,
+        default:
+          name: "overview"
+          slug: "overview"
+
+  loadFacilitiesData: ()->
+    @_fetchModuleOnce "facilityData", "data/facilities", (results)=>
+      # NMIS.loadFacilities will be removed soon
+      NMIS.loadFacilities results
+
+      # this replicates the functionality of NMIS.loadFacilities, but stores
+      # the results with the specific LGA.
+      clonedFacilitiesById = {}
+      for own facKey, fac of results
+        id = fac._id or facKey
+        datum = {}
+        for own key, val of fac
+          if key is "gps"
+            datum._ll = do ->
+              if val and ll = val.split?(" ")
+                [ll[0], ll[1]]
+          else if key is "sector"
+            datum.sector = NMIS.Sectors.pluck val.toLowerCase()
+          else
+            datum[key] = val
+        clonedFacilitiesById[facKey] = datum
+      clonedFacilitiesById
+
+  facilityDataForSector: (sectorSlug)->
+    for own facId, fac of @facilityData when fac.sector.slug is sectorSlug
+      fac
+
   loadData: ()->
-    dfd = $.Deferred()
-    # todo datamod/data
-    loader = @get_data_module("data/lga_data").fetch()
-    loader.done (results)=>
-      @lga_data = for d in results.data
+    @_fetchModuleOnce "lga_data", "data/lga_data", (results)=>
+      for d in results.data
         new NMIS.DataRecord @, d
 
-      dfd.resolve @lga_data
-    dfd.promise()
-
   loadVariables: ()->
-    dfd = $.Deferred()
-    # todo datamod/variables
-    @get_data_module("variables/variables").fetch().done (results)=>
-      NMIS.variables.clear()
-      NMIS.variables.load results
-      dfd.resolve NMIS.variables
-    dfd.promise()
+    @_fetchModuleOnce "variableSet", "variables/variables", (results)=>
+      new NMIS.VariableSet results
+
+  loadFacilitiesPresentation: ()->
+    @_fetchModuleOnce "facilitiesPresentation", "presentation/facilities"
+
+  loadSummarySectors: ()->
+    @_fetchModuleOnce "ssData", "presentation/summary_sectors"
 
   lookupRecord: (id)->
     matches = []
@@ -267,9 +323,6 @@ class NMIS.Group
       g = g.group
     ps
 
-_sanitizeStr = (str)->
-  "#{str}".toLowerCase().replace(/\W/, "_").replace(/__/g, "_")
-
 class Module
   @DEFAULT_MODULES = []
   constructor: (@id, file_param, district)->
@@ -279,9 +332,6 @@ class Module
       @filename = file_param
       @files = [new ModuleFile(file_param, district)]
     @name = @id
-  sanitizedId: ()->
-    @_sanitizedId = _sanitizeStr @name  unless @_sanitizedId
-    @_sanitizedId
   fetch: ()->
     $.when.apply null, (f.fetch() for f in @files)
 

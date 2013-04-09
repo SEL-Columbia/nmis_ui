@@ -70,74 +70,6 @@ do ->
       str
 
 do ->
-  NMIS.MapMgr = do->
-    opts = {}
-    started = false
-    finished = false
-    callbackStr = "NMIS.MapMgr.loaded"
-    elem = false
-    fakse = false
-    loadCallbacks = []
-    mapLoadFn = -> NMIS.loadGoogleMaps()
-    addLoadCallback = (cb) -> loadCallbacks.push cb
-    isLoaded = -> finished
-    clear = -> started = finished = false
-    loaded = ->
-      cb.call(opts) for cb in loadCallbacks
-      loadCallbacks = []
-      finished = true
-
-    init = (_opts)->
-      return true  if started
-
-      if _opts isnt `undefined`
-        opts = _.extend(
-          #defaults
-          launch: true
-          fake: false
-          fakeDelay: 3000
-          mapLoadFn: false
-          elem: "body"
-          defaultMapType: "SATELLITE"
-          loadCallbacks: []
-        , _opts)
-        loadCallbacks = Array::concat.apply(loadCallbacks, opts.loadCallbacks)
-        fake = !!opts.fake
-        mapLoadFn = opts.mapLoadFn  if opts.mapLoadFn
-      else
-        fake = false
-      started = true
-      unless fake
-        mapLoadFn()
-      else
-        _.delay loaded, opts.fakeDelay
-      started
-
-    mapboxLayer = (options) ->
-      throw (new Error("Google Maps has not yet loaded into the page."))  if typeof google is "undefined"
-      new google.maps.ImageMapType(
-        getTileUrl: (coord, z) ->
-          # Y coordinate is flipped in Mapbox, compared to Google
-          # Simplistic predictable hashing
-          "http://b.tiles.mapbox.com/v3/modilabs." + options.tileset + "/" + z + "/" + coord.x + "/" + coord.y + ".png?updated=1331159407403"
-
-        name: options.name
-        alt: options.name
-        tileSize: new google.maps.Size(256, 256)
-        isPng: true
-        minZoom: 0
-        maxZoom: options.maxZoom or 17
-      )
-
-    # Externally callable functions:
-    init: init
-    clear: clear
-    loaded: loaded
-    isLoaded: isLoaded
-    mapboxLayer: mapboxLayer
-    addLoadCallback: addLoadCallback
-
-do ->
   NMIS.IconSwitcher = do ->
     context = {}
     callbacks = ["createMapItem", "shiftMapItemStatus", "statusShiftDone", "hideMapItem", "showMapItem", "setMapItemVisibility"]
@@ -294,6 +226,24 @@ do ->
 
 do ->
   NMIS.LocalNav = do ->
+    ###
+    NMIS.LocalNav is the navigation boxes that shows up on top of the map.
+    > It has "buttonSections", each with buttons inside. These buttons are defined
+      when they are passed as arguments to NMIS.LocalNav.init(...)
+
+    > It is structured to make it easy to assign the buttons to point to URLs
+      relative to the active LGA. It is also meant to be easy to change which
+      buttons are active by passing values to NMIS.LocalNav.markActive(...)
+
+      An example value passed to markActive:
+        NMIS.LocalNav.markActive(["mode:facilities", "sector:health"])
+          ** this would "select" facilities and health **
+
+    > You can also run NMIS.LocalNav.iterate to run through each button, changing
+      the href to something appropriate given the current page state.
+
+    [wrapper element className: ".local-nav"]
+    ###
     elem = undefined
     wrap = undefined
     opts = undefined
@@ -379,6 +329,9 @@ do ->
 
 do ->
   NMIS.Tabulation = do ->
+    ###
+    This is only currently used in the pie chart graphing of facility indicators.
+    ###
     init = -> true
     filterBySector = (sector) ->
       sector = NMIS.Sectors.pluck(sector)
@@ -411,7 +364,48 @@ do ->
 
 do ->
   NMIS.Env = do ->
+    ###
+    NMIS.Env() gets-or-sets the page state.
+
+    It also provides the option to trigger callbacks which are run in a
+    special context upon each change of the page-state (each time NMIS.Env() is set)
+    ###
     env = false
+    changeCbs = []
+    _latestChangeDeferred = false
+
+    class EnvContext
+      constructor: (@next, @prev)->
+        # note: a promise object called "@change" will be assigned to each
+        # EnvContext after it is created.
+
+      usingSlug: (what, whatSlug)->
+        # Usage: env.usingSlug("mode", "facilities") runs if the next env matches
+        #        "mode:facilities"
+        @_matchingSlug what, whatSlug
+
+      changingToSlug: (what, whatSlug)->
+        # Usage: env.changingToSlug("mode", "facilities") only runs if the previous env
+        #        did not have "mode" match "facilities" but the next one does.
+        # Output is equivalent to:
+        #   @changing(what) and @usingSlug(what, whatSlug)
+        !@_matchingSlug(what, whatSlug, false) and @_matchingSlug(what, whatSlug)
+
+      changing: (what)->
+        @_getSlug(what) isnt @_getSlug(what, false)
+
+      changeDone: ()-> @_deferred?.resolve(@next)
+
+      _matchingSlug: (what, whatSlug, checkNext=true)->
+        # returns boolean of whether the environment matches a value
+        @_getSlug(what, checkNext) is whatSlug
+
+      _getSlug: (what, checkNext=true)->
+        # returns a string that hopefully represents the slug of the environment variable
+        checkEnv = if checkNext then @next else @prev
+        obj = checkEnv[what]
+        "#{if obj and obj.slug then obj.slug else obj}"
+
     env_accessor = (arg)->
       if arg?
         set_env arg
@@ -419,18 +413,37 @@ do ->
         get_env()
 
     get_env = ()->
-      throw new Error("NMIS.Env is not set") unless env
-      _.extend {}, env
-    set_env = (_env)-> env = _.extend {}, _env
+      if env
+        _.extend {}, env
+      else
+        null
+
+    set_env = (_env)->
+      context = new EnvContext(_.extend({}, _env), env)
+      context._deferred = _latestChangeDeferred = $.Deferred()
+      context.change = _latestChangeDeferred.promise()
+      env = context.next
+      changeCb.call context, context.next, context.prev  for changeCb in changeCbs
 
     env_accessor.extend = (o)->
       e = if env then env else {}
       _.extend({}, e, o)
 
+    env_accessor.onChange = (cb)->
+      changeCbs.push cb
+
+    env_accessor.changeDone = ()->
+      # Use this (NMIS.Env.changeDone()) to resolve the most recent promise object
+      _latestChangeDeferred.resolve env  if _latestChangeDeferred
+
     env_accessor
 
 
 NMIS.panels = do ->
+  ###
+  NMIS.panels provides a basic way to define HTML DOM-related behavior when navigating from
+  one section of the site to another. (e.g. "summary" to "facilities".)
+  ###
   panels = {}
   currentPanel = false
 
@@ -474,7 +487,12 @@ NMIS.panels = do ->
   allPanels: ()-> (v for k, v of panels)
 
 do ->
+
   NMIS.DisplayWindow = do ->
+    ###
+    NMIS.DisplayWindow builds and provides access to the multi-part structure of
+    the facilities view.
+    ###
     elem = undefined
     elem1 = undefined
     elem0 = undefined
