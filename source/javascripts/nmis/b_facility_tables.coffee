@@ -1,14 +1,20 @@
 do ->
   NMIS.SectorDataTable = do ->
+    ###
+    This creates the facilities data table.
+
+    (seen at #/state/district/facilites/health)
+    [wrapper element className: ".facility-table-wrap"]
+    ###
     dt = undefined
     table = undefined
     tableSwitcher = undefined
 
-    createIn = (tableWrap, env, _opts) ->
+    createIn = (district, tableWrap, env, _opts) ->
       opts = _.extend(
         sScrollY: 120
       , _opts)
-      data = NMIS.dataForSector(env.sector.slug)
+      data = district.facilityDataForSector env.sector.slug
       throw (new Error("Subsector is undefined"))  if env.subsector is `undefined`
       env.subsector = env.sector.getSubsector(env.subsector.slug)
       columns = env.subsector.columns()
@@ -135,116 +141,3 @@ do ->
     setDtMaxHeight: setDtMaxHeight
     getSelect: getSelect
     resizeColumns: resizeColumns
-
-do ->
-  NMIS.FacilityTables = do ->
-    div = undefined
-    sectorNav = undefined
-
-    createForSectors = (sArr, _opts) ->
-      opts = _.extend(
-      
-        #default options
-        callback: ->
-
-        sectorCallback: ->
-
-        indicatorClickCallback: ->
-      , _opts)
-      div = $("<div />").addClass("facility-display-wrap")  if div is `undefined`
-      div.empty()
-      _.each sArr, (s) ->
-        div.append createForSector(s, opts)
-
-      opts.callback.call this, div  if opts.callback
-      div
-    select = (sector, subsector) ->
-      if sectorNav isnt `undefined`
-        sectorNav.find("a.active").removeClass "active"
-        sectorNav.find(".sub-sector-link-" + subsector.slug).addClass "active"
-      div.find("td, th").hide()
-      sectorElem = div.find(".facility-display").filter(->
-        $(this).data("sector") is sector.slug
-      ).eq(0)
-      sectorElem.find(".subgroup-all, .subgroup-" + subsector.slug).show()
-    createForSector = (s, opts) ->
-      tbody = $("<tbody />")
-      sector = NMIS.Sectors.pluck(s)
-      iDiv = $("<div />").addClass("facility-display").data("sector", sector.slug)
-      cols = sector.getColumns().sort((a, b) ->
-        a.display_order - b.display_order
-      )
-      orderedFacilities = NMIS.dataForSector(sector.slug)
-      dobj = NMIS.dataObjForSector(sector.slug)
-      _.each dobj, (facility, fid) ->
-        _createRow(facility, cols, fid).appendTo tbody
-
-      $("<table />").append(_createHeadRow(sector, cols, opts)).append(tbody).appendTo iDiv
-      opts.sectorCallback.call this, sector, iDiv, _createNavigation, div
-      iDiv
-    _createRow = (facility, cols, facility_id) ->
-      tr = $("<tr />").data("facility-id", facility_id)
-      _.each cols, (col, i) ->
-        slug = col.slug
-        rawval = facility[slug]
-        val = NMIS.DisplayValue(rawval, $("<td />",
-          class: classesStr(col)
-        )).appendTo(tr)
-
-      tr
-    _createNavigation = (sector, _hrefCb) ->
-      sectorNav = $("<p />").addClass("facility-sectors-navigation")
-      subgroups = sector.subGroups()
-      sgl = subgroups.length
-      _.each subgroups, (sg, i) ->
-        href = _hrefCb(sg)
-        $("<a />",
-          href: href
-        ).text(sg.name).data("subsector", sg.slug).addClass("sub-sector-link").addClass("sub-sector-link-" + sg.slug).appendTo sectorNav
-        $("<span />").text(" | ").appendTo sectorNav  if i < sgl - 1
-
-      sectorNav
-    classesStr = (col) ->
-      clss = ["data-cell"]
-      _.each col.subgroups, (sg) ->
-        clss.push "subgroup-" + sg
-
-      clss.join " "
-    hasClickAction = (col, carr) ->
-      !!(!!col.click_actions and col.click_actions.indexOf(col))
-    _createHeadRow = (sector, cols, opts) ->
-      tr = $("<tr />")
-      _.each cols, (col, i) ->
-        th = $("<th />",
-          class: classesStr(col)
-        ).data("col", col)
-        unless not col.clickable
-          th.html $("<a />",
-            href: "#"
-          ).text(col.name).data("col", col)
-        else
-          th.text col.name
-        th.appendTo tr
-
-      tr.delegate "a", "click", (evt) ->
-        opts.indicatorClickCallback.call $(this).data("col")
-        false
-
-      $("<thead />").html tr
-    highlightColumn = (column, _opts) ->
-    
-      # var opts = _.extend({
-      #     highlightClass: 'fuchsia'
-      # }, _opts);
-      div.find(".highlighted").removeClass "highlighted"
-      th = div.find("th").filter(->
-        $(this).data("col").slug is column.slug
-      ).eq(0)
-      table = th.parents("table").eq(0)
-      ind = th.index()
-      table.find("tr").each ->
-        $(this).children().eq(ind).addClass "highlighted"
-  
-    createForSectors: createForSectors
-    highlightColumn: highlightColumn
-    select: select

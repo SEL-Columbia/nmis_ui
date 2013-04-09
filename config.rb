@@ -18,7 +18,7 @@
 # Per-page layout changes:
 # 
 # With no layout
-# page "/path/to/file.html", :layout => false
+
 # 
 # With alternative layout
 # page "/path/to/file.html", :layout => :otherlayout
@@ -50,12 +50,11 @@
 # end
 
 set :css_dir, 'stylesheets'
-
 set :js_dir, 'javascripts'
-
 set :images_dir, 'images'
 
-# Build-specific configuration
+page "dashboard_subtemplates.html", :layout => false
+
 configure :build do
   # For example, change the Compass output style for deployment
   # activate :minify_css

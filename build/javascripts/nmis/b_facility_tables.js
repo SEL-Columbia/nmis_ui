@@ -2,16 +2,23 @@
 
   (function() {
     return NMIS.SectorDataTable = (function() {
+      /*
+          This creates the facilities data table.
+      
+          (seen at #/state/district/facilites/health)
+          [wrapper element className: ".facility-table-wrap"]
+      */
+
       var createIn, dataTableDraw, dt, getSelect, handleHeadRowClick, nullMarker, resizeColumns, setDtMaxHeight, table, tableSwitcher, _createTbody, _createThead;
       dt = void 0;
       table = void 0;
       tableSwitcher = void 0;
-      createIn = function(tableWrap, env, _opts) {
+      createIn = function(district, tableWrap, env, _opts) {
         var columns, data, dataTableDraw, opts;
         opts = _.extend({
           sScrollY: 120
         }, _opts);
-        data = NMIS.dataForSector(env.sector.slug);
+        data = district.facilityDataForSector(env.sector.slug);
         if (env.subsector === undefined) {
           throw new Error("Subsector is undefined");
         }
@@ -147,143 +154,6 @@
         setDtMaxHeight: setDtMaxHeight,
         getSelect: getSelect,
         resizeColumns: resizeColumns
-      };
-    })();
-  })();
-
-  (function() {
-    return NMIS.FacilityTables = (function() {
-      var classesStr, createForSector, createForSectors, div, hasClickAction, highlightColumn, sectorNav, select, _createHeadRow, _createNavigation, _createRow;
-      div = void 0;
-      sectorNav = void 0;
-      createForSectors = function(sArr, _opts) {
-        var opts;
-        opts = _.extend({
-          callback: function() {},
-          sectorCallback: function() {},
-          indicatorClickCallback: function() {}
-        }, _opts);
-        if (div === undefined) {
-          div = $("<div />").addClass("facility-display-wrap");
-        }
-        div.empty();
-        _.each(sArr, function(s) {
-          return div.append(createForSector(s, opts));
-        });
-        if (opts.callback) {
-          opts.callback.call(this, div);
-        }
-        return div;
-      };
-      select = function(sector, subsector) {
-        var sectorElem;
-        if (sectorNav !== undefined) {
-          sectorNav.find("a.active").removeClass("active");
-          sectorNav.find(".sub-sector-link-" + subsector.slug).addClass("active");
-        }
-        div.find("td, th").hide();
-        sectorElem = div.find(".facility-display").filter(function() {
-          return $(this).data("sector") === sector.slug;
-        }).eq(0);
-        return sectorElem.find(".subgroup-all, .subgroup-" + subsector.slug).show();
-      };
-      createForSector = function(s, opts) {
-        var cols, dobj, iDiv, orderedFacilities, sector, tbody;
-        tbody = $("<tbody />");
-        sector = NMIS.Sectors.pluck(s);
-        iDiv = $("<div />").addClass("facility-display").data("sector", sector.slug);
-        cols = sector.getColumns().sort(function(a, b) {
-          return a.display_order - b.display_order;
-        });
-        orderedFacilities = NMIS.dataForSector(sector.slug);
-        dobj = NMIS.dataObjForSector(sector.slug);
-        _.each(dobj, function(facility, fid) {
-          return _createRow(facility, cols, fid).appendTo(tbody);
-        });
-        $("<table />").append(_createHeadRow(sector, cols, opts)).append(tbody).appendTo(iDiv);
-        opts.sectorCallback.call(this, sector, iDiv, _createNavigation, div);
-        return iDiv;
-      };
-      _createRow = function(facility, cols, facility_id) {
-        var tr;
-        tr = $("<tr />").data("facility-id", facility_id);
-        _.each(cols, function(col, i) {
-          var rawval, slug, val;
-          slug = col.slug;
-          rawval = facility[slug];
-          return val = NMIS.DisplayValue(rawval, $("<td />", {
-            "class": classesStr(col)
-          })).appendTo(tr);
-        });
-        return tr;
-      };
-      _createNavigation = function(sector, _hrefCb) {
-        var sgl, subgroups;
-        sectorNav = $("<p />").addClass("facility-sectors-navigation");
-        subgroups = sector.subGroups();
-        sgl = subgroups.length;
-        _.each(subgroups, function(sg, i) {
-          var href;
-          href = _hrefCb(sg);
-          $("<a />", {
-            href: href
-          }).text(sg.name).data("subsector", sg.slug).addClass("sub-sector-link").addClass("sub-sector-link-" + sg.slug).appendTo(sectorNav);
-          if (i < sgl - 1) {
-            return $("<span />").text(" | ").appendTo(sectorNav);
-          }
-        });
-        return sectorNav;
-      };
-      classesStr = function(col) {
-        var clss;
-        clss = ["data-cell"];
-        _.each(col.subgroups, function(sg) {
-          return clss.push("subgroup-" + sg);
-        });
-        return clss.join(" ");
-      };
-      hasClickAction = function(col, carr) {
-        return !!(!!col.click_actions && col.click_actions.indexOf(col));
-      };
-      _createHeadRow = function(sector, cols, opts) {
-        var tr;
-        tr = $("<tr />");
-        _.each(cols, function(col, i) {
-          var th;
-          th = $("<th />", {
-            "class": classesStr(col)
-          }).data("col", col);
-          if (!!col.clickable) {
-            th.html($("<a />", {
-              href: "#"
-            }).text(col.name).data("col", col));
-          } else {
-            th.text(col.name);
-          }
-          return th.appendTo(tr);
-        });
-        tr.delegate("a", "click", function(evt) {
-          opts.indicatorClickCallback.call($(this).data("col"));
-          return false;
-        });
-        return $("<thead />").html(tr);
-      };
-      highlightColumn = function(column, _opts) {
-        var ind, table, th;
-        div.find(".highlighted").removeClass("highlighted");
-        th = div.find("th").filter(function() {
-          return $(this).data("col").slug === column.slug;
-        }).eq(0);
-        table = th.parents("table").eq(0);
-        ind = th.index();
-        return table.find("tr").each(function() {
-          return $(this).children().eq(ind).addClass("highlighted");
-        });
-      };
-      return {
-        createForSectors: createForSectors,
-        highlightColumn: highlightColumn,
-        select: select
       };
     })();
   })();

@@ -1,11 +1,32 @@
 (function() {
-  var Indicator, Sector, SubSector, all, clear, defaultSector, init, pluck, sectors, slugs, validate,
+  var DistrictSectors, Indicator, Sector, SubSector, all, clear, defaultSector, init, loadForDistrict, pluck, sectors, slugs, validate,
     __indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; },
     __hasProp = {}.hasOwnProperty;
 
   sectors = null;
 
   defaultSector = null;
+
+  DistrictSectors = (function() {
+
+    function DistrictSectors(district, _sectors, opts) {
+      this.district = district;
+      if (opts == null) {
+        opts = {};
+      }
+      if (opts["default"]) {
+        this.defaultSector = new Sector(_.extend(opts["default"], {
+          "default": true
+        }));
+      }
+      this.sectors = _(_sectors).chain().clone().map(function(s) {
+        return new Sector(_.extend({}, s));
+      }).value();
+    }
+
+    return DistrictSectors;
+
+  })();
 
   Sector = (function() {
 
@@ -143,7 +164,7 @@
     }
 
     Indicator.prototype.customIconForItem = function(item) {
-      return ["" + this.iconify_png_url + item[this.slug] + ".png", 32, 24];
+      return ["" + NMIS.settings.pathToMapIcons + "/" + this.iconify_png_url + item[this.slug] + ".png", 32, 24];
     };
 
     return Indicator;
@@ -162,14 +183,33 @@
     return true;
   };
 
+  loadForDistrict = function(district, data) {
+    return district.sectors = new DistrictSectors(district, data);
+  };
+
   clear = function() {
     return sectors = [];
   };
 
-  pluck = function(slug) {
-    return _(sectors).chain().filter(function(s) {
-      return s.slug === slug;
-    }).first().value() || defaultSector;
+  pluck = function(slugOrObj, defaultIfNoMatch) {
+    var sector, sectorMatch, slug, _i, _len;
+    if (defaultIfNoMatch == null) {
+      defaultIfNoMatch = true;
+    }
+    if (slugOrObj) {
+      slug = slugOrObj.slug != null ? slugOrObj.slug : slugOrObj;
+      for (_i = 0, _len = sectors.length; _i < _len; _i++) {
+        sector = sectors[_i];
+        if (sector.slug === slug) {
+          sectorMatch = sector;
+        }
+      }
+    }
+    if (!defaultIfNoMatch) {
+      return sectorMatch;
+    } else {
+      return sectorMatch || defaultSector;
+    }
   };
 
   all = function() {
@@ -205,6 +245,7 @@
 
   NMIS.Sectors = {
     init: init,
+    loadForDistrict: loadForDistrict,
     pluck: pluck,
     slugs: slugs,
     all: all,

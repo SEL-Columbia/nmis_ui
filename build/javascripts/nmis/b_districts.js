@@ -1,5 +1,6 @@
 (function() {
-  var Module, ModuleFile, NoOpFetch, headers, _sanitizeStr;
+  var Module, ModuleFile, NoOpFetch, headers,
+    __hasProp = {}.hasOwnProperty;
 
   headers = (function() {
     var header, nav;
@@ -252,7 +253,7 @@
     };
 
     DataRecord.prototype.variable = function() {
-      return NMIS.variables.find(this.id);
+      return this.lga.variableSet.find(this.id);
     };
 
     return DataRecord;
@@ -308,6 +309,7 @@
         }
         return _results;
       }).call(this);
+      this._fetchesInProgress = {};
       this.latLng = this.lat_lng;
       this.id = [this.group_slug, this.local_id].join("_");
       this.html_params = {
@@ -319,23 +321,33 @@
       }
     }
 
-    District.prototype.defaultSammyUrl = function() {
-      return "" + NMIS.url_root + "#/" + this.group_slug + "/" + this.slug + "/summary";
+    District.prototype.llArr = function() {
+      var coord, _i, _len, _ref, _results;
+      _ref = this.latLng.split(",");
+      _results = [];
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        coord = _ref[_i];
+        _results.push(+coord);
+      }
+      return _results;
     };
 
-    District.prototype.sectors_data_loader = function() {
-      var fetcher, _fetcher;
-      _fetcher = this.get_data_module("presentation/sectors");
-      fetcher = _fetcher.fetch();
-      fetcher.done(function(s) {
-        return NMIS.loadSectors(s.sectors, {
-          "default": {
-            name: "Overview",
-            slug: "overview"
-          }
-        });
-      });
-      return fetcher;
+    District.prototype.latLngBounds = function() {
+      var lat, lng, smallLat, smallLng, _ref;
+      if (!this._latLngBounds && this.bounds) {
+        this._latLngBounds = this.bounds.split(/\s|,/);
+      } else if (!this._latLngBounds) {
+        log("Approximating district lat-lng bounds. You can set district's bounding box in districts.json by\nsetting the value of \"bounds\" to comma separated coordinates.\nFormat: \"SW-lat,SW-lng,NE-lat,NE-lng\"\nExample: \"6.645,7.612,6.84,7.762\"");
+        smallLat = 0.075;
+        smallLng = 0.1;
+        _ref = this.llArr(), lat = _ref[0], lng = _ref[1];
+        this._latLngBounds = [lat - smallLat, lng - smallLng, lat + smallLat, lng + smallLng];
+      }
+      return this._latLngBounds;
+    };
+
+    District.prototype.defaultSammyUrl = function() {
+      return "" + NMIS.url_root + "#/" + this.group_slug + "/" + this.slug + "/summary";
     };
 
     District.prototype.get_data_module = function(module) {
@@ -365,38 +377,112 @@
       }
     };
 
-    District.prototype.loadData = function() {
-      var dfd, loader,
+    District.prototype._fetchModuleOnce = function(resultAttribute, moduleId, cb) {
+      var dfd,
         _this = this;
-      dfd = $.Deferred();
-      loader = this.get_data_module("data/lga_data").fetch();
-      loader.done(function(results) {
-        var d;
-        _this.lga_data = (function() {
-          var _i, _len, _ref, _results;
-          _ref = results.data;
-          _results = [];
-          for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-            d = _ref[_i];
-            _results.push(new NMIS.DataRecord(this, d));
+      if (cb == null) {
+        cb = false;
+      }
+      if (this[resultAttribute]) {
+        return $.Deferred().resolve().promise();
+      } else if (this._fetchesInProgress[resultAttribute]) {
+        return this._fetchesInProgress[resultAttribute];
+      } else {
+        dfd = $.Deferred();
+        this.get_data_module(moduleId).fetch().done(function(results) {
+          _this[resultAttribute] = cb ? cb(results) : results;
+          return dfd.resolve();
+        });
+        return this._fetchesInProgress[resultAttribute] = dfd.promise();
+      }
+    };
+
+    District.prototype.sectors_data_loader = function() {
+      var _this = this;
+      return this._fetchModuleOnce("__sectors_TODO", "presentation/sectors", function(results) {
+        return NMIS.loadSectors(results.sectors, {
+          "default": {
+            name: "overview",
+            slug: "overview"
           }
-          return _results;
-        }).call(_this);
-        return dfd.resolve(_this.lga_data);
+        });
       });
-      return dfd.promise();
+    };
+
+    District.prototype.loadFacilitiesData = function() {
+      var _this = this;
+      return this._fetchModuleOnce("facilityData", "data/facilities", function(results) {
+        var clonedFacilitiesById, datum, fac, facKey, id, key, val;
+        NMIS.loadFacilities(results);
+        clonedFacilitiesById = {};
+        for (facKey in results) {
+          if (!__hasProp.call(results, facKey)) continue;
+          fac = results[facKey];
+          id = fac._id || facKey;
+          datum = {};
+          for (key in fac) {
+            if (!__hasProp.call(fac, key)) continue;
+            val = fac[key];
+            if (key === "gps") {
+              datum._ll = (function() {
+                var ll;
+                if (val && (ll = typeof val.split === "function" ? val.split(" ") : void 0)) {
+                  return [ll[0], ll[1]];
+                }
+              })();
+            } else if (key === "sector") {
+              datum.sector = NMIS.Sectors.pluck(val.toLowerCase());
+            } else {
+              datum[key] = val;
+            }
+          }
+          clonedFacilitiesById[facKey] = datum;
+        }
+        return clonedFacilitiesById;
+      });
+    };
+
+    District.prototype.facilityDataForSector = function(sectorSlug) {
+      var fac, facId, _ref, _results;
+      _ref = this.facilityData;
+      _results = [];
+      for (facId in _ref) {
+        if (!__hasProp.call(_ref, facId)) continue;
+        fac = _ref[facId];
+        if (fac.sector.slug === sectorSlug) {
+          _results.push(fac);
+        }
+      }
+      return _results;
+    };
+
+    District.prototype.loadData = function() {
+      var _this = this;
+      return this._fetchModuleOnce("lga_data", "data/lga_data", function(results) {
+        var d, _i, _len, _ref, _results;
+        _ref = results.data;
+        _results = [];
+        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+          d = _ref[_i];
+          _results.push(new NMIS.DataRecord(_this, d));
+        }
+        return _results;
+      });
     };
 
     District.prototype.loadVariables = function() {
-      var dfd,
-        _this = this;
-      dfd = $.Deferred();
-      this.get_data_module("variables/variables").fetch().done(function(results) {
-        NMIS.variables.clear();
-        NMIS.variables.load(results);
-        return dfd.resolve(NMIS.variables);
+      var _this = this;
+      return this._fetchModuleOnce("variableSet", "variables/variables", function(results) {
+        return new NMIS.VariableSet(results);
       });
-      return dfd.promise();
+    };
+
+    District.prototype.loadFacilitiesPresentation = function() {
+      return this._fetchModuleOnce("facilitiesPresentation", "presentation/facilities");
+    };
+
+    District.prototype.loadSummarySectors = function() {
+      return this._fetchModuleOnce("ssData", "presentation/summary_sectors");
     };
 
     District.prototype.lookupRecord = function(id) {
@@ -505,10 +591,6 @@
 
   })();
 
-  _sanitizeStr = function(str) {
-    return ("" + str).toLowerCase().replace(/\W/, "_").replace(/__/g, "_");
-  };
-
   Module = (function() {
 
     Module.DEFAULT_MODULES = [];
@@ -532,13 +614,6 @@
       }
       this.name = this.id;
     }
-
-    Module.prototype.sanitizedId = function() {
-      if (!this._sanitizedId) {
-        this._sanitizedId = _sanitizeStr(this.name);
-      }
-      return this._sanitizedId;
-    };
 
     Module.prototype.fetch = function() {
       var f;
