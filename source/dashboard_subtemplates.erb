@@ -154,15 +154,15 @@
   <div class="row">
   <{ _.each(relevant_data.columns, function(col){ }>
     <div class="span-one-third">
-  		<h3 class="mdg-underlined-title">
-        <{= col.name }>
-  		</h3>
+     <h3 class="mdg-underlined-title">
+       <{= col.name }>
+      </h3>
       <table class="mdg-table">
         <tbody>
           <{ _.each(col.rows, function(rowId){ }>
             <tr>
               <td>
-                <{= lookupName(rowId) }>
+                <{= lookupName(rowId, relevant_data.context) }>
               </td>
               <td>
                 <{= lookupValue(rowId) }>
