@@ -179,6 +179,7 @@ do ->
 do ->
   NMIS.CountryView = ()->
     NMIS.panels.changePanel "country_view"
+    NMIS.Env {}
     ml = loadMapLayers()
     ml.done (mlData)->
       $(".resizing-map").show()
