@@ -8,6 +8,10 @@ class Variable
     @data_type = v.data_type || "float"
     @precision = v.precision || 1
     @context = v.context || {}
+  lookup: (what, context=false)->
+    result = @[what]
+    result = @context[context][what]  if @context[context]?[what]
+    result
 
 class NMIS.VariableSet
   constructor: (variables)->

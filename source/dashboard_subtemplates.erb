@@ -331,7 +331,8 @@
               <tr>
                 <td class="empty-first empty bb"></td>
                 <td class="indicator-name bb">
-                  <{= lookupName(row) }>
+                  <{= lookupName(row, igrp.context) }>
+                  <{ if(igrp.context) { print("<span class='tiny-hint' title='"+igrp.context+"'>*</span>")} }>
                 </td>
                 <td class="indvalue bb">
                   <{= lookupValue(row) }>
@@ -348,7 +349,8 @@
                 <tr>
                   <td class="empty-first empty bb"></td>
                   <td class="indicator-name bb">
-                    <{= lookupName(subrow) }>
+                    <{= lookupName(subrow, igrp.context) }>
+                    <{ if(igrp.context) { print("<span class='tiny-hint' title='"+igrp.context+"'>*</span>")} }>
                   </td>
                   <td class="indvalue bb">
                     <{= lookupValue(subrow) }>
