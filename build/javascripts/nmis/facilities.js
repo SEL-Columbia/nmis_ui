@@ -403,10 +403,6 @@ Facilities:
     };
   })();
 
-  this.mustachify = function(id, obj) {
-    return Mustache.to_html($("#" + id).eq(0).html().replace(/<{/g, "{{").replace(/\}>/g, "}}"), obj);
-  };
-
   resizeDisplayWindowAndFacilityTable = function() {
     var ah, bar, cf;
     ah = NMIS._wElems.elem1.height();

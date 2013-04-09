@@ -155,11 +155,11 @@ build_all_sector_summary_modules = (lga)->
         establish_template_display_panels()
         context.relevant_data = lga.ssData.relevant_data[sector_id]?[module]
         div = $('<div>')
-        context.lookupName = (id)->
+        context.lookupName = (id, context)->
           if id
             vrb = lga.variableSet.find id
             if vrb
-              spanStr vrb.name, "variable-name"
+              spanStr vrb.lookup("name", context), "variable-name"
             else
               spanStr id, "warn-missing"
           else

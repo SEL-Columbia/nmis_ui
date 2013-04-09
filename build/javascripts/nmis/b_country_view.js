@@ -260,6 +260,7 @@
     return NMIS.CountryView = function() {
       var ml;
       NMIS.panels.changePanel("country_view");
+      NMIS.Env({});
       ml = loadMapLayers();
       ml.done(function(mlData) {
         var mdgLayerSelectBox;

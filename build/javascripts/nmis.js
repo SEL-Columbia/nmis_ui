@@ -1544,6 +1544,7 @@ until they play well together (and I ensure they don't over-depend on other modu
     return NMIS.CountryView = function() {
       var ml;
       NMIS.panels.changePanel("country_view");
+      NMIS.Env({});
       ml = loadMapLayers();
       ml.done(function(mlData) {
         var mdgLayerSelectBox;
@@ -2843,7 +2844,8 @@ until they play well together (and I ensure they don't over-depend on other modu
       this.id = id;
       this.name = v.name;
       this.data_type = v.data_type || "float";
-      this.precision = v.precision || 2;
+      this.precision = v.precision || 1;
+      this.context = v.context || {};
     }
 
     return Variable;
@@ -2883,6 +2885,44 @@ until they play well together (and I ensure they don't over-depend on other modu
 
     return VariableSet;
 
+  })();
+
+  NMIS.variables = (function() {
+    var clear, find, ids, load;
+    clear = function() {};
+    load = function(variables) {
+      var list, v, vrb, _i, _len, _results;
+      list = variables.list;
+      _results = [];
+      for (_i = 0, _len = list.length; _i < _len; _i++) {
+        v = list[_i];
+        vrb = new Variable(v);
+        if (vrb.id) {
+          _results.push(variablesById[vrb.id] = vrb);
+        } else {
+          _results.push(void 0);
+        }
+      }
+      return _results;
+    };
+    ids = function() {
+      var key, val, _results;
+      _results = [];
+      for (key in variablesById) {
+        val = variablesById[key];
+        _results.push(key);
+      }
+      return _results;
+    };
+    find = function(id) {
+      return variablesById[id];
+    };
+    return {
+      load: load,
+      clear: clear,
+      ids: ids,
+      find: find
+    };
   })();
 
 }).call(this);
@@ -3291,10 +3331,6 @@ Facilities:
     };
   })();
 
-  this.mustachify = function(id, obj) {
-    return Mustache.to_html($("#" + id).eq(0).html().replace(/<{/g, "{{").replace(/\}>/g, "}}"), obj);
-  };
-
   resizeDisplayWindowAndFacilityTable = function() {
     var ah, bar, cf;
     ah = NMIS._wElems.elem1.height();
@@ -3617,7 +3653,7 @@ Facilities:
         title: opts.item.id,
         img_thumb: NMIS.S3Photos.url(opts.item.s3_photo_id, 200)
       };
-      hoverOverlay = $(Mustache.to_html($("#facility-hover").eq(0).html().replace(/<{/g, "{{").replace(/\}>/g, "}}"), obj));
+      hoverOverlay = $($._template("#facility-hover", obj));
       if (!!opts.addClass) {
         hoverOverlay.addClass(opts.addClass);
       }

@@ -326,24 +326,37 @@
               Current
             </th>
           </tr>
-          <{ _.each(igrp.idRows, function(row){ }>
+          <{ _.each(igrp.rows, function(row){ }>
             <{ if(_.isString(row)) { }>
               <tr>
                 <td class="empty-first empty bb"></td>
                 <td class="indicator-name bb">
-                  <{= lookupName(row) }>
+                  <{= lookupName(row, igrp.context) }>
+                  <{ if(igrp.context) { print("<span class='tiny-hint' title='"+igrp.context+"'>*</span>")} }>
                 </td>
                 <td class="indvalue bb">
                   <{= lookupValue(row) }>
                 </td>
               </tr>
-            <{ } else if(row.section_header) { }>
+            <{ } else if(row.name && row.rows) { }>
               <tr>
                 <td class="empty-first empty bb"></td>
                 <td class="empty indheader mdg_header">
                   <{= row.name }>
                 </td>
               </tr>
+              <{ _.each(row.rows, function(subrow){ }>
+                <tr>
+                  <td class="empty-first empty bb"></td>
+                  <td class="indicator-name bb">
+                    <{= lookupName(subrow, igrp.context) }>
+                    <{ if(igrp.context) { print("<span class='tiny-hint' title='"+igrp.context+"'>*</span>")} }>
+                  </td>
+                  <td class="indvalue bb">
+                    <{= lookupValue(subrow) }>
+                  </td>
+                </tr>
+              <{ }); }>
             <{ } }>
           <{ }); }>
         <{ }); }>
