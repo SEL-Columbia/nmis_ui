@@ -1,68 +1,4 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
-   "http://www.w3.org/TR/html4/loose.dtd">
-
-<html lang="en">
-<head>
-  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-  <title>
-    MDG Survey Viewer [JS]
-  </title>
-  <link rel="stylesheet" href="stylesheets/screen.css" type="text/css" media="screen" title="no title" charset="utf-8">
-  <link rel="stylesheet" href="stylesheets/jquery-ui.custom.css" type="text/css" media="screen" title="no title" charset="utf-8">
-  <link rel="stylesheet" href="stylesheets/chosen.css" type="text/css" media="screen" title="no title" charset="utf-8">
-</head>
-<body class="nmis home">
-	<div class="topbar">
-		<div class="fill">
-			<div class="container">
-				<div class="row">
-					<a class="brand" href="/">
-						<span class="logo">
-							<img src="./images/nmis_pilot.png">
-							<span>HOME</span>
-						</span>
-						MDG Survey Viewer [JS]
-					</a>
-					<div class="data-src">
-            <strong>Data Source:</strong>
-            <span>&hellip;</span>
-            <a data-action="change-src" href="#">[change]</a>
-					</div>
-					<div style="" class="lga-nav">
-					<form action="." method="GET">
-						<div>
-							<select id="lga-select" name="lga" title="Select a district">
-								<optgroup label="district" disabled="true">
-										<option value="district">District</option>
-								</optgroup>
-							</select>
-							<script type="text/javascript" charset="utf-8">
-							var lgaId;
-							</script>
-							 <div style='display:none'><input type='hidden' name='csrfmiddlewaretoken' value='a6836b9f6a2f4618a967c59d6d48a0b3' /></div>
-							<input type="submit" value="GO">
-						</div>
-					</form>
-					</div>
-				</div>
-				<div class="row page-title-row">
-					<p class="bc">
-						
-						&nbsp;
-					</p>
-				</div>
-			</div>
-		</div>
-	</div>
-	<div class="container">
-	  <div class="content">
-      
-	  </div>
-	</div>
-
-	<script src="javascripts/libraries.js" type="text/javascript" charset="utf-8"></script>
-	<script src="javascripts/nmis.js" type="text/javascript" charset="utf-8"></script>
-  <script type="text/underscore-template" id="facility-hover">
+<script type="text/underscore-template" id="facility-hover">
 <div class="popover below fade in hover-overlay" style="display: block; top: <{= top }>px; left: <{= left }>px;">
   <div class="arrow" style="left:<{= arrowLeft }>px"></div>
   <div class="inner">
@@ -437,8 +373,3 @@
   </p>
 </div>
 </script>
-
-    <script src="javascripts/app.js" type="text/javascript" charset="utf-8"></script>
-
-</body>
-</html>
