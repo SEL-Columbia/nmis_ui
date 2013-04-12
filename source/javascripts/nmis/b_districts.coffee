@@ -256,6 +256,8 @@ class NMIS.District
           else if key is "sector"
             datum.sector = NMIS.Sectors.pluck val.toLowerCase()
           else
+            val = true  if val is "TRUE"
+            val = false  if val is "FALSE"
             datum[key] = val
         clonedFacilitiesById[datum.id] = datum
       clonedFacilitiesById
