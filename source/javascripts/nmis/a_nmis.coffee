@@ -54,6 +54,18 @@ do ->
       [code, id] = s3id.split ":"
       "#{s3Root}/#{code}/#{size}/#{id}.jpg"
 
+  NMIS.S3orFormhubPhotoUrl = (item, size_code)->
+    sizes =
+      "90": "-small"
+      "200": "-medium"
+    if item.formhub_photo_id
+      fh_pid = item.formhub_photo_id
+      if size_code in sizes
+        fh_pid = fh_pid.replace(".jpg", "#{sizes[size_code]}.jpg")
+      "https://formhub.s3.amazonaws.com/ossap/attachments/#{fh_pid}"
+    else if item.s3_photo_id
+      NMIS.S3Photos.url item.s3_photo_id, size_code
+
 do ->
   capitalize = (str) ->
     unless str
