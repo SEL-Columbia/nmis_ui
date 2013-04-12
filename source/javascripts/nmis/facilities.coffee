@@ -289,9 +289,6 @@ withFacilityMapDrawnForDistrict = do ->
 
     dfd.promise()
 
-@mustachify = (id, obj) ->
-  Mustache.to_html $("#" + id).eq(0).html().replace(/<{/g, "{{").replace(/\}>/g, "}}"), obj
-
 resizeDisplayWindowAndFacilityTable = ->
   ah = NMIS._wElems.elem1.height()
   bar = $(".display-window-bar", NMIS._wElems.elem1).outerHeight()

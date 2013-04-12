@@ -54,9 +54,7 @@ do ->
 
       dataTableDraw opts.sScrollY
       table.delegate "tr", "click", ->
-        dashboard.setLocation NMIS.urlFor(_.extend({}, NMIS.Env(),
-          facility: $(this).data("rowData")
-        ))
+        dashboard.setLocation NMIS.urlFor.extendEnv(facility: $(this).data("rowData"))
 
       table
 
@@ -85,13 +83,13 @@ do ->
     # console.groupEnd();
     handleHeadRowClick = ->
       column = $(this).data("column")
-      indicatorSlug = column.slug
-      unless not indicatorSlug
-        newEnv = _.extend({}, NMIS.Env(),
-          indicator: indicatorSlug
-        )
-        newEnv.subsector = _.first(newEnv.sector.subGroups())  unless newEnv.subsector
-        newUrl = NMIS.urlFor(newEnv)
+      ind = NMIS.Env().sector.getIndicator(column.slug)
+
+      if ind and ind.clickable
+        env = NMIS.Env.extend(indicator: ind.slug)
+        unless env.subsector
+          env.subsector = env.sector.subGroups()[0]
+        newUrl = NMIS.urlFor(env)
         dashboard.setLocation newUrl
 
     _createThead = (cols) ->

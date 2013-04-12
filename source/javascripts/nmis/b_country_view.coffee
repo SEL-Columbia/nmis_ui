@@ -63,6 +63,7 @@ NMIS.MainMdgMap = do ->
       [meA, meB, meC, meD] = [-20037500, -20037500, 20037500, 20037500]
 
       #OpenLayers.ImgPath = "theme/default/img/"
+      OpenLayers.ImgPath = "#{NMIS.settings.openLayersRoot}theme/default/img/"
       OpenLayers.IMAGE_RELOAD_ATTEMPTS = 0
 
       googProj = new OpenLayers.Projection("EPSG:900913")
@@ -179,6 +180,7 @@ do ->
 do ->
   NMIS.CountryView = ()->
     NMIS.panels.changePanel "country_view"
+    NMIS.Env {}
     ml = loadMapLayers()
     ml.done (mlData)->
       $(".resizing-map").show()
