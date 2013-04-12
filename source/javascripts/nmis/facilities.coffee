@@ -105,8 +105,7 @@ NMIS.launch_facilities = ->
 
   params.facility = do ->
     urlEnd = "#{window.location}".split("?")[1]
-    facMatch = urlEnd.match /facility=(\d+)$/  if urlEnd
-    +facMatch[1]  if facMatch
+    urlEnd.match /facility=([0-9a-f-]+)$/  if urlEnd
 
   for own paramName, val of @params when $.type(val) is "string" and val isnt ""
     params[paramName] = val.replace "/", ""
