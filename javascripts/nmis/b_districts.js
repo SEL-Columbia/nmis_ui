@@ -1,6 +1,7 @@
 (function() {
   var Module, ModuleFile, NoOpFetch, headers,
-    __hasProp = {}.hasOwnProperty;
+    __hasProp = {}.hasOwnProperty,
+    __slice = [].slice;
 
   headers = (function() {
     var header, nav;
@@ -412,14 +413,15 @@
     District.prototype.loadFacilitiesData = function() {
       var _this = this;
       return this._fetchModuleOnce("facilityData", "data/facilities", function(results) {
-        var clonedFacilitiesById, datum, fac, facKey, id, key, val;
+        var clonedFacilitiesById, datum, fac, facKey, key, parsedMatch, val;
         NMIS.loadFacilities(results);
         clonedFacilitiesById = {};
         for (facKey in results) {
           if (!__hasProp.call(results, facKey)) continue;
           fac = results[facKey];
-          id = fac._id || facKey;
-          datum = {};
+          datum = {
+            id: fac._id || fac.X_id || facKey
+          };
           for (key in fac) {
             if (!__hasProp.call(fac, key)) continue;
             val = fac[key];
@@ -433,10 +435,21 @@
             } else if (key === "sector") {
               datum.sector = NMIS.Sectors.pluck(val.toLowerCase());
             } else {
+              if (val === "TRUE") {
+                val = true;
+              } else if (val === "FALSE") {
+                val = false;
+              } else if (val === "NA") {
+                val = undefined;
+              } else {
+                if (!isNaN((parsedMatch = parseFloat(val)))) {
+                  val = parsedMatch;
+                }
+              }
               datum[key] = val;
             }
           }
-          clonedFacilitiesById[facKey] = datum;
+          clonedFacilitiesById[datum.id] = datum;
         }
         return clonedFacilitiesById;
       });
@@ -616,22 +629,34 @@
     }
 
     Module.prototype.fetch = function() {
-      var f;
-      return $.when.apply(null, (function() {
-        var _i, _len, _ref, _results;
-        _ref = this.files;
-        _results = [];
-        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-          f = _ref[_i];
-          _results.push(f.fetch());
-        }
-        return _results;
-      }).call(this));
+      var dfd, f;
+      if (this.files.length > 1) {
+        dfd = $.Deferred();
+        $.when.apply(null, (function() {
+          var _i, _len, _ref, _results;
+          _ref = this.files;
+          _results = [];
+          for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+            f = _ref[_i];
+            _results.push(f.fetch());
+          }
+          return _results;
+        }).call(this)).done(function() {
+          var args;
+          args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
+          return dfd.resolve(Array.prototype.concat.apply([], args));
+        });
+        return dfd.promise();
+      } else if (this.files.length === 1) {
+        return this.files[0].fetch();
+      }
     };
 
     return Module;
 
   })();
+
+  csv.settings.parseFloat = false;
 
   ModuleFile = (function() {
 
@@ -649,7 +674,20 @@
     }
 
     ModuleFile.prototype.fetch = function() {
-      return NMIS.DataLoader.fetch(this.url);
+      var dfd;
+      if (/\.csv$/.test(this.url)) {
+        dfd = $.Deferred();
+        $.ajax({
+          url: this.url
+        }).done(function(results) {
+          return dfd.resolve(csv(results).toObjects());
+        });
+        return dfd;
+      } else if (/\.json$/.test(this.url)) {
+        return NMIS.DataLoader.fetch(this.url);
+      } else {
+        throw new Error("Unknown action");
+      }
     };
 
     return ModuleFile;

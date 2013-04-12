@@ -128,10 +128,10 @@
         _.each(rows, function(r) {
           var row, startsWithType;
           row = $("<tr />");
-          if (r._id === undefined) {
-            console.error("Facility does not have '_id' defined:", r);
+          if (r.id === undefined) {
+            console.error("Facility does not have an ID defined:", r);
           } else {
-            row.data("row-data", r._id);
+            row.data("row-data", r.id);
           }
           startsWithType = cols[0].name === "Type";
           _.each(cols, function(c, ii) {

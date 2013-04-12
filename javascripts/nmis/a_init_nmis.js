@@ -75,9 +75,11 @@ independently testable modules.
       datum = _.clone(d);
       if (datum.gps === undefined) {
         datum._ll = false;
-      } else {
+      } else if (_.isString(datum.gps)) {
         ll = datum.gps.split(" ");
         datum._ll = [ll[0], ll[1]];
+      } else {
+        datum._ll = false;
       }
       sslug = datum.sector.toLowerCase();
       datum.sector = NMIS.Sectors.pluck(sslug);
