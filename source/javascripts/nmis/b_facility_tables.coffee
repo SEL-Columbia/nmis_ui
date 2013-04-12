@@ -112,10 +112,10 @@ do ->
       tbody = $("<tbody />")
       _.each rows, (r) ->
         row = $("<tr />")
-        if r._id is `undefined`
-          console.error "Facility does not have '_id' defined:", r
+        if r.id is `undefined`
+          console.error "Facility does not have an ID defined:", r
         else
-          row.data "row-data", r._id
+          row.data "row-data", r.id
         startsWithType = cols[0].name is "Type"
         _.each cols, (c, ii) ->
         

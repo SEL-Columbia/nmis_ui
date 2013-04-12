@@ -245,8 +245,9 @@ class NMIS.District
       # the results with the specific LGA.
       clonedFacilitiesById = {}
       for own facKey, fac of results
-        id = fac._id or facKey
-        datum = {}
+        datum =
+          id: fac._id or fac.X_id or facKey
+
         for own key, val of fac
           if key is "gps"
             datum._ll = do ->
@@ -255,8 +256,17 @@ class NMIS.District
           else if key is "sector"
             datum.sector = NMIS.Sectors.pluck val.toLowerCase()
           else
+            if val is "TRUE"
+              val = true
+            else if val is "FALSE"
+              val = false
+            else if val is "NA"
+              val = `undefined`
+            else
+              if !isNaN (parsedMatch = _parseFloat strMatchedValue)
+                val = parsedMatch
             datum[key] = val
-        clonedFacilitiesById[facKey] = datum
+        clonedFacilitiesById[datum.id] = datum
       clonedFacilitiesById
 
   facilityDataForSector: (sectorSlug)->
@@ -333,7 +343,15 @@ class Module
       @files = [new ModuleFile(file_param, district)]
     @name = @id
   fetch: ()->
-    $.when.apply null, (f.fetch() for f in @files)
+    if @files.length > 1
+      dfd = $.Deferred()
+      $.when.apply(null, (f.fetch() for f in @files)).done (args...)->
+        dfd.resolve Array::concat.apply [], args
+      dfd.promise()
+    else if @files.length is 1
+      @files[0].fetch()
+
+csv.settings.parseFloat = false
 
 class ModuleFile
   constructor: (@filename, @district)->
@@ -344,5 +362,14 @@ class ModuleFile
     mid_url = if @district? then "#{@district.data_root}/" else ""
     @url = "#{NMIS._data_src_root_url}#{mid_url}#{@filename}"
   fetch: ()->
-    NMIS.DataLoader.fetch @url
-    # log "odfule #{@url}"
+    if /\.csv$/.test @url
+      # load CSV
+      dfd = $.Deferred()
+      $.ajax(url: @url).done (results)->
+        dfd.resolve csv(results).toObjects()
+      dfd
+    else if /\.json$/.test @url
+      # load JSON
+      NMIS.DataLoader.fetch @url
+    else
+      throw new Error("Unknown action")
