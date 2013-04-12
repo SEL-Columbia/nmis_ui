@@ -256,8 +256,15 @@ class NMIS.District
           else if key is "sector"
             datum.sector = NMIS.Sectors.pluck val.toLowerCase()
           else
-            val = true  if val is "TRUE"
-            val = false  if val is "FALSE"
+            if val is "TRUE"
+              val = true
+            else if val is "FALSE"
+              val = false
+            else if val is "NA"
+              val = `undefined`
+            else
+              if !isNaN (parsedMatch = parseFloat val)
+                val = parsedMatch
             datum[key] = val
         clonedFacilitiesById[datum.id] = datum
       clonedFacilitiesById
@@ -343,6 +350,8 @@ class Module
       dfd.promise()
     else if @files.length is 1
       @files[0].fetch()
+
+csv.settings.parseFloat = false
 
 class ModuleFile
   constructor: (@filename, @district)->
