@@ -276,7 +276,8 @@ until they play well together (and I ensure they don't over-depend on other modu
 
 
 (function() {
-  var __hasProp = {}.hasOwnProperty;
+  var __indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; },
+    __hasProp = {}.hasOwnProperty;
 
   (function() {
     var Breadcrumb;
@@ -364,7 +365,7 @@ until they play well together (and I ensure they don't over-depend on other modu
   })();
 
   (function() {
-    return NMIS.S3Photos = (function() {
+    NMIS.S3Photos = (function() {
       var s3Root;
       s3Root = "http://nmisstatic.s3.amazonaws.com/facimg";
       return {
@@ -378,6 +379,22 @@ until they play well together (and I ensure they don't over-depend on other modu
         }
       };
     })();
+    return NMIS.S3orFormhubPhotoUrl = function(item, size_code) {
+      var fh_pid, sizes;
+      sizes = {
+        "90": "-small",
+        "200": "-medium"
+      };
+      if (item.formhub_photo_id) {
+        fh_pid = item.formhub_photo_id;
+        if (__indexOf.call(sizes, size_code) >= 0) {
+          fh_pid = fh_pid.replace(".jpg", "" + sizes[size_code] + ".jpg");
+        }
+        return "https://formhub.s3.amazonaws.com/ossap/attachments/" + fh_pid;
+      } else if (item.s3_photo_id) {
+        return NMIS.S3Photos.url(item.s3_photo_id, size_code);
+      }
+    };
   })();
 
   (function() {
@@ -3703,7 +3720,7 @@ Facilities:
         name: _getNameFromFacility(opts.item),
         community: opts.item.community,
         title: opts.item.id,
-        img_thumb: NMIS.S3Photos.url(opts.item.s3_photo_id, 200)
+        img_thumb: NMIS.S3orFormhubPhotoUrl(opts.item, 200)
       };
       hoverOverlay = $($._template("#facility-hover", obj));
       if (!!opts.addClass) {
@@ -3721,7 +3738,7 @@ Facilities:
           marginTop: -.5 * $this.height(),
           marginLeft: -.5 * $this.width()
         });
-      }).attr("src", NMIS.S3Photos.url(opts.item.s3_photo_id, 90));
+      }).attr("src", NMIS.S3orFormhubPhotoUrl(opts.item, 90));
       hoverOverlay.find("div.photothumb").html(img);
       return hoverOverlayWrap.html(hoverOverlay);
     };
@@ -3749,10 +3766,10 @@ Facilities:
       }
       obj = _.extend({
         thumbnail_url: function() {
-          return NMIS.S3Photos.url(this.s3_photo_id || "none1:none2", 200);
+          return NMIS.S3orFormhubPhotoUrl(this, 200);
         },
         image_url: function() {
-          return NMIS.S3Photos.url(this.s3_photo_id || "none1:none2", "0");
+          return NMIS.S3orFormhubPhotoUrl(this, "0");
         },
         name: _getNameFromFacility(facility)
       }, facility);

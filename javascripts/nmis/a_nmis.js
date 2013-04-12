@@ -7,7 +7,8 @@ until they play well together (and I ensure they don't over-depend on other modu
 
 
 (function() {
-  var __hasProp = {}.hasOwnProperty;
+  var __indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; },
+    __hasProp = {}.hasOwnProperty;
 
   (function() {
     var Breadcrumb;
@@ -95,7 +96,7 @@ until they play well together (and I ensure they don't over-depend on other modu
   })();
 
   (function() {
-    return NMIS.S3Photos = (function() {
+    NMIS.S3Photos = (function() {
       var s3Root;
       s3Root = "http://nmisstatic.s3.amazonaws.com/facimg";
       return {
@@ -109,6 +110,22 @@ until they play well together (and I ensure they don't over-depend on other modu
         }
       };
     })();
+    return NMIS.S3orFormhubPhotoUrl = function(item, size_code) {
+      var fh_pid, sizes;
+      sizes = {
+        "90": "-small",
+        "200": "-medium"
+      };
+      if (item.formhub_photo_id) {
+        fh_pid = item.formhub_photo_id;
+        if (__indexOf.call(sizes, size_code) >= 0) {
+          fh_pid = fh_pid.replace(".jpg", "" + sizes[size_code] + ".jpg");
+        }
+        return "https://formhub.s3.amazonaws.com/ossap/attachments/" + fh_pid;
+      } else if (item.s3_photo_id) {
+        return NMIS.S3Photos.url(item.s3_photo_id, size_code);
+      }
+    };
   })();
 
   (function() {

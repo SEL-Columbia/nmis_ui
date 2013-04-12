@@ -47,7 +47,7 @@
         name: _getNameFromFacility(opts.item),
         community: opts.item.community,
         title: opts.item.id,
-        img_thumb: NMIS.S3Photos.url(opts.item.s3_photo_id, 200)
+        img_thumb: NMIS.S3orFormhubPhotoUrl(opts.item, 200)
       };
       hoverOverlay = $($._template("#facility-hover", obj));
       if (!!opts.addClass) {
@@ -65,7 +65,7 @@
           marginTop: -.5 * $this.height(),
           marginLeft: -.5 * $this.width()
         });
-      }).attr("src", NMIS.S3Photos.url(opts.item.s3_photo_id, 90));
+      }).attr("src", NMIS.S3orFormhubPhotoUrl(opts.item, 90));
       hoverOverlay.find("div.photothumb").html(img);
       return hoverOverlayWrap.html(hoverOverlay);
     };
@@ -93,10 +93,10 @@
       }
       obj = _.extend({
         thumbnail_url: function() {
-          return NMIS.S3Photos.url(this.s3_photo_id || "none1:none2", 200);
+          return NMIS.S3orFormhubPhotoUrl(this, 200);
         },
         image_url: function() {
-          return NMIS.S3Photos.url(this.s3_photo_id || "none1:none2", "0");
+          return NMIS.S3orFormhubPhotoUrl(this, "0");
         },
         name: _getNameFromFacility(facility)
       }, facility);
