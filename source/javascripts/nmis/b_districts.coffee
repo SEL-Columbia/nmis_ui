@@ -275,7 +275,12 @@ class NMIS.District
 
   loadData: ()->
     @_fetchModuleOnce "lga_data", "data/lga_data", (results)=>
-      for d in results.data
+      arr = []
+      if results.data
+        arr = results.data
+      else
+        arr = results
+      for d in arr
         new NMIS.DataRecord @, d
 
   loadVariables: ()->
