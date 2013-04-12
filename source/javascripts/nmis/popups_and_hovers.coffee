@@ -32,7 +32,7 @@ NMIS.FacilityHover = do ->
       name: _getNameFromFacility(opts.item)
       community: opts.item.community
       title: opts.item.id
-      img_thumb: NMIS.S3Photos.url(opts.item.s3_photo_id, 200)
+      img_thumb: NMIS.S3orFormhubPhotoUrl(opts.item, 200)
 
     hoverOverlay = $ $._template("#facility-hover", obj)
     hoverOverlay.addClass opts.addClass  unless not opts.addClass
@@ -46,7 +46,7 @@ NMIS.FacilityHover = do ->
         marginTop: -.5 * $this.height()
         marginLeft: -.5 * $this.width()
 
-    ).attr("src", NMIS.S3Photos.url(opts.item.s3_photo_id, 90))
+    ).attr("src", NMIS.S3orFormhubPhotoUrl(opts.item, 90))
     hoverOverlay.find("div.photothumb").html img
     hoverOverlayWrap.html hoverOverlay
   hide = (delay) -> hoverOverlay.hide()  unless not hoverOverlay
@@ -61,10 +61,10 @@ NMIS.FacilityPopup = do ->
     div.remove()  unless not div
     obj = _.extend(
       thumbnail_url: ->
-        NMIS.S3Photos.url @s3_photo_id or "none1:none2", 200
+        NMIS.S3orFormhubPhotoUrl @, 200
 
       image_url: ->
-        NMIS.S3Photos.url @s3_photo_id or "none1:none2", "0"
+        NMIS.S3orFormhubPhotoUrl @, "0"
 
       name: _getNameFromFacility(facility)
     , facility)
