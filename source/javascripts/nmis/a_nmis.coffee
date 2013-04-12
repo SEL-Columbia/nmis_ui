@@ -59,10 +59,10 @@ do ->
       "90": "-small"
       "200": "-medium"
     if item.formhub_photo_id
-      fh_pid = item.formhub_photo_id
+      fh_pid = "#{item.formhub_photo_id}".replace ".jpg", ""
       if size_code in sizes
-        fh_pid = fh_pid.replace(".jpg", "#{sizes[size_code]}.jpg")
-      "https://formhub.s3.amazonaws.com/ossap/attachments/#{fh_pid}"
+        fh_pid = "#{fh_pid}#{sizes[size_code]}"
+      "https://formhub.s3.amazonaws.com/ossap/attachments/#{fh_pid}.jpg"
     else if item.s3_photo_id
       NMIS.S3Photos.url item.s3_photo_id, size_code
 
@@ -191,11 +191,9 @@ NMIS.FacilitySelector = do->
         active = true
         "normal"
     facility = false
-    facility = val for key, val of NMIS.data() when key is params.id
+    lga = NMIS.Env().lga
+    facility = val for key, val of lga.facilityData when key is params.id
 
-    # facility = _.find(NMIS.data(), (val, key) ->
-    #   key is params.id
-    # )
     NMIS.FacilityPopup facility
   deselect = ->
     if active
