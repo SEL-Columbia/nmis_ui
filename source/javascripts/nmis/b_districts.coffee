@@ -245,9 +245,11 @@ class NMIS.District
       # the results with the specific LGA.
       clonedFacilitiesById = {}
       for own facKey, fac of results
-        datum =
-          id: fac._id or fac.X_id or facKey
+        datum = {}
 
+        # Clone fac into datum:
+        # handle special cases: "gps" -> _ll. "sector",
+        # and cast boolean strings to bools.
         for own key, val of fac
           if key is "gps"
             datum._ll = do ->
@@ -266,6 +268,8 @@ class NMIS.District
               if !isNaN (parsedMatch = parseFloat val)
                 val = parsedMatch
             datum[key] = val
+        datum.id = fac._id or fac.X_id or facKey  unless datum.id
+
         clonedFacilitiesById[datum.id] = datum
       clonedFacilitiesById
 
@@ -275,7 +279,12 @@ class NMIS.District
 
   loadData: ()->
     @_fetchModuleOnce "lga_data", "data/lga_data", (results)=>
-      for d in results.data
+      arr = []
+      if results.data
+        arr = results.data
+      else
+        arr = results
+      for d in arr
         new NMIS.DataRecord @, d
 
   loadVariables: ()->
