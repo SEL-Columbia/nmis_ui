@@ -245,8 +245,9 @@ class NMIS.District
       # the results with the specific LGA.
       clonedFacilitiesById = {}
       for own facKey, fac of results
-        id = fac._id or facKey
-        datum = {}
+        datum =
+          id: fac._id or fac.X_id or facKey
+
         for own key, val of fac
           if key is "gps"
             datum._ll = do ->
@@ -256,7 +257,7 @@ class NMIS.District
             datum.sector = NMIS.Sectors.pluck val.toLowerCase()
           else
             datum[key] = val
-        clonedFacilitiesById[facKey] = datum
+        clonedFacilitiesById[datum.id] = datum
       clonedFacilitiesById
 
   facilityDataForSector: (sectorSlug)->
