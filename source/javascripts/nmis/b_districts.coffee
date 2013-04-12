@@ -353,22 +353,11 @@ class ModuleFile
     if /\.csv$/.test @url
       # load CSV
       dfd = $.Deferred()
-      __url_forSector = @url
       $.ajax(url: @url).done (results)->
-        # dfd.resolve csv(results).toObjects()
-        arr = csv(results).toObjects()
-        __sector = __url_forSector.match(/.*\/(\S+)\.csv$/)[1]
-        log __sector, arr.length
-        for item in arr
-          item.sector = __sector
-        dfd.resolve arr
+        dfd.resolve csv(results).toObjects()
       dfd
     else if /\.json$/.test @url
       # load JSON
       NMIS.DataLoader.fetch @url
     else
       throw new Error("Unknown action")
-
-    # log @url
-    # 
-    # # log "odfule #{@url}"
