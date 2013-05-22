@@ -369,7 +369,10 @@ class ModuleFile
     catch e
       throw new Error("ModuleFile Filetype not recognized: #{@filename}")
     mid_url = if @district? then "#{@district.data_root}/" else ""
-    @url = "#{NMIS._data_src_root_url}#{mid_url}#{@filename}"
+    if @filename.match(/^https?:/)
+      @url = @filename
+    else
+      @url = "#{NMIS._data_src_root_url}#{mid_url}#{@filename}"
   fetch: ()->
     if /\.csv$/.test @url
       # load CSV
