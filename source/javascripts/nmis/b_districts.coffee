@@ -282,6 +282,12 @@ class NMIS.District
       arr = []
       if results.data
         arr = results.data
+      else if results.length is 1
+        # To allow data to be passed in the format that bamboo gives it to us.
+        # assuming if results.length is 1 means the data is organized in two wide rows
+        # with many columns rather than many rows and 2 columns
+        for own key, val of results[0]
+          arr.push id: key, value: val
       else
         arr = results
       for d in arr
