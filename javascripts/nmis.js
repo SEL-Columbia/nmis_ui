@@ -386,11 +386,11 @@ until they play well together (and I ensure they don't over-depend on other modu
         "200": "-medium"
       };
       if (item.formhub_photo_id) {
-        fh_pid = item.formhub_photo_id;
+        fh_pid = ("" + item.formhub_photo_id).replace(".jpg", "");
         if (__indexOf.call(sizes, size_code) >= 0) {
-          fh_pid = fh_pid.replace(".jpg", "" + sizes[size_code] + ".jpg");
+          fh_pid = "" + fh_pid + sizes[size_code];
         }
-        return "https://formhub.s3.amazonaws.com/ossap/attachments/" + fh_pid;
+        return "https://formhub.s3.amazonaws.com/ossap/attachments/" + fh_pid + ".jpg";
       } else if (item.s3_photo_id) {
         return NMIS.S3Photos.url(item.s3_photo_id, size_code);
       }
@@ -556,7 +556,7 @@ until they play well together (and I ensure they don't over-depend on other modu
       return active;
     };
     activate = function(params) {
-      var fId, facility, key, val, _ref;
+      var fId, facility, key, lga, val, _ref;
       fId = params.id;
       NMIS.IconSwitcher.shiftStatus(function(id, item) {
         if (id !== fId) {
@@ -567,7 +567,8 @@ until they play well together (and I ensure they don't over-depend on other modu
         }
       });
       facility = false;
-      _ref = NMIS.data();
+      lga = NMIS.Env().lga;
+      _ref = lga.facilityData;
       for (key in _ref) {
         val = _ref[key];
         if (key === params.id) {
@@ -2000,9 +2001,7 @@ until they play well together (and I ensure they don't over-depend on other modu
         for (facKey in results) {
           if (!__hasProp.call(results, facKey)) continue;
           fac = results[facKey];
-          datum = {
-            id: fac._id || fac.X_id || facKey
-          };
+          datum = {};
           for (key in fac) {
             if (!__hasProp.call(fac, key)) continue;
             val = fac[key];
@@ -2030,6 +2029,9 @@ until they play well together (and I ensure they don't over-depend on other modu
               datum[key] = val;
             }
           }
+          if (!datum.id) {
+            datum.id = fac._id || fac.X_id || facKey;
+          }
           clonedFacilitiesById[datum.id] = datum;
         }
         return clonedFacilitiesById;
@@ -2053,11 +2055,26 @@ until they play well together (and I ensure they don't over-depend on other modu
     District.prototype.loadData = function() {
       var _this = this;
       return this._fetchModuleOnce("lga_data", "data/lga_data", function(results) {
-        var d, _i, _len, _ref, _results;
-        _ref = results.data;
+        var arr, d, key, val, _i, _len, _ref, _results;
+        arr = [];
+        if (results.data) {
+          arr = results.data;
+        } else if (results.length === 1) {
+          _ref = results[0];
+          for (key in _ref) {
+            if (!__hasProp.call(_ref, key)) continue;
+            val = _ref[key];
+            arr.push({
+              id: key,
+              value: val
+            });
+          }
+        } else {
+          arr = results;
+        }
         _results = [];
-        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-          d = _ref[_i];
+        for (_i = 0, _len = arr.length; _i < _len; _i++) {
+          d = arr[_i];
           _results.push(new NMIS.DataRecord(_this, d));
         }
         return _results;
@@ -2251,7 +2268,11 @@ until they play well together (and I ensure they don't over-depend on other modu
         throw new Error("ModuleFile Filetype not recognized: " + this.filename);
       }
       mid_url = this.district != null ? "" + this.district.data_root + "/" : "";
-      this.url = "" + NMIS._data_src_root_url + mid_url + this.filename;
+      if (this.filename.match(/^https?:/)) {
+        this.url = this.filename;
+      } else {
+        this.url = "" + NMIS._data_src_root_url + mid_url + this.filename;
+      }
     }
 
     ModuleFile.prototype.fetch = function() {
@@ -3137,13 +3158,10 @@ Facilities:
     var district, paramName, params, val, _ref;
     params = {};
     params.facility = (function() {
-      var facMatch, urlEnd;
+      var urlEnd;
       urlEnd = ("" + window.location).split("?")[1];
       if (urlEnd) {
-        facMatch = urlEnd.match(/facility=(\d+)$/);
-      }
-      if (facMatch) {
-        return +facMatch[1];
+        return urlEnd.match(/facility=([0-9a-f-]+)$/);
       }
     })();
     _ref = this.params;
