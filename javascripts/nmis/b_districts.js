@@ -419,9 +419,7 @@
         for (facKey in results) {
           if (!__hasProp.call(results, facKey)) continue;
           fac = results[facKey];
-          datum = {
-            id: fac._id || fac.X_id || facKey
-          };
+          datum = {};
           for (key in fac) {
             if (!__hasProp.call(fac, key)) continue;
             val = fac[key];
@@ -449,6 +447,9 @@
               datum[key] = val;
             }
           }
+          if (!datum.id) {
+            datum.id = fac._id || fac.X_id || facKey;
+          }
           clonedFacilitiesById[datum.id] = datum;
         }
         return clonedFacilitiesById;
@@ -472,11 +473,26 @@
     District.prototype.loadData = function() {
       var _this = this;
       return this._fetchModuleOnce("lga_data", "data/lga_data", function(results) {
-        var d, _i, _len, _ref, _results;
-        _ref = results.data;
+        var arr, d, key, val, _i, _len, _ref, _results;
+        arr = [];
+        if (results.data) {
+          arr = results.data;
+        } else if (results.length === 1) {
+          _ref = results[0];
+          for (key in _ref) {
+            if (!__hasProp.call(_ref, key)) continue;
+            val = _ref[key];
+            arr.push({
+              id: key,
+              value: val
+            });
+          }
+        } else {
+          arr = results;
+        }
         _results = [];
-        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-          d = _ref[_i];
+        for (_i = 0, _len = arr.length; _i < _len; _i++) {
+          d = arr[_i];
           _results.push(new NMIS.DataRecord(_this, d));
         }
         return _results;
@@ -670,7 +686,11 @@
         throw new Error("ModuleFile Filetype not recognized: " + this.filename);
       }
       mid_url = this.district != null ? "" + this.district.data_root + "/" : "";
-      this.url = "" + NMIS._data_src_root_url + mid_url + this.filename;
+      if (this.filename.match(/^https?:/)) {
+        this.url = this.filename;
+      } else {
+        this.url = "" + NMIS._data_src_root_url + mid_url + this.filename;
+      }
     }
 
     ModuleFile.prototype.fetch = function() {

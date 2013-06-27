@@ -140,13 +140,10 @@ Facilities:
     var district, paramName, params, val, _ref;
     params = {};
     params.facility = (function() {
-      var facMatch, urlEnd;
+      var urlEnd;
       urlEnd = ("" + window.location).split("?")[1];
       if (urlEnd) {
-        facMatch = urlEnd.match(/facility=(\d+)$/);
-      }
-      if (facMatch) {
-        return +facMatch[1];
+        return urlEnd.match(/facility=([0-9a-f-]+)$/);
       }
     })();
     _ref = this.params;

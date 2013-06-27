@@ -117,11 +117,11 @@ until they play well together (and I ensure they don't over-depend on other modu
         "200": "-medium"
       };
       if (item.formhub_photo_id) {
-        fh_pid = item.formhub_photo_id;
+        fh_pid = ("" + item.formhub_photo_id).replace(".jpg", "");
         if (__indexOf.call(sizes, size_code) >= 0) {
-          fh_pid = fh_pid.replace(".jpg", "" + sizes[size_code] + ".jpg");
+          fh_pid = "" + fh_pid + sizes[size_code];
         }
-        return "https://formhub.s3.amazonaws.com/ossap/attachments/" + fh_pid;
+        return "https://formhub.s3.amazonaws.com/ossap/attachments/" + fh_pid + ".jpg";
       } else if (item.s3_photo_id) {
         return NMIS.S3Photos.url(item.s3_photo_id, size_code);
       }
@@ -287,7 +287,7 @@ until they play well together (and I ensure they don't over-depend on other modu
       return active;
     };
     activate = function(params) {
-      var fId, facility, key, val, _ref;
+      var fId, facility, key, lga, val, _ref;
       fId = params.id;
       NMIS.IconSwitcher.shiftStatus(function(id, item) {
         if (id !== fId) {
@@ -298,7 +298,8 @@ until they play well together (and I ensure they don't over-depend on other modu
         }
       });
       facility = false;
-      _ref = NMIS.data();
+      lga = NMIS.Env().lga;
+      _ref = lga.facilityData;
       for (key in _ref) {
         val = _ref[key];
         if (key === params.id) {
