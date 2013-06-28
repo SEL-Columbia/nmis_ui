@@ -81,8 +81,10 @@ independently testable modules.
       } else {
         datum._ll = false;
       }
-      sslug = datum.sector.toLowerCase();
-      datum.sector = NMIS.Sectors.pluck(sslug);
+      if (datum.sector) {
+        sslug = datum.sector.toLowerCase();
+        datum.sector = NMIS.Sectors.pluck(sslug);
+      }
       return datum;
     };
     NMIS.loadFacilities = function(_data, opts) {
