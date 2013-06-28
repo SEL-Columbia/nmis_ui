@@ -57,8 +57,9 @@ do ->
       datum._ll = [ll[0], ll[1]]
     else
       datum._ll = false
-    sslug = datum.sector.toLowerCase()
-    datum.sector = NMIS.Sectors.pluck(sslug)
+    if datum.sector
+        sslug = datum.sector.toLowerCase()
+        datum.sector = NMIS.Sectors.pluck(sslug)
     datum
   NMIS.loadFacilities = (_data, opts) ->
     _.each _data, (val, key) ->
