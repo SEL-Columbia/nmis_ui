@@ -90,7 +90,7 @@ independently testable modules.
     NMIS.loadFacilities = function(_data, opts) {
       return _.each(_data, function(val, key) {
         var id;
-        id = val._id || key;
+        id = val.uuid || val.id;
         return data[id] = cloneParse(val);
       });
     };
