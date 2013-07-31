@@ -312,6 +312,7 @@
       }).call(this);
       this._fetchesInProgress = {};
       this.latLng = this.lat_lng;
+      this.sector_gap_sheets = d.sector_gap_sheets || {};
       this.id = [this.group_slug, this.local_id].join("_");
       this.html_params = {
         text: this.name,
