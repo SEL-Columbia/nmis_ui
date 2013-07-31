@@ -184,15 +184,14 @@ withFacilityMapDrawnForDistrict = do ->
 
   _addIconsAndListeners = ()->
     iconURLData = (item) ->
-      slug = undefined
       status = item.status
       return item._custom_png_data  if status is "custom"
-      slug = item.iconSlug or item.sector.slug
+      slug = item.iconSlug or item.sector?.slug or 'default'
       iconFiles =
         education: "education.png"
         health: "health.png"
         water: "water.png"
-        default: "book_green_wb.png?default"
+        default: "default.png"
       filenm = iconFiles[slug] or iconFiles.default
       # throw new Error("Status is undefined")  unless status?
       ["#{NMIS.settings.pathToMapIcons}/icons_f/#{status}_#{filenm}", 32, 24]
@@ -209,7 +208,7 @@ withFacilityMapDrawnForDistrict = do ->
     NMIS.IconSwitcher.setCallback "createMapItem", (item, id, itemList) ->
       if !!item._ll and not @mapItem(id)
         $gm = google.maps
-        item.iconSlug = item.iconType or item.sector.slug
+        item.iconSlug = item.iconType or item.sector?.slug
         item.status = "normal"  unless item.status
         [iurl, iw, ih] = iconURLData(item)
 

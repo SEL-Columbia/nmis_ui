@@ -63,7 +63,7 @@ do ->
     datum
   NMIS.loadFacilities = (_data, opts) ->
     _.each _data, (val, key) ->
-      id = val._id or key
+      id = val.uuid or val.id
       data[id] = cloneParse(val)
 
 

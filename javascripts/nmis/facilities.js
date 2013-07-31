@@ -245,18 +245,17 @@ Facilities:
     _addIconsAndListeners = function() {
       var iconURLData, markerClick, markerMouseout, markerMouseover;
       iconURLData = function(item) {
-        var filenm, iconFiles, slug, status;
-        slug = void 0;
+        var filenm, iconFiles, slug, status, _ref;
         status = item.status;
         if (status === "custom") {
           return item._custom_png_data;
         }
-        slug = item.iconSlug || item.sector.slug;
+        slug = item.iconSlug || ((_ref = item.sector) != null ? _ref.slug : void 0) || 'default';
         iconFiles = {
           education: "education.png",
           health: "health.png",
           water: "water.png",
-          "default": "book_green_wb.png?default"
+          "default": "default.png"
         };
         filenm = iconFiles[slug] || iconFiles["default"];
         return ["" + NMIS.settings.pathToMapIcons + "/icons_f/" + status + "_" + filenm, 32, 24];
@@ -281,14 +280,14 @@ Facilities:
         return NMIS.FacilityHover.hide();
       };
       NMIS.IconSwitcher.setCallback("createMapItem", function(item, id, itemList) {
-        var $gm, iconData, ih, iurl, iw, mI, _ref;
+        var $gm, iconData, ih, iurl, iw, mI, _ref, _ref1;
         if (!!item._ll && !this.mapItem(id)) {
           $gm = google.maps;
-          item.iconSlug = item.iconType || item.sector.slug;
+          item.iconSlug = item.iconType || ((_ref = item.sector) != null ? _ref.slug : void 0);
           if (!item.status) {
             item.status = "normal";
           }
-          _ref = iconURLData(item), iurl = _ref[0], iw = _ref[1], ih = _ref[2];
+          _ref1 = iconURLData(item), iurl = _ref1[0], iw = _ref1[1], ih = _ref1[2];
           iconData = {
             url: iurl,
             size: new $gm.Size(iw, ih)
