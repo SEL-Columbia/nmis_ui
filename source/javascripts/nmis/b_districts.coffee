@@ -165,6 +165,7 @@ class NMIS.District
     @module_files = (new Module(slug, f_param, @) for slug, f_param of @files)
     @_fetchesInProgress = {}
     @latLng = @lat_lng
+    @sector_gap_sheets = d.sector_gap_sheets || {}
     @id = [@group_slug, @local_id].join("_")
     @html_params =
       text: @name
