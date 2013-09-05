@@ -259,15 +259,16 @@ class NMIS.District
           else if key is "sector"
             datum.sector = NMIS.Sectors.pluck val.toLowerCase()
           else
-            if val is "TRUE"
-              val = true
-            else if val is "FALSE"
-              val = false
-            else if val is "NA"
-              val = `undefined`
-            else
-              if !isNaN (parsedMatch = parseFloat val)
-                val = parsedMatch
+            if _.isString(val)
+              if val.match /^true$/i
+                val = true
+              else if val.match /^false$/i
+                val = false
+              else if val is "" or val.match /^na$/i
+                val = `undefined`
+              else
+                if !val.match(/[a-zA-Z]/) and !isNaN (parsedMatch = parseFloat val)
+                  val = parsedMatch
             datum[key] = val
         datum.id = fac._id or fac.X_id or facKey  unless datum.id
 

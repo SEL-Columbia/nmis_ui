@@ -89,9 +89,11 @@ independently testable modules.
     };
     NMIS.loadFacilities = function(_data, opts) {
       return _.each(_data, function(val, key) {
-        var id;
-        id = val.uuid || val.id;
-        return data[id] = cloneParse(val);
+        val.id = val.uuid;
+        if (!val.id) {
+          throw new Error("UUID Missing for facility");
+        }
+        return data[val.id] = cloneParse(val);
       });
     };
     NMIS.clear = function() {
