@@ -193,6 +193,7 @@ NMIS.FacilitySelector = do->
     facility = false
     lga = NMIS.Env().lga
     facility = val for key, val of lga.facilityData when key is params.id
+    throw new Error("Facility with id #{params.id} is not found") unless facility
 
     NMIS.FacilityPopup facility
   deselect = ->
