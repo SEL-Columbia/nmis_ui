@@ -378,6 +378,9 @@
   <{= view_panel.name }> Overview
   <small class="conditional-content"><{= lga.name }>, <{= lga.group.name }></small>
 </h2>
+<{ if(lga.sector_gap_sheets && lga.sector_gap_sheets[view_panel.id]) { }>
+  <a href="<{= lga.sector_gap_sheets[view_panel.id] }>" class="btn">Download Gap Sheet</a>
+<{ } }>
 <div class="nmis-sector-summary">
   <div class="non-gap">
     <table style="width:100%" class="mdg-table">

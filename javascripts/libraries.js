@@ -95,23 +95,6 @@ a){var b=F.exec(a);b&&(b[1]=(b[1]||"").toLowerCase(),b[3]=b[3]&&new RegExp("(?:^
       })();
     };
 
-    Csv.prototype.cellValue = function(st) {
-      var colN, colStr, matched, noop, rowN, _ref;
-      if (matched = st.match(/^([a-zA-Z]+)(\d+)$/)) {
-        noop = matched[0], colStr = matched[1], rowN = matched[2];
-        try {
-          colN = csv._charToNum(colStr) - 1;
-          if (rowN < 2) {
-            return this.columns[colN];
-          } else {
-            return (_ref = this.rowArray[rowN - 2]) != null ? _ref[colN] : void 0;
-          }
-        } catch (e) {
-          return false;
-        }
-      }
-    };
-
     Csv.prototype.addRow = function(r) {
       var colsChanged, column, key, val;
       colsChanged = false;
@@ -207,22 +190,6 @@ a){var b=F.exec(a);b&&(b[1]=(b[1]||"").toLowerCase(),b[3]=b[3]&&new RegExp("(?:^
       return new Csv(param, opts);
     }
   };
-
-  csv._charToNum = (function() {
-    var alphabet;
-    alphabet = "abcdefghijklmnopqrstuvwxyz";
-    return function(str) {
-      var char, tc, _i, _len, _ref;
-      tc = 0;
-      _ref = str.toLowerCase();
-      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-        char = _ref[_i];
-        tc = tc * 26;
-        tc += 1 + alphabet.indexOf(char);
-      }
-      return tc;
-    };
-  })();
 
   asCsvCellValue = function(cell) {
     if (RegExp("\\W|" + csv.settings.delimiter).test(cell)) {
@@ -387,7 +354,7 @@ a){var b=F.exec(a);b&&(b[1]=(b[1]||"").toLowerCase(),b[3]=b[3]&&new RegExp("(?:^
       } else {
         strMatchedValue = arrMatches[3];
       }
-      if (csv.settings.parseFloat && !isNaN((parsedMatch = parseFloat(strMatchedValue)))) {
+      if (csv.settings.parseFloat && (-1 === strMatchedValue.search(/[a-zA-Z]/)) && !isNaN((parsedMatch = parseFloat(strMatchedValue)))) {
         strMatchedValue = parsedMatch;
       }
       row.push(strMatchedValue);

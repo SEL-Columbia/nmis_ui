@@ -312,6 +312,7 @@
       }).call(this);
       this._fetchesInProgress = {};
       this.latLng = this.lat_lng;
+      this.sector_gap_sheets = d.sector_gap_sheets || {};
       this.id = [this.group_slug, this.local_id].join("_");
       this.html_params = {
         text: this.name,
@@ -433,15 +434,17 @@
             } else if (key === "sector") {
               datum.sector = NMIS.Sectors.pluck(val.toLowerCase());
             } else {
-              if (val === "TRUE") {
-                val = true;
-              } else if (val === "FALSE") {
-                val = false;
-              } else if (val === "NA") {
-                val = undefined;
-              } else {
-                if (!isNaN((parsedMatch = parseFloat(val)))) {
-                  val = parsedMatch;
+              if (_.isString(val)) {
+                if (val.match(/^true$/i)) {
+                  val = true;
+                } else if (val.match(/^false$/i)) {
+                  val = false;
+                } else if (val === "" || val.match(/^na$/i)) {
+                  val = undefined;
+                } else {
+                  if (!val.match(/[a-zA-Z]/) && !isNaN((parsedMatch = parseFloat(val)))) {
+                    val = parsedMatch;
+                  }
                 }
               }
               datum[key] = val;

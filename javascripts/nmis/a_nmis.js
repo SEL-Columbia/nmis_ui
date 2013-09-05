@@ -306,6 +306,9 @@ until they play well together (and I ensure they don't over-depend on other modu
           facility = val;
         }
       }
+      if (!facility) {
+        throw new Error("Facility with id " + params.id + " is not found");
+      }
       return NMIS.FacilityPopup(facility);
     };
     deselect = function() {

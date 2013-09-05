@@ -89,9 +89,11 @@ independently testable modules.
     };
     NMIS.loadFacilities = function(_data, opts) {
       return _.each(_data, function(val, key) {
-        var id;
-        id = val.uuid || val.id;
-        return data[id] = cloneParse(val);
+        val.id = val.uuid;
+        if (!val.id) {
+          throw new Error("UUID Missing for facility");
+        }
+        return data[val.id] = cloneParse(val);
       });
     };
     NMIS.clear = function() {
@@ -576,6 +578,9 @@ until they play well together (and I ensure they don't over-depend on other modu
         if (key === params.id) {
           facility = val;
         }
+      }
+      if (!facility) {
+        throw new Error("Facility with id " + params.id + " is not found");
       }
       return NMIS.FacilityPopup(facility);
     };
@@ -1896,6 +1901,7 @@ until they play well together (and I ensure they don't over-depend on other modu
       }).call(this);
       this._fetchesInProgress = {};
       this.latLng = this.lat_lng;
+      this.sector_gap_sheets = d.sector_gap_sheets || {};
       this.id = [this.group_slug, this.local_id].join("_");
       this.html_params = {
         text: this.name,
@@ -2017,15 +2023,17 @@ until they play well together (and I ensure they don't over-depend on other modu
             } else if (key === "sector") {
               datum.sector = NMIS.Sectors.pluck(val.toLowerCase());
             } else {
-              if (val === "TRUE") {
-                val = true;
-              } else if (val === "FALSE") {
-                val = false;
-              } else if (val === "NA") {
-                val = undefined;
-              } else {
-                if (!isNaN((parsedMatch = parseFloat(val)))) {
-                  val = parsedMatch;
+              if (_.isString(val)) {
+                if (val.match(/^true$/i)) {
+                  val = true;
+                } else if (val.match(/^false$/i)) {
+                  val = false;
+                } else if (val === "" || val.match(/^na$/i)) {
+                  val = undefined;
+                } else {
+                  if (!val.match(/[a-zA-Z]/) && !isNaN((parsedMatch = parseFloat(val)))) {
+                    val = parsedMatch;
+                  }
                 }
               }
               datum[key] = val;

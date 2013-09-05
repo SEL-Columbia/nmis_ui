@@ -63,9 +63,9 @@ do ->
     datum
   NMIS.loadFacilities = (_data, opts) ->
     _.each _data, (val, key) ->
-      id = val.uuid or val.id
-      data[id] = cloneParse(val)
-
+      val.id = val.uuid
+      throw new Error("UUID Missing for facility") unless val.id
+      data[val.id] = cloneParse(val)
 
   NMIS.clear = ->
     data = []
